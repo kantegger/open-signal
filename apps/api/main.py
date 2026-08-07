@@ -45,6 +45,31 @@ def get_claim(claim_id: str) -> dict:
     return page
 
 
+@app.get("/api/editions/latest")
+def get_latest_edition() -> dict:
+    """Return the latest published edition for the frontend."""
+    from sqlalchemy import text
+
+    with _engine().connect() as conn:
+        row = conn.execute(
+            text(
+                "SELECT id, edition_date, edition_payload, included_section_ids, "
+                "included_claim_ids, generated_at FROM daily_editions "
+                "WHERE status = 'published' ORDER BY generated_at DESC LIMIT 1"
+            )
+        ).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="no editions yet")
+    return {
+        "id": str(row[0]),
+        "edition_date": str(row[1]),
+        "edition_payload": row[2] if isinstance(row[2], dict) else {},
+        "sections": row[3] if isinstance(row[3], list) else [],
+        "claim_ids": [str(c) for c in (row[4] if isinstance(row[4], list) else [])],
+        "generated_at": row[5].isoformat(),
+    }
+
+
 @app.get("/api/editions/{edition_id}")
 def get_edition(edition_id: str) -> dict:
     writer = EditionWriter(_engine())
