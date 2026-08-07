@@ -81,8 +81,11 @@ Sections, Components, Slots or permissions from natural-language docs
 - OS-007 Polymarket Gamma Adapter — done (market discovery, pagination,
   cursor persistence via new source_cursors table (migration 0002),
   raw record storage, health check, fixtures; 6 tests, live API verified)
+- OS-008 Market Observation — done (bucketed idempotent price sampling,
+  midpoint/spread, data quality flags, rate-limit retry; default partition
+  migration 0003; 5 tests)
 
-Next milestones: OS-008 Market Observation, OS-009 Expectation Canonicalizer.
+Next milestones: OS-009 Expectation Canonicalizer, OS-010 Candidate Detection.
 
 ## Database
 
