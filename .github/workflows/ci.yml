@@ -94,5 +94,7 @@ jobs:
         run: pytest apps/worker/tests/test_queue.py -q
       - name: Registry tests
         run: pytest apps/worker/tests/test_registry.py -q
+      - name: Artifact store tests
+        run: pytest apps/worker/tests/test_artifact.py -q
       - name: Verify offline migration SQL
         run: python -m alembic -c infra/migrations/alembic.ini upgrade head --sql > /tmp/mig.sql && grep -c 'CREATE TABLE' /tmp/mig.sql

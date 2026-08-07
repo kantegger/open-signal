@@ -75,8 +75,11 @@ Sections, Components, Slots or permissions from natural-language docs
 - OS-005 Source Registry & Rights Manifest — done (YAML loader with read
   views + reference validation, rights capability checks, agent_desks sync;
   11 tests, registry passes validation)
+- OS-006 Raw Artifact Store — done (content-addressed SHA-256 store with
+  deduplication, public/private buckets, retention metadata, signed access;
+  Local + S3 adapters; 8 tests)
 
-Next milestones: OS-006 Raw Artifact Store, OS-007 Polymarket adapter.
+Next milestones: OS-007 Polymarket adapter, OS-008 Market Observation.
 
 ## Database
 
