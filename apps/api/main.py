@@ -47,7 +47,7 @@ def get_claim(claim_id: str) -> dict:
 
 @app.get("/api/editions/latest")
 def get_latest_edition() -> dict:
-    """Return the latest published edition for the frontend."""
+    """Return the latest published edition with claim card summaries."""
     from sqlalchemy import text
 
     with _engine().connect() as conn:
@@ -60,14 +60,77 @@ def get_latest_edition() -> dict:
         ).fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail="no editions yet")
+
+    claim_ids = [str(c) for c in (row[4] if isinstance(row[4], list) else [])]
+    cards = _claim_cards(claim_ids)
+
     return {
         "id": str(row[0]),
         "edition_date": str(row[1]),
         "edition_payload": row[2] if isinstance(row[2], dict) else {},
         "sections": row[3] if isinstance(row[3], list) else [],
-        "claim_ids": [str(c) for c in (row[4] if isinstance(row[4], list) else [])],
+        "claim_ids": claim_ids,
         "generated_at": row[5].isoformat(),
+        "cards": cards,
     }
+
+
+def _claim_cards(claim_ids: list[str]) -> list[dict]:
+    """Build card summaries for a list of claim IDs in a single query."""
+    from sqlalchemy import text
+
+    if not claim_ids:
+        return []
+    with _engine().connect() as conn:
+        import uuid as _uuid
+
+        rows = conn.execute(
+            text(
+                "SELECT c.id, c.public_statement, c.structured_proposition, c.confidence, "
+                "c.confidence_label, c.status, c.desk_id, c.issued_at, "
+                "c.section_id, c.capability_id, c.claim_type "
+                "FROM claims c WHERE c.id = ANY(:ids) AND c.status = 'published'"
+            ),
+            {"ids": [_uuid.UUID(cid) for cid in claim_ids]},
+        ).fetchall()
+    cards = []
+    for r in rows:
+        prop = r[2] or {}
+        en = prop.get("en", {}) if isinstance(prop, dict) else {}
+        headline = en.get("headline", r[1]) or r[1]
+        observation = en.get("observation", "")
+        analysis = en.get("analysis", "")
+        assessment = en.get("assessment", "")
+
+        # derive trend from structured keys or analysis text
+        trend = en.get("trend") or _derive_trend(analysis, en)
+        # derive category tags from section + claim_type
+        tags = [r[8].replace("-", " ").title(), r[10].replace("_", " ").title()]
+
+        cards.append({
+            "id": str(r[0]),
+            "headline": headline[:120],
+            "summary": (observation or analysis)[:140],
+            "trend": trend,
+            "probability": en.get("probability"),
+            "confidence": float(r[3]) if r[3] is not None else None,
+            "confidence_label": r[4],
+            "source_label": r[6],
+            "section": r[8],
+            "tags": tags,
+            "issued_at": r[7].isoformat() if r[7] else None,
+        })
+    return cards
+
+
+def _derive_trend(analysis: str, en: dict) -> str | None:
+    """Heuristic trend detection."""
+    text = (analysis + " " + str(en)).lower()
+    if any(w in text for w in ("increas", "up ", "ris", "surge", "higher", "bull")):
+        return "up"
+    if any(w in text for w in ("decreas", "down", "drop", "fall", "lower", "bear")):
+        return "down"
+    return "neutral"
 
 
 @app.get("/api/editions/{edition_id}")

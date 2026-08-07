@@ -134,10 +134,12 @@ with engine.begin() as conn:
         cid = uuid.uuid4()
         cids.append(cid)
         sp = {"en": {
-            "headline": f"Signal: {q}",
-            "observation": f"Market probability {45+i*20}% YES.",
-            "analysis": f"Shifted {10+i*5}pp in 30d.",
+            "headline": q,
+            "observation": f"Market probability {45+i*20}% YES." if i != 1 else f"Market probability {60-i*10}% YES.",
+            "analysis": f"Probability {'increased' if i != 1 else 'decreased'} by {10+i*5}pp over 30d.",
             "assessment": "Medium-confidence; order-book depth.",
+            "probability": 0.45 + i * 0.2 if i != 1 else 0.6 - i * 0.1,
+            "trend": "up" if i != 1 else "down",
         }}
         conn.execute(
             models.claims.insert().values(
@@ -225,4 +227,4 @@ with engine.begin() as conn:
     for cid in cids:
         print(f"claim:   {cid}")
 
-print("\n✅ seed done — refresh http://localhost:3000")
+print("\nseed done - refresh http://localhost:3000")

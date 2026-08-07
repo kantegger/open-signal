@@ -1,7 +1,13 @@
-import type { ClaimPageData } from "../../../lib/api";
-import { fetchClaim } from "../../../lib/api";
+import type { ClaimPageData } from "../../lib/api";
+import { fetchClaim } from "../../lib/api";
 
-export const metadata = { title: "Claim" };
+export const metadata = { title: "Signal" };
+
+function timeStr(iso: string) {
+  return new Date(iso).toLocaleString("en-US", {
+    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+}
 
 export default async function ClaimPage({
   params,
@@ -14,115 +20,120 @@ export default async function ClaimPage({
     page = await fetchClaim(id);
   } catch {
     return (
-      <main style={{ padding: 24, fontFamily: "system-ui, sans-serif" }}>
-        <h1>Claim not found</h1>
-        <p>No claim with id {id} is publicly available.</p>
+      <main className="claim-page">
+        <h1>SIGNAL NOT FOUND</h1>
+        <p style={{ color: "var(--text-secondary)", marginTop: "1rem" }}>
+          No public record for <code>{id}</code>.
+        </p>
       </main>
     );
   }
 
   return (
-    <main style={{ padding: 24, fontFamily: "system-ui, sans-serif", maxWidth: 820, margin: "0 auto" }}>
+    <main className="claim-page">
+      {/* header */}
       <header>
-        <p style={{ color: "#666", fontSize: 13 }}>
-          Claim ID <code>{page.claim.id}</code> · {page.claim.claim_type} ·{" "}
-          <span data-testid="status">{page.claim.status}</span>
+        <p style={{ color: "var(--text-secondary)", fontSize: 11, marginBottom: 4 }}>
+          CLAIM {page.claim.id.slice(0, 8)}… · {page.claim.claim_type} ·{" "}
+          <span style={{ color: "var(--accent-up)" }}>{page.claim.status.toUpperCase()}</span>
         </p>
-        <h1 style={{ fontSize: 24 }}>{page.observation}</h1>
-        <p style={{ color: "#666", fontSize: 13 }}>
-          {page.claim.desk_id} · issued {new Date(page.claim.issued_at).toLocaleString()}
-        </p>
+        <h1>{page.observation}</h1>
       </header>
 
-      <Section title="Analysis">
-        <pre data-testid="analysis" style={{ whiteSpace: "pre-wrap", background: "#f6f6f6", padding: 12, borderRadius: 8 }}>
-          {JSON.stringify(page.analysis.structured_proposition, null, 2)}
-        </pre>
-      </Section>
+      {/* headline-style probability statement */}
+      <div className="headline-statement">{page.observation}</div>
 
-      <Section title="Assessment">
+      {/* Analysis */}
+      <section>
+        <h2>▸ Analysis</h2>
+        <pre>{JSON.stringify(page.analysis.structured_proposition, null, 2)}</pre>
+      </section>
+
+      {/* Assessment */}
+      <section>
+        <h2>▸ Assessment</h2>
         <dl>
           <dt>Confidence</dt>
-          <dd data-testid="confidence">
-            {page.assessment.confidence?.toFixed(3)} ({page.assessment.confidence_label})
+          <dd>
+            {page.assessment.confidence?.toFixed(3)} · {page.assessment.confidence_label}
           </dd>
-          <dt>Epistemic status</dt>
+          <dt>Epistemic</dt>
           <dd>{page.assessment.epistemic_status}</dd>
-          <dt>Model / Charter</dt>
+          <dt>Model · Charter</dt>
           <dd>
             {page.assessment.model_version} / {page.assessment.charter_version}
           </dd>
         </dl>
-      </Section>
+      </section>
 
-      <Section title="Evidence">
-        <ul data-testid="evidence">
+      {/* Evidence */}
+      <section>
+        <h2>▸ Evidence</h2>
+        <ul style={{ paddingLeft: 18 }}>
           {page.evidence.items.map((item, i) => (
-            <li key={i}>
-              <pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(item)}</pre>
+            <li key={i} style={{ marginBottom: 6 }}>
+              <pre>{JSON.stringify(item)}</pre>
             </li>
           ))}
-          {page.evidence.items.length === 0 && <li>No primary evidence listed.</li>}
+          {page.evidence.items.length === 0 && (
+            <li style={{ color: "var(--text-secondary)" }}>No evidence.</li>
+          )}
         </ul>
         {page.evidence.snapshot_hash && (
-          <p style={{ color: "#888", fontSize: 12 }}>
-            snapshot {page.evidence.snapshot_hash.slice(0, 16)}…
+          <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4 }}>
+            snap: {page.evidence.snapshot_hash.slice(0, 16)}…
           </p>
         )}
-      </Section>
+      </section>
 
-      <Section title="Counterevidence">
-        <ul data-testid="counterevidence">
+      {/* Counterevidence */}
+      <section>
+        <h2>▸ Counterevidence</h2>
+        <ul style={{ paddingLeft: 18 }}>
           {page.counterevidence.items.map((item, i) => (
-            <li key={i}>
-              <pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(item)}</pre>
+            <li key={i} style={{ marginBottom: 6 }}>
+              <pre>{JSON.stringify(item)}</pre>
             </li>
           ))}
-          {page.counterevidence.items.length === 0 && <li>None recorded.</li>}
+          {page.counterevidence.items.length === 0 && (
+            <li style={{ color: "var(--text-secondary)" }}>None recorded.</li>
+          )}
         </ul>
-      </Section>
+      </section>
 
-      <Section title="Agent lineage">
-        <p data-testid="lineage">
+      {/* Agent Lineage */}
+      <section>
+        <h2>▸ Lineage</h2>
+        <p>
           {page.agent_lineage.name ?? page.agent_lineage.lineage_id}
           {page.agent_lineage.foundation_model
             ? ` · ${page.agent_lineage.foundation_model} ${page.agent_lineage.model_version ?? ""}`
             : ""}
           {page.agent_lineage.status ? ` · ${page.agent_lineage.status}` : ""}
         </p>
-      </Section>
+      </section>
 
-      <Section title="Version history">
-        <ol data-testid="version-history">
+      {/* Version History */}
+      <section>
+        <h2>▸ History</h2>
+        <ol style={{ paddingLeft: 18 }}>
           {page.version_history.map((v) => (
-            <li key={v.version_number}>
-              <strong>v{v.version_number}</strong> ({v.change_type}: {v.change_reason}) —{" "}
-              {v.public_statement}
-              <span style={{ color: "#888", fontSize: 12 }}>
-                {" "}
-                · conf {v.confidence?.toFixed(3)} · {new Date(v.created_at).toLocaleString()}
+            <li key={v.version_number} style={{ marginBottom: 8 }}>
+              <strong>v{v.version_number}</strong> ({v.change_type}: {v.change_reason}){" "}
+              — {v.public_statement}
+              <br />
+              <span style={{ color: "var(--text-secondary)", fontSize: 11 }}>
+                conf {v.confidence?.toFixed(3)} · {timeStr(v.created_at)}
               </span>
             </li>
           ))}
         </ol>
-      </Section>
-    </main>
-  );
-}
+      </section>
 
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section style={{ marginTop: 28 }}>
-      <h2 style={{ fontSize: 16, borderBottom: "1px solid #ddd", paddingBottom: 6 }}>
-        {title}
-      </h2>
-      {children}
-    </section>
+      {/* meta footer */}
+      <footer style={{ marginTop: "2rem", paddingTop: "1rem", borderTop: "1px solid var(--border)", fontSize: 11, color: "var(--text-secondary)" }}>
+        {page.claim.desk_id} · issued {timeStr(page.claim.issued_at)}
+      </footer>
+    </main>
   );
 }
