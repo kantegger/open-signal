@@ -1,0 +1,1309 @@
+{
+  "studies": [
+    {
+      "protocolSection": {
+        "identificationModule": {
+          "nctId": "NCT05731219",
+          "orgStudyIdInfo": {
+            "id": "PG-pCAR-gdT-TAA06-017"
+          },
+          "organization": {
+            "fullName": "PersonGen BioTherapeutics (Suzhou) Co., Ltd.",
+            "class": "INDUSTRY"
+          },
+          "briefTitle": "UTAA06 Injection in the Treatment of Relapsed/Refractory Acute Myeloid Leukemia",
+          "officialTitle": "Clinical Study of UTAA06 Injection in the Treatment of Relapsed/Refractory Acute Myeloid Leukemia"
+        },
+        "statusModule": {
+          "statusVerifiedDate": "2023-02",
+          "overallStatus": "UNKNOWN",
+          "lastKnownStatus": "RECRUITING",
+          "expandedAccessInfo": {
+            "hasExpandedAccess": false
+          },
+          "startDateStruct": {
+            "date": "2022-09-26",
+            "type": "ACTUAL"
+          },
+          "primaryCompletionDateStruct": {
+            "date": "2023-09-26",
+            "type": "ESTIMATED"
+          },
+          "completionDateStruct": {
+            "date": "2025-09-26",
+            "type": "ESTIMATED"
+          },
+          "studyFirstSubmitDate": "2023-01-31",
+          "studyFirstSubmitQcDate": "2023-02-15",
+          "studyFirstPostDateStruct": {
+            "date": "2023-02-16",
+            "type": "ACTUAL"
+          },
+          "lastUpdateSubmitDate": "2023-02-15",
+          "lastUpdatePostDateStruct": {
+            "date": "2023-02-16",
+            "type": "ACTUAL"
+          }
+        },
+        "sponsorCollaboratorsModule": {
+          "responsibleParty": {
+            "type": "SPONSOR"
+          },
+          "leadSponsor": {
+            "name": "PersonGen BioTherapeutics (Suzhou) Co., Ltd.",
+            "class": "INDUSTRY"
+          }
+        },
+        "oversightModule": {
+          "isFdaRegulatedDrug": false,
+          "isFdaRegulatedDevice": false
+        },
+        "descriptionModule": {
+          "briefSummary": "Main research purpose： Evaluate the safety and tolerance of UTAA06 injection in the treatment of patients with relapsed/refractory acute myeloid leukemia.\n\nSecondary research purpose： Evaluate the expansion and persistence of gdT cells targeting B7-H3 chimeric antigen receptor after UTAA06 injection administration in vivo; Evaluate the efficacy of UTAA06 injection in the treatment of patients with relapsed/refractory acute myeloid leukemia; Evaluate the content of B7-H3 positive cells in the peripheral blood after administration of UTAA06 injection; Evaluate the immunogenicity of UTAA06 injection.",
+          "detailedDescription": "This study is a single arm, open label, dose increasing study to explore the characteristics of drug safety, tolerance and cell kinetics, and preliminarily observe the efficacy of the study drug in patients with relapsed/refractory B7-H3 positive acute myeloid leukemia, so as to explore the formal clinical appropriate dose.\n\nAfter the subjects who signed the informed consent form were screened by the inclusion/exclusion criteria, the qualified subjects will enter 1.0 in order of priority × 108，3.0 × 108 and 6.0 × 108 CAR gdT groups were administered once. The \"3+3\" design was adopted in the dose increasing study, that is, 3-6 subjects in each group completed a single dose.\n\nAfter the last subject in each dose group completed the dose limiting toxicity (DLT) assessment window 28 days after the single administration, the next dose group can be started after the Safety Monitoring Committee (SRC) agrees to enter the next dose group based on the evaluation of clinical safety data.\n\nWhen 1 DLT occurs in 3 subjects in a certain dose group, 3 subjects need to be added in the same dose group (up to 6 subjects in this dose group complete DLT evaluation): if the added 3 subjects have no DLT, the dose will continue to increase; If one of the three additional subjects has DLT, stop the dose increase; If more than one of the three additional subjects has DLT, stop the dose increase, and at the same time, reduce one dose to continue the DLT evaluation of the three subjects.\n\nThe SRC can decide whether to increase or decrease the dose groups or adjust the dose of groups according to the pharmacokinetic results obtained during the study."
+        },
+        "conditionsModule": {
+          "conditions": [
+            "Relapsed/Refractory Acute Myeloid Leukemia"
+          ],
+          "keywords": [
+            "B7-H3 target"
+          ]
+        },
+        "designModule": {
+          "studyType": "INTERVENTIONAL",
+          "phases": [
+            "PHASE1"
+          ],
+          "designInfo": {
+            "allocation": "NA",
+            "interventionModel": "SINGLE_GROUP",
+            "interventionModelDescription": "UTAA06 injection",
+            "primaryPurpose": "TREATMENT",
+            "maskingInfo": {
+              "masking": "NONE"
+            }
+          },
+          "enrollmentInfo": {
+            "count": 18,
+            "type": "ESTIMATED"
+          }
+        },
+        "armsInterventionsModule": {
+          "armGroups": [
+            {
+              "label": "B7-H3 target, CAR gene modified gdT cell injection",
+              "type": "EXPERIMENTAL",
+              "description": "UTAA06 injection After the subjects who signed the informed consent form were screened by the inclusion/exclusion criteria, the qualified subjects will enter 1.0 in order of priority × 10\\^8，3.0 × 10\\^8 and 6.0 × 10\\^8 CAR gdT groups were administered once.",
+              "interventionNames": [
+                "Biological: B7-H3 target, CAR gene modified gdT cell injection"
+              ]
+            }
+          ],
+          "interventions": [
+            {
+              "type": "BIOLOGICAL",
+              "name": "B7-H3 target, CAR gene modified gdT cell injection",
+              "description": "After the subjects who signed the informed consent form were screened by the inclusion/exclusion criteria, the qualified subjects will enter 1.0 in order of priority × 108，3.0 × 108 and 6.0 × 108 CAR gdT groups were administered once.",
+              "armGroupLabels": [
+                "B7-H3 target, CAR gene modified gdT cell injection"
+              ],
+              "otherNames": [
+                "UTAA06 injection"
+              ]
+            }
+          ]
+        },
+        "outcomesModule": {
+          "primaryOutcomes": [
+            {
+              "measure": "Assessment of the safety after UTAA06 injection treatment (Safety)",
+              "description": "Number of participants with treatment-related adverse events as assessed by CTCAE v5.0.",
+              "timeFrame": "About 2 years"
+            }
+          ],
+          "secondaryOutcomes": [
+            {
+              "measure": "To evaluate anti-tumor activity (overall survival)",
+              "description": "Defined as the time from start of UTAA06 infusion therapy to death (due to any cause)myeloid leukemia",
+              "timeFrame": "About 2 years"
+            },
+            {
+              "measure": "To evaluate anti-tumor activity (duration of response)",
+              "description": "Defined as the time from the first tumor assessment of CR or PR, CR or CRi to the first assessment of disease recurrence or progression or death (due to any cause).",
+              "timeFrame": "About 2 years"
+            },
+            {
+              "measure": "To evaluate anti-tumor activity (progression free survival)",
+              "description": "Defined as the time from the start of UTAA06 infusion therapy to the first disease progression or recurrence or death from any cause.",
+              "timeFrame": "About 2 years"
+            }
+          ]
+        },
+        "eligibilityModule": {
+          "eligibilityCriteria": "Inclusion Criteria:\n\n1. Age ≥ 18, regardless of gender;\n2. Expected survival time ≥ 3 months;\n3. ECOG score 0-1;\n4. At screening, acute myeloid leukemia was definitely diagnosed, and B7-H3 expression in tumor cells was positive;\n5. Patients with relapsed/refractory acute myeloid leukemia who failed to receive second-line or above standard treatment;\n6. Coagulation function, liver and kidney function, heart and lung function meet the following requirements:\n\n   1. Prothrombin time/international standardized ratio (PT/INR) and partial thromboplastin time (PTT) ≤ 1.5 ULN;\n   2. Creatinine ≤ 1.5 ULN;\n   3. Left ventricular ejection fraction ≥ 50%, no pericardial effusion is found in echocardiography, and no clinically significant abnormal wave band is found in electrocardiogram;\n   4. Indoor baseline blood oxygen saturation\\>92%;\n   5. Total bilirubin ≤ 2 × ULN； ALT and AST ≤ 2.5 × ULN； The investigator judges the abnormality of ALT and AST caused by diseases (such as liver infiltration or bile duct obstruction), and the index can be broadened to ≤ 5 × ULN；\n7. Be able to understand the test and have signed the informed consent form.\n\nExclusion Criteria:\n\n1. In addition to adequately treated cervical carcinoma in situ, basal cell or squamous epithelial cell skin cancer, local prostate cancer after radical surgery, and breast ductal carcinoma in situ after radical surgery, patients with malignant tumors other than acute myeloid leukemia in the first 5 years of screening;\n2. Hepatitis B surface antigen (HBsAg) positive and DNA positive; Hepatitis B core antibody (HBcAb) was positive and the copy number of HBV DNA in peripheral blood was greater than the lower limit of measurability; Hepatitis C virus (HCV) antibody positive and hepatitis C virus (HCV) RNA positive in peripheral blood; Human immunodeficiency virus (HIV) antibody positive; Cytomegalovirus (CMV) DNA positive; Syphilis test positive;\n3. Serious heart disease: including but not limited to unstable angina, myocardial infarction (within 6 months before screening), congestive heart failure (NYHA classification ≥ III), and serious arrhythmia;\n4. Unstable systemic diseases judged by the investigator: including but not limited to severe liver, kidney or metabolic diseases requiring drug treatment;\n5. Within 7 days before screening, there is active infection or uncontrollable infection requiring systemic treatment (except for mild genitourinary system infection and upper respiratory tract infection);\n6. Pregnant or lactating women, female subjects planning pregnancy within 2 years after cell reinfusion or male subjects planning pregnancy within 2 years after their partners' cell reinfusion;\n7. Subjects who are receiving systemic steroid treatment within 7 days before screening or need long-term use of systemic steroid treatment during treatment determined by the investigator (except for inhalation or local use);\n8. Participated in other clinical studies within 1 month before screening;\n9. During screening, there was evidence of central nervous system invasion, such as tumor cells detected in cerebrospinal fluid or imaging indicating central infiltration;\n10. Those who have graft versus host reaction and need immunosuppressants;\n11. People with epilepsy history or other central nervous system diseases;\n12. Patients with primary immunodeficiency disease;\n13. According to the judgment of the researcher, it does not conform to the situation of cell preparation;\n14. Other researchers think it is not suitable to be included in the group.",
+          "healthyVolunteers": false,
+          "sex": "ALL",
+          "minimumAge": "18 Years",
+          "stdAges": [
+            "ADULT",
+            "OLDER_ADULT"
+          ]
+        },
+        "contactsLocationsModule": {
+          "centralContacts": [
+            {
+              "name": "He Huang, doctor",
+              "role": "CONTACT",
+              "phone": "13605714822",
+              "email": "hehuangyu@126.com"
+            },
+            {
+              "name": "Huimin Meng, doctor",
+              "role": "CONTACT",
+              "phone": "18015580390",
+              "email": "huimin.meng@persongen.com.cn"
+            }
+          ],
+          "overallOfficials": [
+            {
+              "name": "He Huang, doctor",
+              "affiliation": "Zhejiang University",
+              "role": "PRINCIPAL_INVESTIGATOR"
+            }
+          ],
+          "locations": [
+            {
+              "facility": "The First Affiliated Hospital， Zhejiang University School of Medicine",
+              "status": "RECRUITING",
+              "city": "Hangzhou",
+              "state": "Zhejiang",
+              "zip": "310003",
+              "country": "China",
+              "contacts": [
+                {
+                  "name": "He Huang, doctor",
+                  "role": "CONTACT",
+                  "phone": "13605714822",
+                  "email": "hehuangyu@126.com"
+                }
+              ],
+              "geoPoint": {
+                "lat": 30.29365,
+                "lon": 120.16142
+              }
+            }
+          ]
+        }
+      },
+      "derivedSection": {
+        "miscInfoModule": {
+          "versionHolder": "2026-08-06"
+        },
+        "conditionBrowseModule": {
+          "meshes": [
+            {
+              "id": "D015470",
+              "term": "Leukemia, Myeloid, Acute"
+            }
+          ],
+          "ancestors": [
+            {
+              "id": "D007951",
+              "term": "Leukemia, Myeloid"
+            },
+            {
+              "id": "D007938",
+              "term": "Leukemia"
+            },
+            {
+              "id": "D009370",
+              "term": "Neoplasms by Histologic Type"
+            },
+            {
+              "id": "D009369",
+              "term": "Neoplasms"
+            },
+            {
+              "id": "D006402",
+              "term": "Hematologic Diseases"
+            },
+            {
+              "id": "D006425",
+              "term": "Hemic and Lymphatic Diseases"
+            }
+          ]
+        }
+      },
+      "hasResults": false
+    },
+    {
+      "protocolSection": {
+        "identificationModule": {
+          "nctId": "NCT01129544",
+          "orgStudyIdInfo": {
+            "id": "IND14067"
+          },
+          "organization": {
+            "fullName": "Boston Children's Hospital",
+            "class": "OTHER"
+          },
+          "briefTitle": "Gene Transfer for Severe Combined Immunodeficiency, X-linked (SCID-X1) Using a Self-inactivating (SIN) Gammaretroviral Vector",
+          "officialTitle": "Multi-site Phase I/II Trial Evaluating the Treatment of SCID-X1 Patients With Retrovirus-mediated Gene Transfer"
+        },
+        "statusModule": {
+          "statusVerifiedDate": "2026-03",
+          "overallStatus": "COMPLETED",
+          "expandedAccessInfo": {
+            "hasExpandedAccess": false
+          },
+          "startDateStruct": {
+            "date": "2010-04",
+            "type": "ACTUAL"
+          },
+          "primaryCompletionDateStruct": {
+            "date": "2023-03",
+            "type": "ACTUAL"
+          },
+          "completionDateStruct": {
+            "date": "2023-03",
+            "type": "ACTUAL"
+          },
+          "studyFirstSubmitDate": "2010-05-21",
+          "studyFirstSubmitQcDate": "2010-05-21",
+          "studyFirstPostDateStruct": {
+            "date": "2010-05-24",
+            "type": "ESTIMATED"
+          },
+          "resultsFirstSubmitDate": "2024-11-19",
+          "resultsFirstSubmitQcDate": "2026-03-31",
+          "resultsFirstPostDateStruct": {
+            "date": "2026-04-21",
+            "type": "ACTUAL"
+          },
+          "lastUpdateSubmitDate": "2026-03-31",
+          "lastUpdatePostDateStruct": {
+            "date": "2026-04-21",
+            "type": "ACTUAL"
+          }
+        },
+        "sponsorCollaboratorsModule": {
+          "responsibleParty": {
+            "type": "SPONSOR_INVESTIGATOR",
+            "investigatorFullName": "David Williams",
+            "investigatorTitle": "Chief of the Division of Hematology/Oncology",
+            "investigatorAffiliation": "Boston Children's Hospital"
+          },
+          "leadSponsor": {
+            "name": "David Williams",
+            "class": "OTHER"
+          },
+          "collaborators": [
+            {
+              "name": "Boston Children's Hospital",
+              "class": "OTHER"
+            },
+            {
+              "name": "Children's Hospital Medical Center, Cincinnati",
+              "class": "OTHER"
+            },
+            {
+              "name": "University of California, Los Angeles",
+              "class": "OTHER"
+            }
+          ]
+        },
+        "oversightModule": {
+          "oversightHasDmc": true
+        },
+        "descriptionModule": {
+          "briefSummary": "Researchers are working on ways to treat SCID patients who don't have a matched brother or sister. One of the goals is to avoid the problems that happen with stem cell transplant from parents and unrelated people, such as repeat transplants, incomplete cure of the immune system, exposure to chemotherapy, and graft versus host disease.\n\nThe idea behind gene transfer is to replace the broken gene by putting a piece of genetic material (DNA) that has the normal gene into the child's cells. Gene transfer can only be done if we know which gene is missing or broken in the patient. For SCID-X1, gene transfer has been done in the laboratory and in two previous clinical trials by inserting the normal gene into stem cells from bone marrow. The bone marrow is the \"factory\" inside the bones that creates blood and immune cells. So fixing the gene in the bone marrow stem cells should fix the immune problem, without giving chemotherapy and without risk of graft versus host disease, because the child's own cells are used, rather than another person's. Out of the 20 subjects enrolled in the two previous trials, 18 are alive with better immune systems after gene transfer. Two of the surviving subjects received gene corrected cells over 10 years ago.\n\nGene transfer is still research for two reasons. One is that not enough children have been studied to tell if the procedure is consistently successful. Of the 20 children enrolled in the previous two trials, one child did not have correction of the immune system, and died of complications after undergoing stem cell transplant. The second important reason why gene transfer is research is that we are still learning about the side effects of gene transfer and how to do gene transfer safely. In the last two trials, 5 children have experienced a serious side effect. These children developed leukemia related to the gene transfer itself. Leukemia is a cancer of the white blood cells, a condition where a few white blood cells grow out of control. Of these children, 4 of the 5 have received chemotherapy (medication to treat cancer) and are currently in remission (no leukemia can be found by sensitive testing), whereas one died of gene transfer-related leukemia.",
+          "detailedDescription": "Severe combined immunodeficiencies (SCID) are a heterogeneous group of inherited disorders characterized by a profound reduction or absence of T lymphocyte function. They arise from a variety of molecular defects which affect lymphocyte development and function. The most common form of SCID is an X-linked form (SCID-X1) which accounts for 40-50% of all cases. SCID-X1 is caused by defects in the common cytokine receptor chain, which was originally identified as a component of the high affinity interleukin-2 receptor (IL-2RG), but is now known to be an essential component of the IL-4, -7, -9 -15, and -21 cytokine receptor complexes. Classic SCID-X1 has an extremely poor prognosis without treatment. Death usually occurs in the first year of life from infectious complications unless definitive treatment can be administered. Until the recent advent of somatic gene therapy, hematopoietic stem cell transplantation (HSCT) offered the only curative option for patients with any form of SCID. If a genotypically matched sibling donor is available, HSCT is a highly successful procedure. However a genotypically matched family donor is only available for approximately 30% of patients. For the remaining individuals, alternative donor transplants, principally from matched unrelated or haploidentical parental donors have been performed. These approaches are still problematic with toxicity from ablative therapy, graft-versus-host disease and incomplete lymphoid reconstitution. Recent gene transfer trials have documented the efficacy of gene transfer in this disease, albeit with toxicity related to insertional mutagenesis. A new generation of self-inactivating (SIN) vectors has been developed which lack all enhancer-promoter elements of the LTR U3 region and are also devoid of all gammaretroviral coding regions. A SIN vector expressing the IL-2RG gene, pSRS11.EFS.IL2RG.pre\\* has been developed and has shown a reduction in mutagenic potential compared to LTR configuration in non-clinical studies. The current study is a phase I/II trial of somatic gene therapy for patients with SCID-X1."
+        },
+        "conditionsModule": {
+          "conditions": [
+            "Severe Combined Immunodeficiency"
+          ],
+          "keywords": [
+            "Severe combined immunodeficiency",
+            "SCID",
+            "XSCID",
+            "SCID-X1"
+          ]
+        },
+        "designModule": {
+          "studyType": "INTERVENTIONAL",
+          "phases": [
+            "PHASE1",
+            "PHASE2"
+          ],
+          "designInfo": {
+            "allocation": "NA",
+            "interventionModel": "SINGLE_GROUP",
+            "primaryPurpose": "TREATMENT",
+            "maskingInfo": {
+              "masking": "NONE"
+            }
+          },
+          "enrollmentInfo": {
+            "count": 8,
+            "type": "ACTUAL"
+          }
+        },
+        "armsInterventionsModule": {
+          "armGroups": [
+            {
+              "label": "Gene Transfer",
+              "type": "EXPERIMENTAL",
+              "description": "open label single arm study",
+              "interventionNames": [
+                "Biological: Gene transfer"
+              ]
+            }
+          ],
+          "interventions": [
+            {
+              "type": "BIOLOGICAL",
+              "name": "Gene transfer",
+              "description": "Three procedures: 1) Bone marrow harvest from the patient's posterior iliac crests. 2.) Chemotherapy conditioning with Busulfan 3)One time infusion of patient's transduced bone marrow cells.",
+              "armGroupLabels": [
+                "Gene Transfer"
+              ]
+            }
+          ]
+        },
+        "outcomesModule": {
+          "primaryOutcomes": [
+            {
+              "measure": "CD3 Cell Count Post Infusion",
+              "description": "Immunological reconstitution defined as absolute CD3 cells of \\>300/μl and PHA stimulation index \\>15 at 6 months post infusion",
+              "timeFrame": "6 Months Post Gene Transfer"
+            },
+            {
+              "measure": "Incidence of Life Threatening Adverse Reactions Related to the Gene Therapy Procedure",
+              "description": "Follow up time for each of the 8 enrolled patients is as follows: Patient #1 -12 yrs, Patient#2 -11 yrs, Patient #6- 9 yrs, Patient #7- 8 yrs, Patient #8 - 4.5 yrs. Patient #3 \\& #5 failed primary endpoint and had allo transplant, Patient #4 retreated with Gene therapy and is 6 years post 2nd infusion.",
+              "timeFrame": "4.5-12 years post infusion of the gene therapy product"
+            }
+          ]
+        },
+        "eligibilityModule": {
+          "eligibilityCriteria": "Inclusion Criteria:\n\n1. Diagnosis of SCID-X1 based on immunophenotype (\\<200 CD3+ autologous T cells, and confirmed by DNA sequencing)\n\n   AND\n2. Lack an HLA identical (A, B, C, DR, DQ) related donor\n\nAND either one of the following:\n\n1\\. Patients in good clinical condition who do not have a readily available HLA identical (A,B,C,DR,DQ) unrelated donor (readily available defined as: a donor confirmed within 6 weeks of searching, with ability to transplant within 3 months of diagnosis).\n\n2\\. Patients with an active, therapy-resistant infection or other medical conditions that significantly increase the risk of allogeneic transplant. Examples of \"therapy-resistant infections that significantly increase the risk of allogeneic transplant\" include but are not limited to:\n\n1. interstitial pneumonia due to adenovirus or parainfluenzae virus.\n2. protracted diarrhea requiring total parenteral nutrition.\n3. disseminated BCG infection.\n4. virus-induced lymphoproliferative disease.\n5. any active opportunistic infection (eg, due to Pneumocystis jiroveci, cytomegalovirus,cryptosporidium) that does not improve on medical management.\n6. active and progressive pulmonary disease requiring mechanic ventilation. Inclusion of patients with disease-related organ dysfunction is justified by the known poor outcome with standard treatment and the potential life-saving nature of the treatment proposed. Patients who are on high-dose steroids or other immunosuppressive agents will also be considered eligible, because use of these drugs is common in patients with SCID and maternal T cell engraftment or who present with severe interstitial lung disease. Use of immunosuppressive drugs does not affect efficacy of hematopoietic cell transplantation, and therefore should not affect efficacy of gene transfer.\n\nExclusion Criteria:\n\n1. No available molecular diagnosis confirming SCID-X1.\n2. Patients who have an available HLA-identical related donor.\n3. Diagnosis of active malignant disease other than EBV-associated lymphoproliferative disease\n4. Patients with evidence of infection with HIV-1\n5. Previous gene transfer\n6. Major (life-threatening) congenital anomalies. Examples of \"major (life-threatening) congenital anomalies\" include, but are not limited to: unrepaired cyanotic heart disease, hypoplastic lungs, anencephaly or other major CNS malformations, other severe non-repairable malformations of the gastrointestinal or genitourinary tracts that significantly impair organ function.\n7. Other conditions which in the opinion of the P.I. or co-investigators, contra-indicate collection and/or infusion of transduced cells or indicate patient's inability to follow the protocol. These may include for example clinical ineligibility to receive anesthesia, severe deterioration of clinical condition of the patient after collection of bone marrow but before infusion of transduced cells, or documented refusal or inability of the family to return for scheduled visits. There may be other unforeseen rare circumstances that would result in exclusion of the patient, such as sudden loss of legal guardianship.\n\nAlthough the presentation of the disease may be variable in type, the severity of the immunodeficiency is uniform. The gene transfer protocol will be instituted in the place of haploidentical transplant for those patients who do not have a matched family donor or in whom an unrelated donor transplant is not indicated for the reasons specified above. Apart from the gene transfer protocol, the patients will not undergo additional procedures that would not form part of an equivalent haploidentical transplantation regimen, and will not receive conditioning chemotherapy.",
+          "healthyVolunteers": false,
+          "sex": "MALE",
+          "stdAges": [
+            "CHILD",
+            "ADULT",
+            "OLDER_ADULT"
+          ]
+        },
+        "contactsLocationsModule": {
+          "overallOfficials": [
+            {
+              "name": "Jennifer Whangbo, MD",
+              "affiliation": "Boston Children's Hospital",
+              "role": "PRINCIPAL_INVESTIGATOR"
+            }
+          ],
+          "locations": [
+            {
+              "facility": "Mattel Children's Hospital - UCLA",
+              "city": "Los Angeles",
+              "state": "California",
+              "zip": "90095",
+              "country": "United States",
+              "geoPoint": {
+                "lat": 34.05223,
+                "lon": -118.24368
+              }
+            },
+            {
+              "facility": "Children's Hospital Boston",
+              "city": "Boston",
+              "state": "Massachusetts",
+              "zip": "02116",
+              "country": "United States",
+              "geoPoint": {
+                "lat": 42.35843,
+                "lon": -71.05977
+              }
+            },
+            {
+              "facility": "Cincinnati Children's Medical Center",
+              "city": "Cincinnati",
+              "state": "Ohio",
+              "zip": "45229",
+              "country": "United States",
+              "geoPoint": {
+                "lat": 39.12711,
+                "lon": -84.51439
+              }
+            }
+          ]
+        },
+        "referencesModule": {
+          "references": [
+            {
+              "pmid": "30261899",
+              "type": "DERIVED",
+              "citation": "Clarke EL, Connell AJ, Six E, Kadry NA, Abbas AA, Hwang Y, Everett JK, Hofstaedter CE, Marsh R, Armant M, Kelsen J, Notarangelo LD, Collman RG, Hacein-Bey-Abina S, Kohn DB, Cavazzana M, Fischer A, Williams DA, Pai SY, Bushman FD. T cell dynamics and response of the microbiota after gene therapy to treat X-linked severe combined immunodeficiency. Genome Med. 2018 Sep 28;10(1):70. doi: 10.1186/s13073-018-0580-z."
+            },
+            {
+              "pmid": "25295500",
+              "type": "DERIVED",
+              "citation": "Hacein-Bey-Abina S, Pai SY, Gaspar HB, Armant M, Berry CC, Blanche S, Bleesing J, Blondeau J, de Boer H, Buckland KF, Caccavelli L, Cros G, De Oliveira S, Fernandez KS, Guo D, Harris CE, Hopkins G, Lehmann LE, Lim A, London WB, van der Loo JC, Malani N, Male F, Malik P, Marinovic MA, McNicol AM, Moshous D, Neven B, Oleastro M, Picard C, Ritz J, Rivat C, Schambach A, Shaw KL, Sherman EA, Silberstein LE, Six E, Touzot F, Tsytsykova A, Xu-Bayford J, Baum C, Bushman FD, Fischer A, Kohn DB, Filipovich AH, Notarangelo LD, Cavazzana M, Williams DA, Thrasher AJ. A modified gamma-retrovirus vector for X-linked severe combined immunodeficiency. N Engl J Med. 2014 Oct 9;371(15):1407-17. doi: 10.1056/NEJMoa1404588."
+            }
+          ]
+        }
+      },
+      "resultsSection": {
+        "participantFlowModule": {
+          "groups": [
+            {
+              "id": "FG000",
+              "title": "Gene Transfer",
+              "description": "open label single arm study\n\nGene transfer: Three procedures: 1) Bone marrow harvest from the patient's posterior iliac crests. 2) Chemotherapy conditioning with Busulfan (\\*\\*patient 08 only) 3) One time infusion of patient's transduced bone marrow cells."
+            }
+          ],
+          "periods": [
+            {
+              "title": "Overall Study",
+              "milestones": [
+                {
+                  "type": "STARTED",
+                  "achievements": [
+                    {
+                      "groupId": "FG000",
+                      "numSubjects": "8"
+                    }
+                  ]
+                },
+                {
+                  "type": "COMPLETED",
+                  "achievements": [
+                    {
+                      "groupId": "FG000",
+                      "numSubjects": "6"
+                    }
+                  ]
+                },
+                {
+                  "type": "NOT COMPLETED",
+                  "achievements": [
+                    {
+                      "groupId": "FG000",
+                      "numSubjects": "2"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "baselineCharacteristicsModule": {
+          "groups": [
+            {
+              "id": "BG000",
+              "title": "Gene Transfer",
+              "description": "open label single arm study\n\nGene transfer: Three procedures: 1) Bone marrow harvest from the patient's posterior iliac crests. 2.) Chemotherapy conditioning with Busulfan (\\*\\*only patient 08) 3)One time infusion of patient's transduced bone marrow cells."
+            }
+          ],
+          "denoms": [
+            {
+              "units": "Participants",
+              "counts": [
+                {
+                  "groupId": "BG000",
+                  "value": "8"
+                }
+              ]
+            }
+          ],
+          "measures": [
+            {
+              "title": "Age, Categorical",
+              "paramType": "COUNT_OF_PARTICIPANTS",
+              "unitOfMeasure": "Participants",
+              "classes": [
+                {
+                  "categories": [
+                    {
+                      "title": "<=18 years",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "8"
+                        }
+                      ]
+                    },
+                    {
+                      "title": "Between 18 and 65 years",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "0"
+                        }
+                      ]
+                    },
+                    {
+                      "title": ">=65 years",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "title": "Sex: Female, Male",
+              "paramType": "COUNT_OF_PARTICIPANTS",
+              "unitOfMeasure": "Participants",
+              "classes": [
+                {
+                  "categories": [
+                    {
+                      "title": "Female",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "0"
+                        }
+                      ]
+                    },
+                    {
+                      "title": "Male",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "8"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "title": "Ethnicity (NIH/OMB)",
+              "paramType": "COUNT_OF_PARTICIPANTS",
+              "unitOfMeasure": "Participants",
+              "classes": [
+                {
+                  "categories": [
+                    {
+                      "title": "Hispanic or Latino",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "2"
+                        }
+                      ]
+                    },
+                    {
+                      "title": "Not Hispanic or Latino",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "4"
+                        }
+                      ]
+                    },
+                    {
+                      "title": "Unknown or Not Reported",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "2"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "title": "Race (NIH/OMB)",
+              "paramType": "COUNT_OF_PARTICIPANTS",
+              "unitOfMeasure": "Participants",
+              "classes": [
+                {
+                  "categories": [
+                    {
+                      "title": "American Indian or Alaska Native",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "0"
+                        }
+                      ]
+                    },
+                    {
+                      "title": "Asian",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "0"
+                        }
+                      ]
+                    },
+                    {
+                      "title": "Native Hawaiian or Other Pacific Islander",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "1"
+                        }
+                      ]
+                    },
+                    {
+                      "title": "Black or African American",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "0"
+                        }
+                      ]
+                    },
+                    {
+                      "title": "White",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "6"
+                        }
+                      ]
+                    },
+                    {
+                      "title": "More than one race",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "1"
+                        }
+                      ]
+                    },
+                    {
+                      "title": "Unknown or Not Reported",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "title": "Region of Enrollment",
+              "paramType": "NUMBER",
+              "unitOfMeasure": "participants",
+              "classes": [
+                {
+                  "title": "United States",
+                  "categories": [
+                    {
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "8"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "outcomeMeasuresModule": {
+          "outcomeMeasures": [
+            {
+              "type": "PRIMARY",
+              "title": "CD3 Cell Count Post Infusion",
+              "description": "Immunological reconstitution defined as absolute CD3 cells of \\>300/μl and PHA stimulation index \\>15 at 6 months post infusion",
+              "populationDescription": "8 subjects were treated with an infusion of gene modified cells. 5 of 8 had absolute CD3 counts (cells/uL) greater than 300 and a PHA stimulation index greater than 15 at 6 months post infusion and met the primary endpoint. 1 subject who did not reconstitute T cells was taken off study. 2 subjects received a second infusion of gene modified cells; of these 1 had improved CD3 counts and the other did not and came off study.",
+              "reportingStatus": "POSTED",
+              "paramType": "COUNT_OF_PARTICIPANTS",
+              "unitOfMeasure": "Participants",
+              "calculatePct": false,
+              "timeFrame": "6 Months Post Gene Transfer",
+              "groups": [
+                {
+                  "id": "OG000",
+                  "title": "Gene Transfer",
+                  "description": "open label single arm study\n\nGene transfer: Three procedures: 1) Bone marrow harvest from the patient's posterior iliac crests. 2) Chemotherapy conditioning with Busulfan (\\*\\*patient 08 only) 3) One time infusion of patient's transduced bone marrow cells."
+                }
+              ],
+              "denoms": [
+                {
+                  "units": "Participants",
+                  "counts": [
+                    {
+                      "groupId": "OG000",
+                      "value": "8"
+                    }
+                  ]
+                }
+              ],
+              "classes": [
+                {
+                  "categories": [
+                    {
+                      "title": "Primary Outcome Met",
+                      "measurements": [
+                        {
+                          "groupId": "OG000",
+                          "value": "5"
+                        }
+                      ]
+                    },
+                    {
+                      "title": "Primary Outcome Not Met",
+                      "measurements": [
+                        {
+                          "groupId": "OG000",
+                          "value": "3"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "PRIMARY",
+              "title": "Incidence of Life Threatening Adverse Reactions Related to the Gene Therapy Procedure",
+              "description": "Follow up time for each of the 8 enrolled patients is as follows: Patient #1 -12 yrs, Patient#2 -11 yrs, Patient #6- 9 yrs, Patient #7- 8 yrs, Patient #8 - 4.5 yrs. Patient #3 \\& #5 failed primary endpoint and had allo transplant, Patient #4 retreated with Gene therapy and is 6 years post 2nd infusion.",
+              "populationDescription": "Patient #3 \\& #5 failed primary endpoint and had allo transplant and withdrawn from study",
+              "reportingStatus": "POSTED",
+              "paramType": "COUNT_OF_PARTICIPANTS",
+              "unitOfMeasure": "Participants",
+              "timeFrame": "4.5-12 years post infusion of the gene therapy product",
+              "groups": [
+                {
+                  "id": "OG000",
+                  "title": "Gene Transfer",
+                  "description": "open label single arm study\n\nGene transfer: Three procedures: 1) Bone marrow harvest from the patient's posterior iliac crests. 2) Chemotherapy conditioning with Busulfan (\\*\\*patient 08 only) 3) One time infusion of patient's transduced bone marrow cells."
+                }
+              ],
+              "denoms": [
+                {
+                  "units": "Participants",
+                  "counts": [
+                    {
+                      "groupId": "OG000",
+                      "value": "6"
+                    }
+                  ]
+                }
+              ],
+              "classes": [
+                {
+                  "categories": [
+                    {
+                      "measurements": [
+                        {
+                          "groupId": "OG000",
+                          "value": "6"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "adverseEventsModule": {
+          "frequencyThreshold": "0",
+          "timeFrame": "Adverse event data were collected from the time an enrolled participant underwent the bone marrow harvest through five years post gene therapy infusion.",
+          "description": "Common adverse event and serious adverse event definitions were used for this study. SAEs that were considered life threatening or required hospitalization or prolongation of a hospitalization are listed below. No SAEs that resulted in death, resulted in a persistent or significant disability/incapacity, was a new malignancy, or led to a congenital anomaly or birth defect occurred. No AEs or SAEs were deemed related to the gene therapy product.",
+          "eventGroups": [
+            {
+              "id": "EG000",
+              "title": "Gene Transfer",
+              "description": "open label single arm study\n\nGene transfer: Three procedures: 1) Bone marrow harvest from the patient's posterior iliac crests. 2.) Chemotherapy conditioning with Busulfan (\\*\\*only patient 08) 3)One time infusion of patient's transduced bone marrow cells.",
+              "deathsNumAffected": 0,
+              "deathsNumAtRisk": 8,
+              "seriousNumAffected": 3,
+              "seriousNumAtRisk": 8,
+              "otherNumAffected": 0,
+              "otherNumAtRisk": 8
+            }
+          ],
+          "seriousEvents": [
+            {
+              "term": "Varicella infection",
+              "organSystem": "Infections and infestations",
+              "sourceVocabulary": "CTCAE (3.0)",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "notes": "Grade 3, recovered with medication",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 1,
+                  "numAffected": 1,
+                  "numAtRisk": 8
+                }
+              ]
+            },
+            {
+              "term": "Upper respiratory infection",
+              "organSystem": "Infections and infestations",
+              "sourceVocabulary": "CTCAE (3.0)",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 1,
+                  "numAffected": 1,
+                  "numAtRisk": 8
+                }
+              ]
+            },
+            {
+              "term": "E. Coli and Klebsiella Infection",
+              "organSystem": "Infections and infestations",
+              "sourceVocabulary": "CTCAE (3.0)",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "notes": "Treated with antibiotics",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 1,
+                  "numAffected": 1,
+                  "numAtRisk": 8
+                }
+              ]
+            },
+            {
+              "term": "Rhinovirus",
+              "organSystem": "Immune system disorders",
+              "sourceVocabulary": "CTCAE (3.0)",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "notes": "Admitted for fever, rhinovirus positive",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 1,
+                  "numAffected": 1,
+                  "numAtRisk": 8
+                }
+              ]
+            },
+            {
+              "term": "Pseudomonas/Stenotrophomonas Infection",
+              "organSystem": "Infections and infestations",
+              "sourceVocabulary": "CTCAE (3.0)",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "notes": "Admitted for fever with a central line, positive cultures, treated with antibiotics",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 1,
+                  "numAffected": 1,
+                  "numAtRisk": 8
+                }
+              ]
+            },
+            {
+              "term": "BCGosis",
+              "organSystem": "Infections and infestations",
+              "sourceVocabulary": "CTCAE (3.0)",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "notes": "Treated with medication and resolved.",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 1,
+                  "numAffected": 1,
+                  "numAtRisk": 8
+                }
+              ]
+            }
+          ]
+        },
+        "moreInfoModule": {
+          "certainAgreement": {
+            "piSponsorEmployee": false,
+            "restrictiveAgreement": false
+          },
+          "pointOfContact": {
+            "title": "David Williams, MD",
+            "organization": "Boston Children's Hospital",
+            "email": "David.Williams2@childrens.harvard.edu",
+            "phone": "617-919-2697"
+          }
+        }
+      },
+      "documentSection": {
+        "largeDocumentModule": {
+          "largeDocs": [
+            {
+              "typeAbbrev": "Prot_SAP",
+              "hasProtocol": true,
+              "hasSap": true,
+              "hasIcf": false,
+              "label": "Study Protocol and Statistical Analysis Plan",
+              "date": "2022-01-04",
+              "uploadDate": "2026-03-30T17:09",
+              "filename": "Prot_SAP_000.pdf",
+              "size": 5531699
+            }
+          ]
+        }
+      },
+      "derivedSection": {
+        "miscInfoModule": {
+          "versionHolder": "2026-08-06"
+        },
+        "conditionBrowseModule": {
+          "meshes": [
+            {
+              "id": "D016511",
+              "term": "Severe Combined Immunodeficiency"
+            },
+            {
+              "id": "D053632",
+              "term": "X-Linked Combined Immunodeficiency Diseases"
+            }
+          ],
+          "ancestors": [
+            {
+              "id": "D000081207",
+              "term": "Primary Immunodeficiency Diseases"
+            },
+            {
+              "id": "D030342",
+              "term": "Genetic Diseases, Inborn"
+            },
+            {
+              "id": "D009358",
+              "term": "Congenital, Hereditary, and Neonatal Diseases and Abnormalities"
+            },
+            {
+              "id": "D007232",
+              "term": "Infant, Newborn, Diseases"
+            },
+            {
+              "id": "D049914",
+              "term": "DNA Repair-Deficiency Disorders"
+            },
+            {
+              "id": "D008659",
+              "term": "Metabolic Diseases"
+            },
+            {
+              "id": "D009750",
+              "term": "Nutritional and Metabolic Diseases"
+            },
+            {
+              "id": "D007153",
+              "term": "Immunologic Deficiency Syndromes"
+            },
+            {
+              "id": "D007154",
+              "term": "Immune System Diseases"
+            },
+            {
+              "id": "D040181",
+              "term": "Genetic Diseases, X-Linked"
+            }
+          ]
+        },
+        "interventionBrowseModule": {
+          "meshes": [
+            {
+              "id": "D005818",
+              "term": "Genetic Engineering"
+            }
+          ],
+          "ancestors": [
+            {
+              "id": "D005821",
+              "term": "Genetic Techniques"
+            },
+            {
+              "id": "D008919",
+              "term": "Investigative Techniques"
+            }
+          ]
+        }
+      },
+      "hasResults": true
+    },
+    {
+      "protocolSection": {
+        "identificationModule": {
+          "nctId": "NCT04799834",
+          "orgStudyIdInfo": {
+            "id": "ORIGIN"
+          },
+          "organization": {
+            "fullName": "Mario Negri Institute for Pharmacological Research",
+            "class": "OTHER"
+          },
+          "briefTitle": "Genotype and Susceptibility to COVID-19",
+          "officialTitle": "Study of the Genetic Factors That Influence the Susceptibility to and Severity of COVID-19",
+          "acronym": "ORIGIN"
+        },
+        "statusModule": {
+          "statusVerifiedDate": "2023-12",
+          "overallStatus": "UNKNOWN",
+          "lastKnownStatus": "ACTIVE_NOT_RECRUITING",
+          "expandedAccessInfo": {
+            "hasExpandedAccess": false
+          },
+          "startDateStruct": {
+            "date": "2020-11-30",
+            "type": "ACTUAL"
+          },
+          "primaryCompletionDateStruct": {
+            "date": "2021-09-20",
+            "type": "ACTUAL"
+          },
+          "completionDateStruct": {
+            "date": "2024-06",
+            "type": "ESTIMATED"
+          },
+          "studyFirstSubmitDate": "2021-03-11",
+          "studyFirstSubmitQcDate": "2021-03-15",
+          "studyFirstPostDateStruct": {
+            "date": "2021-03-16",
+            "type": "ACTUAL"
+          },
+          "lastUpdateSubmitDate": "2023-12-18",
+          "lastUpdatePostDateStruct": {
+            "date": "2023-12-19",
+            "type": "ACTUAL"
+          }
+        },
+        "sponsorCollaboratorsModule": {
+          "responsibleParty": {
+            "type": "SPONSOR"
+          },
+          "leadSponsor": {
+            "name": "Mario Negri Institute for Pharmacological Research",
+            "class": "OTHER"
+          }
+        },
+        "oversightModule": {
+          "oversightHasDmc": false,
+          "isFdaRegulatedDrug": false,
+          "isFdaRegulatedDevice": false
+        },
+        "descriptionModule": {
+          "briefSummary": "COVID-19 is a viral disease induced by infection with the novel SARS-CoV-2 coronavirus. Infection arises from the inhalation of viral particles spread by an infected individual. The main virus entry pathways are the nose and mouth mucous membranes, particularly rich in ACE2 receptors, that are used by the virus to enter cells and begin its replication.\n\nNot all individuals who contract the virus fall ill, and most of those who do (about 70-80%) experience mild symptoms (fever, cough, headache, muscle aches, loss of taste and smell). If the immune system is unable to rapidly fight the virus back, the latter can attack the lungs, affeting oxygen absorption inside the alveoli and lead to pneumonia. This more severe form is observed in 20% of patients and can develop into even more serious complications requiring intensive care, with a high mortality rate. In severe cases (about 5%), the disease spreads to the entire body reaching the cardiovascular system and brain, with the risk of heart attacks, encephalitis and stroke, but it can also affect the liver, kidney and bowel.\n\nReasons why some subjects develop a highly severe disease while others have little or no symptoms at all still remain unclear. Many researchers are trying to find an answer by investigating the human genome, and the Mario Negri laboratories are also working in this direction.\n\nThe general hypothesis underlying this research project is that inter-individual genetic variations can explain the different responses to viral infection in a population, and that COVID-19 severity is, therefore, genetically determined in each infected subject."
+        },
+        "conditionsModule": {
+          "conditions": [
+            "Covid19"
+          ],
+          "keywords": [
+            "COVID-19",
+            "Genotype"
+          ]
+        },
+        "designModule": {
+          "studyType": "OBSERVATIONAL",
+          "patientRegistry": false,
+          "designInfo": {
+            "observationalModel": "COHORT",
+            "timePerspective": "OTHER"
+          },
+          "enrollmentInfo": {
+            "count": 1200,
+            "type": "ESTIMATED"
+          }
+        },
+        "armsInterventionsModule": {
+          "armGroups": [
+            {
+              "label": "CASES",
+              "description": "Subjects who have had a severe form of COVID-19 and developed respiratory failure requiring oxygen supplementation or CPAP mechanical ventilation or intubation",
+              "interventionNames": [
+                "Other: Questionnaire administration,blood sampling and genetic analyses."
+              ]
+            },
+            {
+              "label": "CONTROLS 1",
+              "description": "Subjects, comparable in age, sex and risk factors (such as concomitant diseases) with the CASES, who contracted the virus but either did not fall ill or had mild symptoms",
+              "interventionNames": [
+                "Other: Questionnaire administration,blood sampling and genetic analyses."
+              ]
+            },
+            {
+              "label": "CONTROLS 2",
+              "description": "Subjects, comparable in age, sex and risk factors (such as concomitant pathologies) with the CASES, who did not contract the virus",
+              "interventionNames": [
+                "Other: Questionnaire administration,blood sampling and genetic analyses."
+              ]
+            }
+          ],
+          "interventions": [
+            {
+              "type": "OTHER",
+              "name": "Questionnaire administration,blood sampling and genetic analyses.",
+              "description": "Adults (≥18 years) living in Bergamo and in all the towns of its territory shall be invited to voluntarily complete a questionnaire, with their personal data and information on SARS-CoV-2 clinical history (swab test and serologic test results, clinical symptoms, treatments, hospital care) and other previous conditions. Subjects considered fit for the genetic study will be asked to report to the Daccò Clinical Center for an interview, during which the data entered in the questionnaire will be reviewed and implemented, the informed consent for participation in the genetic investigations will be collected and blood sampling will be carried out.\n\nGenetic: Exome sequencing and genotyping of host genome of individuals infected with SARS-CoV-2 and showing severe disease (cases), or infected with SARS-CoV-2 and showing mild disease or remaining asymptomatic, and in individuals without evidence of infection with SARS-CoV-2 (negative sierology).",
+              "armGroupLabels": [
+                "CASES",
+                "CONTROLS 1",
+                "CONTROLS 2"
+              ]
+            }
+          ]
+        },
+        "outcomesModule": {
+          "primaryOutcomes": [
+            {
+              "measure": "Identification of the genetic determinants of COVID-19 severity.",
+              "description": "Identification of variants in one or more candidate gene(s) responsible for the severe manifestation of COVID-19.",
+              "timeFrame": "Through study completion, an average of 10 months."
+            },
+            {
+              "measure": "Identification of genetic factors affecting risk of SARS-Cov-2 infection.",
+              "timeFrame": "Through study completion, an average of 10 months."
+            }
+          ],
+          "secondaryOutcomes": [
+            {
+              "measure": "Identification of polymorphic variants or mutations affecting treatment response in severe COVID-19 patients.",
+              "timeFrame": "Through study completion, an average of 10 months."
+            }
+          ]
+        },
+        "eligibilityModule": {
+          "eligibilityCriteria": "Inclusion Criteria:\n\n\\- Age \\> 18 years\n\nExclusion Criteria:\n\nNone",
+          "healthyVolunteers": false,
+          "sex": "ALL",
+          "minimumAge": "18 Years",
+          "stdAges": [
+            "ADULT",
+            "OLDER_ADULT"
+          ],
+          "studyPopulation": "Adults (≥18 years) living in Bergamo and in all the towns of its territory",
+          "samplingMethod": "NON_PROBABILITY_SAMPLE"
+        },
+        "contactsLocationsModule": {
+          "locations": [
+            {
+              "facility": "Centro di Ricerche Cliniche per le Malattie Rare \"Aldo e Cele Daccò\"",
+              "city": "Ranica",
+              "state": "BG",
+              "zip": "24020",
+              "country": "Italy",
+              "geoPoint": {
+                "lat": 45.72328,
+                "lon": 9.71335
+              }
+            }
+          ]
+        }
+      },
+      "derivedSection": {
+        "miscInfoModule": {
+          "versionHolder": "2026-08-06"
+        },
+        "conditionBrowseModule": {
+          "meshes": [
+            {
+              "id": "D000086382",
+              "term": "COVID-19"
+            }
+          ],
+          "ancestors": [
+            {
+              "id": "D011024",
+              "term": "Pneumonia, Viral"
+            },
+            {
+              "id": "D011014",
+              "term": "Pneumonia"
+            },
+            {
+              "id": "D012141",
+              "term": "Respiratory Tract Infections"
+            },
+            {
+              "id": "D007239",
+              "term": "Infections"
+            },
+            {
+              "id": "D014777",
+              "term": "Virus Diseases"
+            },
+            {
+              "id": "D018352",
+              "term": "Coronavirus Infections"
+            },
+            {
+              "id": "D003333",
+              "term": "Coronaviridae Infections"
+            },
+            {
+              "id": "D030341",
+              "term": "Nidovirales Infections"
+            },
+            {
+              "id": "D012327",
+              "term": "RNA Virus Infections"
+            },
+            {
+              "id": "D008171",
+              "term": "Lung Diseases"
+            },
+            {
+              "id": "D012140",
+              "term": "Respiratory Tract Diseases"
+            }
+          ]
+        },
+        "interventionBrowseModule": {
+          "meshes": [
+            {
+              "id": "D001800",
+              "term": "Blood Specimen Collection"
+            }
+          ],
+          "ancestors": [
+            {
+              "id": "D013048",
+              "term": "Specimen Handling"
+            },
+            {
+              "id": "D019411",
+              "term": "Clinical Laboratory Techniques"
+            },
+            {
+              "id": "D019937",
+              "term": "Diagnostic Techniques and Procedures"
+            },
+            {
+              "id": "D003933",
+              "term": "Diagnosis"
+            },
+            {
+              "id": "D011677",
+              "term": "Punctures"
+            },
+            {
+              "id": "D013514",
+              "term": "Surgical Procedures, Operative"
+            },
+            {
+              "id": "D008919",
+              "term": "Investigative Techniques"
+            }
+          ]
+        }
+      },
+      "hasResults": false
+    }
+  ],
+  "nextPageToken": "ZVdj7o2Elu8o3lp2VNio5bbumpOQJJxnYPOp"
+}

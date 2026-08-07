@@ -1,0 +1,62 @@
+# Research Frontier 首发研究域（OS-020 冻结）
+# 4 个首发领域 + baseline queries + entity mappings
+version: 0.1.0
+section: research-frontier
+frozen_at: "2026-08-07"
+
+topics:
+  - id: oncology-immunotherapy
+    label: 肿瘤免疫治疗
+    description: T 细胞疗法、免疫检查点抑制剂、肿瘤微环境。
+    baseline_queries:
+      openalex: "CAR-T OR checkpoint inhibitor OR tumor immunotherapy"
+      clinicaltrials: "immunotherapy AND cancer"
+    entity_mappings:
+      openalex_concepts: ["CAR T cell therapy", "Immunotherapy", "Checkpoint inhibitor"]
+      mesh_terms: ["Immunotherapy", "Receptors, Chimeric Antigen"]
+    capabilities:
+      - research.stage-transition
+      - research.institution-entry
+
+  - id: synthetic-biology
+    label: 合成生物学
+    description: CRISPR 基因编辑、合成基因组、生物制造。
+    baseline_queries:
+      openalex: "CRISPR OR synthetic biology OR gene editing"
+      clinicaltrials: "gene therapy"
+    entity_mappings:
+      openalex_concepts: ["CRISPR", "Synthetic biology", "Gene editing"]
+      mesh_terms: ["CRISPR-Cas Systems", "Gene Editing"]
+    capabilities:
+      - research.institution-entry
+      - research.cross-field-bridge
+
+  - id: generative-ai
+    label: 生成式 AI / 基础模型
+    description: 大语言模型、扩散模型、Agent 推理、对齐。
+    baseline_queries:
+      openalex: "large language model OR foundation model OR generative AI"
+      clinicaltrials: null
+    entity_mappings:
+      openalex_concepts: ["Large language models", "Artificial intelligence", "Machine learning"]
+      mesh_terms: []
+    capabilities:
+      - research.emerging-cluster
+      - research.cross-field-bridge
+
+  - id: quantum-computing
+    label: 量子计算
+    description: 超导/拓扑量子比特、量子纠错、量子优势。
+    baseline_queries:
+      openalex: "quantum computing OR qubit OR quantum error correction"
+      clinicaltrials: null
+    entity_mappings:
+      openalex_concepts: ["Quantum computing", "Qubit", "Quantum error correction"]
+      mesh_terms: []
+    capabilities:
+      - research.stage-transition
+      - research.cross-field-bridge
+
+# baseline 窗口：默认检索近 3 年
+default_window_years: 3
+max_pages_per_topic: 3

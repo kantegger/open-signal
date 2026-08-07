@@ -1,0 +1,2327 @@
+{
+  "studies": [
+    {
+      "protocolSection": {
+        "identificationModule": {
+          "nctId": "NCT02129075",
+          "orgStudyIdInfo": {
+            "id": "NCI-2014-00898"
+          },
+          "secondaryIdInfos": [
+            {
+              "id": "NCI-2014-00898",
+              "type": "REGISTRY",
+              "domain": "CTRP (Clinical Trial Reporting Program)"
+            },
+            {
+              "id": "CITN-07-FLT3L"
+            },
+            {
+              "id": "CITN-07-FLT3L",
+              "type": "OTHER",
+              "domain": "Cancer Immunotherapy Trials Network"
+            },
+            {
+              "id": "CITN-07-FLT3L",
+              "type": "OTHER",
+              "domain": "CTEP"
+            },
+            {
+              "id": "P30CA015704",
+              "type": "NIH",
+              "link": "https://reporter.nih.gov/quickSearch/P30CA015704"
+            },
+            {
+              "id": "U01CA154967",
+              "type": "NIH",
+              "link": "https://reporter.nih.gov/quickSearch/U01CA154967"
+            }
+          ],
+          "organization": {
+            "fullName": "National Cancer Institute (NCI)",
+            "class": "NIH"
+          },
+          "briefTitle": "A Vaccine (CDX-1401) With or Without a Biologic Drug (CDX-301) for the Treatment of Patients With Stage IIB-IV Melanoma",
+          "officialTitle": "A Phase II, Open-Label, Multicenter, Randomized Study of CDX-1401, a Dendritic Cell Targeting NY-ESO-1 Vaccine, in Patients With Malignant Melanoma Pre-Treated With Recombinant CDX-301, a Recombinant Human Flt3 Ligand"
+        },
+        "statusModule": {
+          "statusVerifiedDate": "2021-11",
+          "overallStatus": "COMPLETED",
+          "expandedAccessInfo": {
+            "hasExpandedAccess": false
+          },
+          "startDateStruct": {
+            "date": "2014-04-09",
+            "type": "ACTUAL"
+          },
+          "primaryCompletionDateStruct": {
+            "date": "2016-03-28",
+            "type": "ACTUAL"
+          },
+          "completionDateStruct": {
+            "date": "2018-05-18",
+            "type": "ACTUAL"
+          },
+          "studyFirstSubmitDate": "2014-04-30",
+          "studyFirstSubmitQcDate": "2014-04-30",
+          "studyFirstPostDateStruct": {
+            "date": "2014-05-02",
+            "type": "ESTIMATED"
+          },
+          "resultsFirstSubmitDate": "2021-05-25",
+          "resultsFirstSubmitQcDate": "2021-11-10",
+          "resultsFirstPostDateStruct": {
+            "date": "2021-11-16",
+            "type": "ACTUAL"
+          },
+          "lastUpdateSubmitDate": "2021-11-10",
+          "lastUpdatePostDateStruct": {
+            "date": "2021-11-16",
+            "type": "ACTUAL"
+          }
+        },
+        "sponsorCollaboratorsModule": {
+          "responsibleParty": {
+            "type": "SPONSOR"
+          },
+          "leadSponsor": {
+            "name": "National Cancer Institute (NCI)",
+            "class": "NIH"
+          }
+        },
+        "oversightModule": {
+          "oversightHasDmc": false,
+          "isFdaRegulatedDrug": true,
+          "isFdaRegulatedDevice": false,
+          "isUsExport": false
+        },
+        "descriptionModule": {
+          "briefSummary": "This phase II trial studies the effect of a vaccine called CDX-1401 given with or without a biologic drug called CDX-301 in treating patients with stage IIB-IV melanoma. The cancer vaccine CDX-1401 attaches to a protein that is made in tumor cells. The vaccine helps the body recognize the tumor to fight the cancer. The biologic drug CDX-301 may help the body make more of the tumor fighting cells, known as dendritic cells. Another biologic drug, poly-ICLC, may stimulate the immune system and help these dendritic cells mature so that they can recognize the tumor. Giving CDX-301 may make the immune response to a combination of CDX-1401 and poly-ICLC better.",
+          "detailedDescription": "PRIMARY OBJECTIVE:\n\nI. To determine whether the immune response to NY-ESO-1 elicited by vaccination with DEC-205/NY-ESO-1 fusion protein CDX-1401 (CDX-1401) plus polyinosinic-polycytidylic acid stabilized with poly-L-lysine and carboxymethylcellulose (poly-ICLC) is substantially increased by prior expansion in the number of circulating dendritic cells (DC) by therapy with recombinant Flt3 ligand (CDX-301) (fms-related tyrosine kinase 3 ligand \\[Flt3L\\]).\n\nSECONDARY OBJECTIVES:\n\nI. To assess the effect of the vaccine regimen on immune responses to other ongoing and nascent antitumor response antigens associated with melanoma (e.g., PRAME, MAGE-A3, p53, and gp100) as well as memory viral responses (influenza A) and chronic viral responses (cytomegalovirus \\[CMV\\], Epstein-Barr virus \\[EBV\\]).\n\nII. To assess the effect of the vaccine regimen on the frequency and phenotypic character of peripheral blood mononuclear cell (PBMC) subsets including DCs, monocyte populations, T cells, and natural killer (NK) cells.\n\nIII. To assess the safety, tolerability, and clinical efficacy of the vaccine regimens.\n\nOUTLINE: Patients are randomized to 1 of 2 treatment arms.\n\nARM I: Patients receive recombinant Flt3 ligand (CDX-301) subcutaneously (SC) on days -7 to -1, 1-3, and 22-28 of cycle 1 and only on days 1-3 of cycle 2. Patients also receive CDX-1401 SC or intradermally (ID) on day 1 of each cycle and poly-ICLC SC on days 1-2 of each cycle. Treatment repeats every 28 days for 4 cycles in the absence of disease progression or unacceptable toxicity.\n\nARM II: Patients receive CDX-1401 and poly-ICLC as in Arm I. Treatment repeats every 28 days for 4 cycles in the absence of disease progression or unacceptable toxicity.\n\nAfter completion of study treatment, patients are followed up at 4 and 12 weeks and then annually thereafter."
+        },
+        "conditionsModule": {
+          "conditions": [
+            "Cutaneous Melanoma",
+            "Melanoma",
+            "Melanoma of Unknown Primary",
+            "Mucosal Melanoma",
+            "Ocular Melanoma",
+            "Stage IIB Cutaneous Melanoma AJCC v6 and v7",
+            "Stage IIC Cutaneous Melanoma AJCC v6 and v7",
+            "Stage III Cutaneous Melanoma AJCC v7",
+            "Stage IIIA Cutaneous Melanoma AJCC v7",
+            "Stage IIIB Cutaneous Melanoma AJCC v7",
+            "Stage IIIC Cutaneous Melanoma AJCC v7",
+            "Stage IV Cutaneous Melanoma AJCC v6 and v7"
+          ]
+        },
+        "designModule": {
+          "studyType": "INTERVENTIONAL",
+          "phases": [
+            "PHASE2"
+          ],
+          "designInfo": {
+            "allocation": "RANDOMIZED",
+            "interventionModel": "PARALLEL",
+            "primaryPurpose": "TREATMENT",
+            "maskingInfo": {
+              "masking": "NONE"
+            }
+          },
+          "enrollmentInfo": {
+            "count": 60,
+            "type": "ACTUAL"
+          }
+        },
+        "armsInterventionsModule": {
+          "armGroups": [
+            {
+              "label": "Arm I (CDX-301, CDX-1401, poly-ICLC)",
+              "type": "EXPERIMENTAL",
+              "description": "Patients receive recombinant Flt3 ligand (CDX-301) SC on days -7 to -1, 1-3, and 22-28 of cycle 1 and only on days 1-3 of cycle 2. Patients also receive CDX-1401 SC or ID on day 1 of each cycle and poly-ICLC SC on days 1-2 of each cycle. Treatment repeats every 28 days for 4 cycles in the absence of disease progression or unacceptable toxicity.",
+              "interventionNames": [
+                "Biological: DEC-205/NY-ESO-1 Fusion Protein CDX-1401",
+                "Drug: Poly ICLC",
+                "Biological: Recombinant Flt3 Ligand"
+              ]
+            },
+            {
+              "label": "Arm II (CDX-1401, poly-ICLC)",
+              "type": "ACTIVE_COMPARATOR",
+              "description": "Patients receive CDX-1401 and poly-ICLC as in Arm I. Treatment repeats every 28 days for 4 cycles in the absence of disease progression or unacceptable toxicity.",
+              "interventionNames": [
+                "Biological: DEC-205/NY-ESO-1 Fusion Protein CDX-1401",
+                "Drug: Poly ICLC"
+              ]
+            }
+          ],
+          "interventions": [
+            {
+              "type": "BIOLOGICAL",
+              "name": "DEC-205/NY-ESO-1 Fusion Protein CDX-1401",
+              "description": "Given SC or ID",
+              "armGroupLabels": [
+                "Arm I (CDX-301, CDX-1401, poly-ICLC)",
+                "Arm II (CDX-1401, poly-ICLC)"
+              ],
+              "otherNames": [
+                "CDX-1401"
+              ]
+            },
+            {
+              "type": "DRUG",
+              "name": "Poly ICLC",
+              "description": "Given SC",
+              "armGroupLabels": [
+                "Arm I (CDX-301, CDX-1401, poly-ICLC)",
+                "Arm II (CDX-1401, poly-ICLC)"
+              ],
+              "otherNames": [
+                "Hiltonol",
+                "Poly I:Poly C with Poly-L-Lysine Stabilizer",
+                "poly-ICLC",
+                "PolyI:PolyC with Poly-L-Lysine Stabilizer",
+                "Polyinosinic-Polycytidylic Acid Stabilized with Polylysine and Carboxymethylcellulose",
+                "Polyriboinosinic-Polyribocytidylic Acid-Polylysine Carboxymethylcellulose",
+                "Stabilized Polyriboinosinic/Polyribocytidylic Acid"
+              ]
+            },
+            {
+              "type": "BIOLOGICAL",
+              "name": "Recombinant Flt3 Ligand",
+              "description": "Given SC",
+              "armGroupLabels": [
+                "Arm I (CDX-301, CDX-1401, poly-ICLC)"
+              ],
+              "otherNames": [
+                "CDX-301",
+                "FLT 3 Ligand",
+                "FLT3 Ligand",
+                "Flt3-Ligand",
+                "Flt3L",
+                "Mobist",
+                "Mobista",
+                "rhuFlt3L"
+              ]
+            }
+          ]
+        },
+        "outcomesModule": {
+          "primaryOutcomes": [
+            {
+              "measure": "Immune T-cell Response to NY-ESO-1",
+              "description": "Response rates will be analyzed by tabulating the frequency of positive response for each assay by antigen and treatment arm at each time point for which an assessment is performed. Response rates will be presented with their corresponding 95% confidence interval estimates calculated using the score test method. Fisher's exact tests will be used to compare cohort 1 and cohort 2 at the peak time point, with a significant difference declared if the 1-sided P value is =\\< 0.10.",
+              "timeFrame": "At 12 weeks after final vaccination"
+            }
+          ],
+          "secondaryOutcomes": [
+            {
+              "measure": "T Cell Responses to Other Ongoing and Nascent Antitumor Response Antigens Associated With Melanoma (e.g. PRAME, MAGE-A3, p53, and gp1000) as Well as Memory and Chronic Viral Responses (CMV, EBV)",
+              "description": "Response rates will be analyzed by tabulating the frequency of positive response for each assay by antigen and treatment arm at each time point for which an assessment is performed. Response rates will be presented with their corresponding 95% confidence interval estimates calculated using the score test method. Fisher's exact tests will be used to compare cohort 1 and cohort 2 at the peak time point, with a significant difference declared if the 1-sided P value is =\\< 0.10.",
+              "timeFrame": "Up to 12 weeks after final vaccination"
+            },
+            {
+              "measure": "Frequency and Phenotypic Character of PBMC Subsets Including DCs, Monocyte Populations, T Cells, and NK Cells - Highest Peak Fold Change Over Baseline (Log 2 Fold)",
+              "description": "Graphical and tabular summaries of the assay data will be made. Linear mixed effects model and possibly weighted generalized estimating equation methods will be considered for a supportive analysis of the longitudinal data over time.",
+              "timeFrame": "Up to 12 weeks after final vaccination"
+            },
+            {
+              "measure": "Tumor Recurrence",
+              "description": "Time to first recurrence from first vaccine among subjects who have experienced recurrence. (days)",
+              "timeFrame": "Up to 600 days from first vaccine"
+            },
+            {
+              "measure": "Overall Survival",
+              "description": "Overall survival not assessed",
+              "timeFrame": "Up to 1 year after patient's 12 week visit"
+            }
+          ]
+        },
+        "eligibilityModule": {
+          "eligibilityCriteria": "Inclusion Criteria:\n\n* Patients with fully resected stage IIb through IV melanoma, with melanoma validated by histology or cytology, who have NOT received prior therapy.\n\n  * Patients may have had primary cutaneous, mucosal, or ocular melanoma or metastasis from an unknown primary site.\n  * Tissue should be submitted for evaluation of NY-ESO-1 expression and T-cell infiltrates. However, availability of tissue and/or positivity for NY-ESO-1 is not mandatory.\n* Prior radiation, chemotherapy or biologics NOT allowed\n* Not currently receiving any anticancer therapy\n* Age \\>= 18 years\n\n  * Because no dosing or adverse event (AE) data are currently available on the use of CDX-1401 or CDX-301 in patients \\< 18 years of age, children are excluded from this study, but will be eligible for future pediatric trials.\n* Eastern Cooperative Oncology Group (ECOG) performance score of 0-1\n* Life expectancy of at least 6 months\n* Leukocytes \\>= 3,000/mcL\n* Absolute neutrophil count \\>= 1,000/mcL\n* Platelets \\>= 75,000/mcL\n* Hemoglobin \\> 9 g/dL\n* Total bilirubin \\< 1.5 x institutional upper limit of normal (bilirubin \\< 3 x institutional upper limit of normal for Gilbert's syndrome)\n* Aspartate aminotransferase (AST)(serum glutamic-oxaloacetic transaminase \\[SGOT\\])/alanine aminotransferase (ALT)(serum glutamate pyruvate transaminase \\[SGPT\\]) =\\< 2.5 x institutional upper limit of normal\n* Creatinine \\< 1.5 x institutional upper limit of normal OR creatinine clearance \\>= 60 mL/min/1.73 m\\^2 for patients with creatinine levels above institutional normal\n* The first six patients enrolled in the Flt3L arm of the study cannot be human immunodeficiency virus (HIV)-positive. After the evaluation of safety in the first 6 patients, HIV-positive patients with adequate immune function as evidenced by stable CD4 counts \\>= 350/mm\\^3 are allowed to participate if the following criteria are met:\n\n  * maintained on stable antiretroviral therapy with no significant drug interactions, and\n  * no recent history of acquired immunodeficiency syndrome (AIDS) indicator conditions (\\> 2 years from enrolling in trial), and\n  * physician providing patient's care for HIV must also approve of patient entering the study\n* Females of childbearing potential must have a negative pregnancy test within 7 days before the initiation of protocol therapy.\n\n  * The effects of CDX-1401 or CDX-301 on the developing human fetus are unknown. For this reason, women of child-bearing potential and men must agree to use adequate contraception (hormonal or barrier method of birth control or abstinence) before study entry and for the duration of study participation. Should a woman become pregnant or suspect she is pregnant while she or her partner is participating in this study, she should inform her treating physician immediately. Men treated or enrolled on this protocol must also agree to use adequate contraception before the study, for the duration of study participation, and 4 months after completion of CDX-1401 or CDX-301 administration.\n  * NOTE: Subjects are considered not of child-bearing potential if they are surgically sterile, they have undergone a hysterectomy, bilateral tubal ligation, or bilateral oophorectomy, or they are postmenopausal. Menopause is the age associated with complete cessation of menstrual cycles, menses, and implies the loss of reproductive potential. By a practical definition, it assumes menopause after 1 year without menses with an appropriate clinical profile at the appropriate age.\n* Ability to understand and the willingness to sign a written informed consent document\n\nExclusion Criteria:\n\n* Patients who have had cytotoxic chemotherapy, radiotherapy, interferon (IFN), or ipilimumab before entering the study\n* Immunosuppressive therapy within 30 days prior to initiation of protocol therapy\n* Steroid therapy, or steroid therapy with more than 7 consecutive days of steroids within the prior 4 weeks\n\n  * The use of prednisone or equivalent \\< 0.125 mg/kg/day (absolute maximum of 10 mg/day) as replacement therapy is permitted\n  * Inhaled or topical corticosteroids are permitted\n* Patients who are receiving any other investigational agents\n* Current or history of systemic autoimmune disease requiring systemic therapy.\n\n  * NOTE: The following will not be exclusionary:\n\n    * The presence of laboratory evidence of autoimmune disease (e.g., positive antinuclear antibody \\[ANA\\] titer) without associated symptoms\n    * Clinical evidence of vitiligo\n    * Other forms of depigmenting illness\n* Cardiovascular disease that meets one of the following: congestive heart failure (New York Heart Association Class III or IV), active angina pectoris, or recent myocardial infarction (within the last 6 months)\n* Cirrhosis or chronic hepatitis C virus positivity or chronic hepatitis B infection\n\n  * NOTE: A positive hepatitis B serology indicative of previous immunization (i.e., hepatitis B virus surface antibody \\[HBsAb\\]-positive and hepatitis B virus core antibody \\[HBcAb\\]-negative), or a fully resolved acute hepatitis B virus infection is not an exclusion criterion\n* Known history of immunodeficiency disorder other than HIV-positive status\n* Extensive active brain disease including symptomatic brain metastases or presence of leptomeningeal disease\n\n  * NOTE: Patients with brain metastasis, after definitive therapy with surgery or stereotactic radiation and stable off steroids for \\>= 4 weeks, are eligible\n* Other invasive cancers that are clinically active\n* Pregnancy or nursing or unwilling to take adequate birth control during therapy\n\n  * NOTE: Pregnant women are excluded from this study because CDX-1401 or CDX-301 and poly-ICLC have an unknown potential for teratogenic or abortifacient effects. Because there is an unknown but potential risk for adverse events in nursing infants secondary to treatment of the mother with CDX-1401 or CDX-301, breastfeeding should be discontinued if the mother is treated with CDX-1401 or CDX-301 and poly-ICLC\n* History of allergic reactions attributed to compounds of similar chemical or biologic composition to CDX-1401 or CDX-301 or poly-ICLC\n* Prior organ allograft or allogeneic transplantation, if the transplanted tissue is still in place\n* Uncontrolled intercurrent illness including, but not limited to, ongoing or active infection, symptomatic congestive heart failure, unstable angina pectoris, cardiac arrhythmia, or psychiatric illness/social situations that would limit compliance with study requirements\n* Medical or psychiatric illness that would, in the opinion of the investigator, preclude participation in the study or the ability of patients to provide informed consent for themselves\n* History of pulmonary disease such as emphysema or chronic obstructive pulmonary disease (COPD) (forced expiratory volume in 1 second \\[FEV1\\] \\< 60% of predicted for height and age). Pulmonary function tests (PFTs) are required in patients with prolonged smoking history or symptoms of respiratory dysfunction\n* Vaccinations other than those given as part of this research study (with the exception of influenza vaccine) are prohibited throughout the duration of study participation.\n\n  * NOTE: Influenza vaccination (inactivated) is permitted during the flu season. The preferred time is 7 to 14 days after CDX-1401 administration",
+          "healthyVolunteers": false,
+          "sex": "ALL",
+          "minimumAge": "18 Years",
+          "stdAges": [
+            "ADULT",
+            "OLDER_ADULT"
+          ]
+        },
+        "contactsLocationsModule": {
+          "overallOfficials": [
+            {
+              "name": "Nina Bhardwaj",
+              "affiliation": "Cancer Immunotherapy Trials Network",
+              "role": "PRINCIPAL_INVESTIGATOR"
+            }
+          ],
+          "locations": [
+            {
+              "facility": "University of Chicago Comprehensive Cancer Center",
+              "city": "Chicago",
+              "state": "Illinois",
+              "zip": "60637",
+              "country": "United States",
+              "geoPoint": {
+                "lat": 41.85003,
+                "lon": -87.65005
+              }
+            },
+            {
+              "facility": "Laura and Isaac Perlmutter Cancer Center at NYU Langone",
+              "city": "New York",
+              "state": "New York",
+              "zip": "10016",
+              "country": "United States",
+              "geoPoint": {
+                "lat": 40.71427,
+                "lon": -74.00597
+              }
+            },
+            {
+              "facility": "Mount Sinai Hospital",
+              "city": "New York",
+              "state": "New York",
+              "zip": "10029",
+              "country": "United States",
+              "geoPoint": {
+                "lat": 40.71427,
+                "lon": -74.00597
+              }
+            },
+            {
+              "facility": "Duke University Medical Center",
+              "city": "Durham",
+              "state": "North Carolina",
+              "zip": "27710",
+              "country": "United States",
+              "geoPoint": {
+                "lat": 35.99403,
+                "lon": -78.89862
+              }
+            },
+            {
+              "facility": "Cleveland Clinic Foundation",
+              "city": "Cleveland",
+              "state": "Ohio",
+              "zip": "44195",
+              "country": "United States",
+              "geoPoint": {
+                "lat": 41.4995,
+                "lon": -81.69541
+              }
+            },
+            {
+              "facility": "Providence Portland Medical Center",
+              "city": "Portland",
+              "state": "Oregon",
+              "zip": "97213",
+              "country": "United States",
+              "geoPoint": {
+                "lat": 45.52345,
+                "lon": -122.67621
+              }
+            },
+            {
+              "facility": "University of Wisconsin Hospital and Clinics",
+              "city": "Madison",
+              "state": "Wisconsin",
+              "zip": "53792",
+              "country": "United States",
+              "geoPoint": {
+                "lat": 43.07305,
+                "lon": -89.40123
+              }
+            }
+          ]
+        },
+        "referencesModule": {
+          "references": [
+            {
+              "pmid": "35121932",
+              "type": "DERIVED",
+              "citation": "Bhardwaj N, Friedlander PA, Pavlick AC, Ernstoff MS, Gastman BR, Hanks BA, Curti BD, Albertini MR, Luke JJ, Blazquez AB, Balan S, Bedognetti D, Beechem JM, Crocker AS, D'Amico L, Danaher P, Davis TA, Hawthorne T, Hess BW, Keler T, Lundgren L, Morishima C, Ramchurren N, Rinchai D, Salazar AM, Salim BA, Sharon E, Vitale LA, Wang E, Warren S, Yellin MJ, Disis ML, Cheever MA, Fling SP. Flt3 ligand augments immune responses to anti-DEC-205-NY-ESO-1 vaccine through expansion of dendritic cell subsets. Nat Cancer. 2020 Dec;1(12):1204-1217. doi: 10.1038/s43018-020-00143-y. Epub 2020 Nov 16."
+            }
+          ]
+        }
+      },
+      "resultsSection": {
+        "participantFlowModule": {
+          "preAssignmentDetails": "No enrolled participants were excluded from the study before assignment to groups.",
+          "groups": [
+            {
+              "id": "FG000",
+              "title": "Arm I (CDX-301, CDX-1401, and Poly-ICLC)",
+              "description": "Patients receive recombinant flt3 ligand (CDX-301) SC on days -7 to -1, 1-3, and 22-28 of course 1 and on days 1-3 of course 2 only; DEC-205/NY-ESO-1 fusion protein CDX-1401 SC or ID on days 1 and 2; and poly-ICLC SC on day 1. Treatment repeats every 28 days for 4 courses in the absence of disease progression or unacceptable toxicity.\n\nDEC-205/NY-ESO-1 Fusion Protein CDX-1401: Given SC or ID\n\nLaboratory Biomarker Analysis: Correlative studies\n\nNeoantigen-based Melanoma-Poly-ICLC Vaccine: Given SC\n\nPharmacological Study: Correlative studies\n\nRecombinant Flt3 Ligand: Given SC"
+            },
+            {
+              "id": "FG001",
+              "title": "Arm II (CDX-1401 and Poly-ICLC)",
+              "description": "Patients receive DEC-205/NY-ESO-1 fusion protein CDX-1401and poly-ICLC as in Arm I. Treatment repeats every 28 days for 4 courses in the absence of disease progression or unacceptable toxicity.\n\nDEC-205/NY-ESO-1 Fusion Protein CDX-1401: Given SC or ID\n\nLaboratory Biomarker Analysis: Correlative studies\n\nNeoantigen-based Melanoma-Poly-ICLC Vaccine: Given SC\n\nPharmacological Study: Correlative studies"
+            }
+          ],
+          "periods": [
+            {
+              "title": "Overall Study",
+              "milestones": [
+                {
+                  "type": "STARTED",
+                  "achievements": [
+                    {
+                      "groupId": "FG000",
+                      "numSubjects": "30"
+                    },
+                    {
+                      "groupId": "FG001",
+                      "numSubjects": "30"
+                    }
+                  ]
+                },
+                {
+                  "type": "COMPLETED",
+                  "achievements": [
+                    {
+                      "groupId": "FG000",
+                      "numSubjects": "30"
+                    },
+                    {
+                      "groupId": "FG001",
+                      "numSubjects": "30"
+                    }
+                  ]
+                },
+                {
+                  "type": "NOT COMPLETED",
+                  "achievements": [
+                    {
+                      "groupId": "FG000",
+                      "numSubjects": "0"
+                    },
+                    {
+                      "groupId": "FG001",
+                      "numSubjects": "0"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "baselineCharacteristicsModule": {
+          "groups": [
+            {
+              "id": "BG000",
+              "title": "Arm I (CDX-301, CDX-1401, and Poly-ICLC)",
+              "description": "Patients receive recombinant Flt3 ligand (CDX-301) SC on days -7 to -1, 1-3, and 22-28 of course 1 and on days 1-3 of course 2 only; DEC-205/NY-ESO-1 fusion protein CDX-1401 SC or ID on days 1 and 2; and poly-ICLC SC on day 1. Treatment repeats every 28 days for 4 courses in the absence of disease progression or unacceptable toxicity.\n\nDEC-205/NY-ESO-1 Fusion Protein CDX-1401: Given SC or ID\n\nLaboratory Biomarker Analysis: Correlative studies\n\nNeoantigen-based Melanoma-Poly-ICLC Vaccine: Given SC\n\nPharmacological Study: Correlative studies\n\nRecombinant Flt3 Ligand: Given SC"
+            },
+            {
+              "id": "BG001",
+              "title": "Arm II (CDX-1401 and Poly-ICLC)",
+              "description": "Patients receive DEC-205/NY-ESO-1 fusion protein CDX-1401and poly-ICLC as in Arm I. Treatment repeats every 28 days for 4 courses in the absence of disease progression or unacceptable toxicity.\n\nDEC-205/NY-ESO-1 Fusion Protein CDX-1401: Given SC or ID\n\nLaboratory Biomarker Analysis: Correlative studies\n\nNeoantigen-based Melanoma-Poly-ICLC Vaccine: Given SC\n\nPharmacological Study: Correlative studies"
+            },
+            {
+              "id": "BG002",
+              "title": "Total",
+              "description": "Total of all reporting groups"
+            }
+          ],
+          "denoms": [
+            {
+              "units": "Participants",
+              "counts": [
+                {
+                  "groupId": "BG000",
+                  "value": "30"
+                },
+                {
+                  "groupId": "BG001",
+                  "value": "30"
+                },
+                {
+                  "groupId": "BG002",
+                  "value": "60"
+                }
+              ]
+            }
+          ],
+          "measures": [
+            {
+              "title": "Age, Categorical",
+              "paramType": "COUNT_OF_PARTICIPANTS",
+              "unitOfMeasure": "Participants",
+              "classes": [
+                {
+                  "categories": [
+                    {
+                      "title": "<=18 years",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "0"
+                        },
+                        {
+                          "groupId": "BG001",
+                          "value": "0"
+                        },
+                        {
+                          "groupId": "BG002",
+                          "value": "0"
+                        }
+                      ]
+                    },
+                    {
+                      "title": "Between 18 and 65 years",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "22"
+                        },
+                        {
+                          "groupId": "BG001",
+                          "value": "25"
+                        },
+                        {
+                          "groupId": "BG002",
+                          "value": "47"
+                        }
+                      ]
+                    },
+                    {
+                      "title": ">=65 years",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "8"
+                        },
+                        {
+                          "groupId": "BG001",
+                          "value": "5"
+                        },
+                        {
+                          "groupId": "BG002",
+                          "value": "13"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "title": "Age, Continuous",
+              "paramType": "MEAN",
+              "dispersionType": "STANDARD_DEVIATION",
+              "unitOfMeasure": "years",
+              "classes": [
+                {
+                  "categories": [
+                    {
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "54.6",
+                          "spread": "13.4"
+                        },
+                        {
+                          "groupId": "BG001",
+                          "value": "51.6",
+                          "spread": "14.5"
+                        },
+                        {
+                          "groupId": "BG002",
+                          "value": "53.1",
+                          "spread": "13.9"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "title": "Sex: Female, Male",
+              "paramType": "COUNT_OF_PARTICIPANTS",
+              "unitOfMeasure": "Participants",
+              "classes": [
+                {
+                  "categories": [
+                    {
+                      "title": "Female",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "10"
+                        },
+                        {
+                          "groupId": "BG001",
+                          "value": "9"
+                        },
+                        {
+                          "groupId": "BG002",
+                          "value": "19"
+                        }
+                      ]
+                    },
+                    {
+                      "title": "Male",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "20"
+                        },
+                        {
+                          "groupId": "BG001",
+                          "value": "21"
+                        },
+                        {
+                          "groupId": "BG002",
+                          "value": "41"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "title": "Ethnicity (NIH/OMB)",
+              "paramType": "COUNT_OF_PARTICIPANTS",
+              "unitOfMeasure": "Participants",
+              "classes": [
+                {
+                  "categories": [
+                    {
+                      "title": "Hispanic or Latino",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "0"
+                        },
+                        {
+                          "groupId": "BG001",
+                          "value": "1"
+                        },
+                        {
+                          "groupId": "BG002",
+                          "value": "1"
+                        }
+                      ]
+                    },
+                    {
+                      "title": "Not Hispanic or Latino",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "30"
+                        },
+                        {
+                          "groupId": "BG001",
+                          "value": "28"
+                        },
+                        {
+                          "groupId": "BG002",
+                          "value": "58"
+                        }
+                      ]
+                    },
+                    {
+                      "title": "Unknown or Not Reported",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "0"
+                        },
+                        {
+                          "groupId": "BG001",
+                          "value": "1"
+                        },
+                        {
+                          "groupId": "BG002",
+                          "value": "1"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "title": "Race (NIH/OMB)",
+              "paramType": "COUNT_OF_PARTICIPANTS",
+              "unitOfMeasure": "Participants",
+              "classes": [
+                {
+                  "categories": [
+                    {
+                      "title": "American Indian or Alaska Native",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "0"
+                        },
+                        {
+                          "groupId": "BG001",
+                          "value": "0"
+                        },
+                        {
+                          "groupId": "BG002",
+                          "value": "0"
+                        }
+                      ]
+                    },
+                    {
+                      "title": "Asian",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "0"
+                        },
+                        {
+                          "groupId": "BG001",
+                          "value": "0"
+                        },
+                        {
+                          "groupId": "BG002",
+                          "value": "0"
+                        }
+                      ]
+                    },
+                    {
+                      "title": "Native Hawaiian or Other Pacific Islander",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "0"
+                        },
+                        {
+                          "groupId": "BG001",
+                          "value": "0"
+                        },
+                        {
+                          "groupId": "BG002",
+                          "value": "0"
+                        }
+                      ]
+                    },
+                    {
+                      "title": "Black or African American",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "0"
+                        },
+                        {
+                          "groupId": "BG001",
+                          "value": "1"
+                        },
+                        {
+                          "groupId": "BG002",
+                          "value": "1"
+                        }
+                      ]
+                    },
+                    {
+                      "title": "White",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "30"
+                        },
+                        {
+                          "groupId": "BG001",
+                          "value": "28"
+                        },
+                        {
+                          "groupId": "BG002",
+                          "value": "58"
+                        }
+                      ]
+                    },
+                    {
+                      "title": "More than one race",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "0"
+                        },
+                        {
+                          "groupId": "BG001",
+                          "value": "0"
+                        },
+                        {
+                          "groupId": "BG002",
+                          "value": "0"
+                        }
+                      ]
+                    },
+                    {
+                      "title": "Unknown or Not Reported",
+                      "measurements": [
+                        {
+                          "groupId": "BG000",
+                          "value": "0"
+                        },
+                        {
+                          "groupId": "BG001",
+                          "value": "1"
+                        },
+                        {
+                          "groupId": "BG002",
+                          "value": "1"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "outcomeMeasuresModule": {
+          "outcomeMeasures": [
+            {
+              "type": "PRIMARY",
+              "title": "Immune T-cell Response to NY-ESO-1",
+              "description": "Response rates will be analyzed by tabulating the frequency of positive response for each assay by antigen and treatment arm at each time point for which an assessment is performed. Response rates will be presented with their corresponding 95% confidence interval estimates calculated using the score test method. Fisher's exact tests will be used to compare cohort 1 and cohort 2 at the peak time point, with a significant difference declared if the 1-sided P value is =\\< 0.10.",
+              "reportingStatus": "POSTED",
+              "paramType": "COUNT_OF_PARTICIPANTS",
+              "unitOfMeasure": "Participants",
+              "timeFrame": "At 12 weeks after final vaccination",
+              "groups": [
+                {
+                  "id": "OG000",
+                  "title": "Arm I (CDX-301, CDX-1401, and Poly-ICLC)",
+                  "description": "Patients receive recombinant Flt3 ligand (CDX-301) SC on days -7 to -1, 1-3, and 22-28 of course 1 and on days 1-3 of course 2 only; DEC-205/NY-ESO-1 fusion protein CDX-1401 SC or ID on days 1 and 2; and poly-ICLC SC on day 1. Treatment repeats every 28 days for 4 courses in the absence of disease progression or unacceptable toxicity.\n\nDEC-205/NY-ESO-1 Fusion Protein CDX-1401: Given SC or ID\n\nLaboratory Biomarker Analysis: Correlative studies\n\nNeoantigen-based Melanoma-Poly-ICLC Vaccine: Given SC\n\nPharmacological Study: Correlative studies\n\nRecombinant Flt3 Ligand: Given SC"
+                },
+                {
+                  "id": "OG001",
+                  "title": "Arm II (CDX-1401 and Poly-ICLC)",
+                  "description": "Patients receive DEC-205/NY-ESO-1 fusion protein CDX-1401and poly-ICLC as in Arm I. Treatment repeats every 28 days for 4 courses in the absence of disease progression or unacceptable toxicity.\n\nDEC-205/NY-ESO-1 Fusion Protein CDX-1401: Given SC or ID\n\nLaboratory Biomarker Analysis: Correlative studies\n\nNeoantigen-based Melanoma-Poly-ICLC Vaccine: Given SC\n\nPharmacological Study: Correlative studies"
+                }
+              ],
+              "denoms": [
+                {
+                  "units": "Participants",
+                  "counts": [
+                    {
+                      "groupId": "OG000",
+                      "value": "28"
+                    },
+                    {
+                      "groupId": "OG001",
+                      "value": "26"
+                    }
+                  ]
+                }
+              ],
+              "classes": [
+                {
+                  "categories": [
+                    {
+                      "measurements": [
+                        {
+                          "groupId": "OG000",
+                          "value": "15"
+                        },
+                        {
+                          "groupId": "OG001",
+                          "value": "10"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "SECONDARY",
+              "title": "T Cell Responses to Other Ongoing and Nascent Antitumor Response Antigens Associated With Melanoma (e.g. PRAME, MAGE-A3, p53, and gp1000) as Well as Memory and Chronic Viral Responses (CMV, EBV)",
+              "description": "Response rates will be analyzed by tabulating the frequency of positive response for each assay by antigen and treatment arm at each time point for which an assessment is performed. Response rates will be presented with their corresponding 95% confidence interval estimates calculated using the score test method. Fisher's exact tests will be used to compare cohort 1 and cohort 2 at the peak time point, with a significant difference declared if the 1-sided P value is =\\< 0.10.",
+              "populationDescription": "T cell responses to MAGE-A3 and PRAME; positive at any timepoint",
+              "reportingStatus": "POSTED",
+              "paramType": "COUNT_OF_PARTICIPANTS",
+              "unitOfMeasure": "Participants",
+              "timeFrame": "Up to 12 weeks after final vaccination",
+              "groups": [
+                {
+                  "id": "OG000",
+                  "title": "Arm I (CDX-301, CDX-1401, and Poly-ICLC)",
+                  "description": "Patients receive recombinant flt3 ligand SC on days -7 to -1, 1-3, and 22-28 of course 1 and on days 1-3 of course 2 only; DEC-205/NY-ESO-1 fusion protein CDX-1401 SC or ID on days 1 and 2; and poly-ICLC SC on day 1. Treatment repeats every 28 days for 4 courses in the absence of disease progression or unacceptable toxicity.\n\nDEC-205/NY-ESO-1 Fusion Protein CDX-1401: Given SC or ID\n\nLaboratory Biomarker Analysis: Correlative studies\n\nNeoantigen-based Melanoma-Poly-ICLC Vaccine: Given SC\n\nPharmacological Study: Correlative studies\n\nRecombinant Flt3 Ligand: Given SC"
+                },
+                {
+                  "id": "OG001",
+                  "title": "Arm II (CDX-1401 and Poly-ICLC)",
+                  "description": "Patients receive DEC-205/NY-ESO-1 fusion protein CDX-1401and poly-ICLC as in Arm I. Treatment repeats every 28 days for 4 courses in the absence of disease progression or unacceptable toxicity.\n\nDEC-205/NY-ESO-1 Fusion Protein CDX-1401: Given SC or ID\n\nLaboratory Biomarker Analysis: Correlative studies\n\nNeoantigen-based Melanoma-Poly-ICLC Vaccine: Given SC\n\nPharmacological Study: Correlative studies"
+                }
+              ],
+              "denoms": [
+                {
+                  "units": "Participants",
+                  "counts": [
+                    {
+                      "groupId": "OG000",
+                      "value": "30"
+                    },
+                    {
+                      "groupId": "OG001",
+                      "value": "28"
+                    }
+                  ]
+                }
+              ],
+              "classes": [
+                {
+                  "categories": [
+                    {
+                      "measurements": [
+                        {
+                          "groupId": "OG000",
+                          "value": "7"
+                        },
+                        {
+                          "groupId": "OG001",
+                          "value": "7"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "SECONDARY",
+              "title": "Frequency and Phenotypic Character of PBMC Subsets Including DCs, Monocyte Populations, T Cells, and NK Cells - Highest Peak Fold Change Over Baseline (Log 2 Fold)",
+              "description": "Graphical and tabular summaries of the assay data will be made. Linear mixed effects model and possibly weighted generalized estimating equation methods will be considered for a supportive analysis of the longitudinal data over time.",
+              "populationDescription": "Only a subset of patient specimens were needed to meet statistical power. 15 participants were analyzed in Arm I (CDX-301, CDX-1401, and poly-ICLC and 16 participants were analyzed in Arm II (CDX-1401 and poly-ICLC). One less patient in Arm 1 was analyzed due to sample quality.",
+              "reportingStatus": "POSTED",
+              "paramType": "MEAN",
+              "dispersionType": "Standard Deviation",
+              "unitOfMeasure": "log 2 fold change",
+              "timeFrame": "Up to 12 weeks after final vaccination",
+              "groups": [
+                {
+                  "id": "OG000",
+                  "title": "Arm I (CDX-301, CDX-1401, and Poly-ICLC)",
+                  "description": "Patients receive recombinant flt3 ligand SC on days -7 to -1, 1-3, and 22-28 of course 1 and on days 1-3 of course 2 only; DEC-205/NY-ESO-1 fusion protein CDX-1401 SC or ID on days 1 and 2; and poly-ICLC SC on day 1. Treatment repeats every 28 days for 4 courses in the absence of disease progression or unacceptable toxicity.\n\nDEC-205/NY-ESO-1 Fusion Protein CDX-1401: Given SC or ID\n\nLaboratory Biomarker Analysis: Correlative studies\n\nNeoantigen-based Melanoma-Poly-ICLC Vaccine: Given SC\n\nPharmacological Study: Correlative studies\n\nRecombinant Flt3 Ligand: Given SC"
+                },
+                {
+                  "id": "OG001",
+                  "title": "Arm II (CDX-1401 and Poly-ICLC)",
+                  "description": "Patients receive DEC-205/NY-ESO-1 fusion protein CDX-1401and poly-ICLC as in Arm I. Treatment repeats every 28 days for 4 courses in the absence of disease progression or unacceptable toxicity.\n\nDEC-205/NY-ESO-1 Fusion Protein CDX-1401: Given SC or ID\n\nLaboratory Biomarker Analysis: Correlative studies\n\nNeoantigen-based Melanoma-Poly-ICLC Vaccine: Given SC\n\nPharmacological Study: Correlative studies"
+                }
+              ],
+              "denoms": [
+                {
+                  "units": "Participants",
+                  "counts": [
+                    {
+                      "groupId": "OG000",
+                      "value": "15"
+                    },
+                    {
+                      "groupId": "OG001",
+                      "value": "16"
+                    }
+                  ]
+                }
+              ],
+              "classes": [
+                {
+                  "title": "cDCs",
+                  "categories": [
+                    {
+                      "measurements": [
+                        {
+                          "groupId": "OG000",
+                          "value": "30.4",
+                          "spread": "16.98"
+                        },
+                        {
+                          "groupId": "OG001",
+                          "value": "0.9",
+                          "spread": "0.26"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "title": "Monocytes",
+                  "categories": [
+                    {
+                      "measurements": [
+                        {
+                          "groupId": "OG000",
+                          "value": "6.1",
+                          "spread": "2.11"
+                        },
+                        {
+                          "groupId": "OG001",
+                          "value": "1.0",
+                          "spread": "0.18"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "title": "CD4 T cells",
+                  "categories": [
+                    {
+                      "measurements": [
+                        {
+                          "groupId": "OG000",
+                          "value": "1.2",
+                          "spread": "0.28"
+                        },
+                        {
+                          "groupId": "OG001",
+                          "value": "1.1",
+                          "spread": "0.27"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "title": "NK CD56br cells",
+                  "categories": [
+                    {
+                      "measurements": [
+                        {
+                          "groupId": "OG000",
+                          "value": "5.8",
+                          "spread": "2.84"
+                        },
+                        {
+                          "groupId": "OG001",
+                          "value": "1.26",
+                          "spread": "0.32"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "title": "CD8 T cells",
+                  "categories": [
+                    {
+                      "measurements": [
+                        {
+                          "groupId": "OG000",
+                          "value": "1.3",
+                          "spread": "0.36"
+                        },
+                        {
+                          "groupId": "OG001",
+                          "value": "1.0",
+                          "spread": ".26"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "title": "pDC",
+                  "categories": [
+                    {
+                      "measurements": [
+                        {
+                          "groupId": "OG000",
+                          "value": "16.5",
+                          "spread": "7.27"
+                        },
+                        {
+                          "groupId": "OG001",
+                          "value": "0.8",
+                          "spread": "0.24"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "SECONDARY",
+              "title": "Tumor Recurrence",
+              "description": "Time to first recurrence from first vaccine among subjects who have experienced recurrence. (days)",
+              "populationDescription": "Analysis is reported for the number of subjects with recurrence (N=12 Arm I) (N=9 Arm II)",
+              "reportingStatus": "POSTED",
+              "paramType": "MEAN",
+              "dispersionType": "Standard Deviation",
+              "unitOfMeasure": "days",
+              "timeFrame": "Up to 600 days from first vaccine",
+              "groups": [
+                {
+                  "id": "OG000",
+                  "title": "Arm I (CDX-301, CDX-1401, and Poly-ICLC)",
+                  "description": "Patients receive recombinant flt3 ligand SC on days -7 to -1, 1-3, and 22-28 of course 1 and on days 1-3 of course 2 only; DEC-205/NY-ESO-1 fusion protein CDX-1401 SC or ID on days 1 and 2; and poly-ICLC SC on day 1. Treatment repeats every 28 days for 4 courses in the absence of disease progression or unacceptable toxicity.\n\nDEC-205/NY-ESO-1 Fusion Protein CDX-1401: Given SC or ID\n\nLaboratory Biomarker Analysis: Correlative studies\n\nNeoantigen-based Melanoma-Poly-ICLC Vaccine: Given SC\n\nPharmacological Study: Correlative studies\n\nRecombinant Flt3 Ligand: Given SC"
+                },
+                {
+                  "id": "OG001",
+                  "title": "Arm II (CDX-1401 and Poly-ICLC)",
+                  "description": "Patients receive DEC-205/NY-ESO-1 fusion protein CDX-1401and poly-ICLC as in Arm I. Treatment repeats every 28 days for 4 courses in the absence of disease progression or unacceptable toxicity.\n\nDEC-205/NY-ESO-1 Fusion Protein CDX-1401: Given SC or ID\n\nLaboratory Biomarker Analysis: Correlative studies\n\nNeoantigen-based Melanoma-Poly-ICLC Vaccine: Given SC\n\nPharmacological Study: Correlative studies"
+                }
+              ],
+              "denoms": [
+                {
+                  "units": "Participants",
+                  "counts": [
+                    {
+                      "groupId": "OG000",
+                      "value": "12"
+                    },
+                    {
+                      "groupId": "OG001",
+                      "value": "9"
+                    }
+                  ]
+                }
+              ],
+              "classes": [
+                {
+                  "categories": [
+                    {
+                      "measurements": [
+                        {
+                          "groupId": "OG000",
+                          "value": "360.3",
+                          "spread": "191.1"
+                        },
+                        {
+                          "groupId": "OG001",
+                          "value": "389.2",
+                          "spread": "223.2"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "SECONDARY",
+              "title": "Overall Survival",
+              "description": "Overall survival not assessed",
+              "populationDescription": "Data not collected",
+              "reportingStatus": "POSTED",
+              "timeFrame": "Up to 1 year after patient's 12 week visit",
+              "groups": [
+                {
+                  "id": "OG000",
+                  "title": "Arm I (CDX-301, CDX-1401, and Poly-ICLC)",
+                  "description": "Patients receive recombinant flt3 ligand (CDX-301) SC on days -7 to -1, 1-3, and 22-28 of course 1 and on days 1-3 of course 2 only; DEC-205/NY-ESO-1 fusion protein CDX-1401 SC or ID on days 1 and 2; and poly-ICLC SC on day 1. Treatment repeats every 28 days for 4 courses in the absence of disease progression or unacceptable toxicity.\n\nDEC-205/NY-ESO-1 Fusion Protein CDX-1401: Given SC or ID\n\nLaboratory Biomarker Analysis: Correlative studies\n\nNeoantigen-based Melanoma-Poly-ICLC Vaccine: Given SC\n\nPharmacological Study: Correlative studies\n\nRecombinant Flt3 Ligand: Given SC"
+                },
+                {
+                  "id": "OG001",
+                  "title": "Arm II (CDX-1401 and Poly-ICLC)",
+                  "description": "Patients receive DEC-205/NY-ESO-1 fusion protein CDX-1401and poly-ICLC as in Arm I. Treatment repeats every 28 days for 4 courses in the absence of disease progression or unacceptable toxicity.\n\nDEC-205/NY-ESO-1 Fusion Protein CDX-1401: Given SC or ID\n\nLaboratory Biomarker Analysis: Correlative studies\n\nNeoantigen-based Melanoma-Poly-ICLC Vaccine: Given SC\n\nPharmacological Study: Correlative studies"
+                }
+              ],
+              "denoms": [
+                {
+                  "units": "Participants",
+                  "counts": [
+                    {
+                      "groupId": "OG000",
+                      "value": "0"
+                    },
+                    {
+                      "groupId": "OG001",
+                      "value": "0"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "adverseEventsModule": {
+          "frequencyThreshold": "0",
+          "description": "Systematic evaluation by clinicaltrials.gov definition",
+          "eventGroups": [
+            {
+              "id": "EG000",
+              "title": "Arm I (CDX-301, CDX-1401, and Poly-ICLC)",
+              "description": "Patients receive recombinant Flt3 ligand (CDX-301) SC on days -7 to -1, 1-3, and 22-28 of course 1 and on days 1-3 of course 2 only; DEC-205/NY-ESO-1 fusion protein CDX-1401 SC or ID on days 1 and 2; and poly-ICLC SC on day 1. Treatment repeats every 28 days for 4 courses in the absence of disease progression or unacceptable toxicity.\n\nDEC-205/NY-ESO-1 Fusion Protein CDX-1401: Given SC or ID\n\nLaboratory Biomarker Analysis: Correlative studies\n\nNeoantigen-based Melanoma-Poly-ICLC Vaccine: Given SC\n\nPharmacological Study: Correlative studies\n\nRecombinant Flt3 Ligand: Given SC",
+              "seriousNumAffected": 0,
+              "seriousNumAtRisk": 30,
+              "otherNumAffected": 30,
+              "otherNumAtRisk": 30
+            },
+            {
+              "id": "EG001",
+              "title": "Arm II (CDX-1401 and Poly-ICLC)",
+              "description": "Patients receive DEC-205/NY-ESO-1 fusion protein CDX-1401and poly-ICLC as in Arm I. Treatment repeats every 28 days for 4 courses in the absence of disease progression or unacceptable toxicity.\n\nDEC-205/NY-ESO-1 Fusion Protein CDX-1401: Given SC or ID\n\nLaboratory Biomarker Analysis: Correlative studies\n\nNeoantigen-based Melanoma-Poly-ICLC Vaccine: Given SC\n\nPharmacological Study: Correlative studies",
+              "seriousNumAffected": 4,
+              "seriousNumAtRisk": 30,
+              "otherNumAffected": 30,
+              "otherNumAtRisk": 30
+            }
+          ],
+          "seriousEvents": [
+            {
+              "term": "General disorders and administration site conditions",
+              "organSystem": "General disorders",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 0,
+                  "numAffected": 0,
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 1,
+                  "numAffected": 1,
+                  "numAtRisk": 30
+                }
+              ]
+            },
+            {
+              "term": "Infections and infestations",
+              "organSystem": "Infections and infestations",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 1,
+                  "numAffected": 1,
+                  "numAtRisk": 30
+                }
+              ]
+            },
+            {
+              "term": "Nervous system disorders",
+              "organSystem": "Nervous system disorders",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 1,
+                  "numAffected": 1,
+                  "numAtRisk": 30
+                }
+              ]
+            },
+            {
+              "term": "Pregnancy, puerperium and perinatal conditions",
+              "organSystem": "Pregnancy, puerperium and perinatal conditions",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 1,
+                  "numAffected": 1,
+                  "numAtRisk": 30
+                }
+              ]
+            }
+          ],
+          "otherEvents": [
+            {
+              "term": "General disorders and administration site conditions",
+              "organSystem": "General disorders",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "notes": "Injection site reactions",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 509,
+                  "numAffected": 30,
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 322,
+                  "numAffected": 30,
+                  "numAtRisk": 30
+                }
+              ]
+            },
+            {
+              "term": "Nervous system disorders",
+              "organSystem": "Nervous system disorders",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 35,
+                  "numAffected": 17,
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 49,
+                  "numAffected": 19,
+                  "numAtRisk": 30
+                }
+              ]
+            },
+            {
+              "term": "Musculoskeletal and connective tissue disorders",
+              "organSystem": "Musculoskeletal and connective tissue disorders",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 56,
+                  "numAffected": 20,
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 33,
+                  "numAffected": 18,
+                  "numAtRisk": 30
+                }
+              ]
+            },
+            {
+              "term": "Gastrointestinal disorders",
+              "organSystem": "Gastrointestinal disorders",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 37,
+                  "numAffected": 15,
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 44,
+                  "numAffected": 17,
+                  "numAtRisk": 30
+                }
+              ]
+            },
+            {
+              "term": "Investigations",
+              "organSystem": "Investigations",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 43,
+                  "numAffected": 14,
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 49,
+                  "numAffected": 14,
+                  "numAtRisk": 30
+                }
+              ]
+            },
+            {
+              "term": "Skin and subcutaneous tissue disorders",
+              "organSystem": "Skin and subcutaneous tissue disorders",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 21,
+                  "numAffected": 15,
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 24,
+                  "numAffected": 14,
+                  "numAtRisk": 30
+                }
+              ]
+            },
+            {
+              "term": "Metabolism and nutrition disorders",
+              "organSystem": "Metabolism and nutrition disorders",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 51,
+                  "numAffected": 15,
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 28,
+                  "numAffected": 12,
+                  "numAtRisk": 30
+                }
+              ]
+            },
+            {
+              "term": "Respiratory, thoracic and mediastinal disorders",
+              "organSystem": "Respiratory, thoracic and mediastinal disorders",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 27,
+                  "numAffected": 13,
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 24,
+                  "numAffected": 13,
+                  "numAtRisk": 30
+                }
+              ]
+            },
+            {
+              "term": "Blood and lymphatic system disorders",
+              "organSystem": "Blood and lymphatic system disorders",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 30,
+                  "numAffected": 13,
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 17,
+                  "numAffected": 10,
+                  "numAtRisk": 30
+                }
+              ]
+            },
+            {
+              "term": "Infections and infestations",
+              "organSystem": "Infections and infestations",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 10,
+                  "numAffected": 7,
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 12,
+                  "numAffected": 9,
+                  "numAtRisk": 30
+                }
+              ]
+            },
+            {
+              "term": "Vascular disorders",
+              "organSystem": "Vascular disorders",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 20,
+                  "numAffected": 8,
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 26,
+                  "numAffected": 6,
+                  "numAtRisk": 30
+                }
+              ]
+            },
+            {
+              "term": "Injury, poisoning and procedural complications",
+              "organSystem": "Injury, poisoning and procedural complications",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 10,
+                  "numAffected": 10,
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 1,
+                  "numAffected": 1,
+                  "numAtRisk": 30
+                }
+              ]
+            },
+            {
+              "term": "Psychiatric disorders",
+              "organSystem": "Psychiatric disorders",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 8,
+                  "numAffected": 6,
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 4,
+                  "numAffected": 4,
+                  "numAtRisk": 30
+                }
+              ]
+            },
+            {
+              "term": "Eye disorders",
+              "organSystem": "Eye disorders",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 6,
+                  "numAffected": 4,
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 5,
+                  "numAffected": 3,
+                  "numAtRisk": 30
+                }
+              ]
+            },
+            {
+              "term": "Neoplasms benign, malignant and unspecified (incl cysts and polyps)",
+              "organSystem": "Neoplasms benign, malignant and unspecified (incl cysts and polyps)",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 3,
+                  "numAffected": 3,
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 3,
+                  "numAffected": 3,
+                  "numAtRisk": 30
+                }
+              ]
+            },
+            {
+              "term": "Renal and urinary disorders",
+              "organSystem": "Renal and urinary disorders",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 2,
+                  "numAffected": 2,
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 4,
+                  "numAffected": 3,
+                  "numAtRisk": 30
+                }
+              ]
+            },
+            {
+              "term": "Cardiac disorders",
+              "organSystem": "Cardiac disorders",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 2,
+                  "numAffected": 1,
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 2,
+                  "numAffected": 2,
+                  "numAtRisk": 30
+                }
+              ]
+            },
+            {
+              "term": "Ear and labyrinth disorders",
+              "organSystem": "Ear and labyrinth disorders",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 3,
+                  "numAffected": 3,
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 1,
+                  "numAffected": 1,
+                  "numAtRisk": 30
+                }
+              ]
+            },
+            {
+              "term": "Reproductive system and breast disorders",
+              "organSystem": "Reproductive system and breast disorders",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 1,
+                  "numAffected": 1,
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 2,
+                  "numAffected": 2,
+                  "numAtRisk": 30
+                }
+              ]
+            },
+            {
+              "term": "Surgical and medical procedures",
+              "organSystem": "Surgical and medical procedures",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 2,
+                  "numAffected": 2,
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 2,
+                  "numAffected": 2,
+                  "numAtRisk": 30
+                }
+              ]
+            },
+            {
+              "term": "Immune system disorders",
+              "organSystem": "Immune system disorders",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 0,
+                  "numAffected": 0,
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 1,
+                  "numAffected": 1,
+                  "numAtRisk": 30
+                }
+              ]
+            },
+            {
+              "term": "Pregnancy, puerperium and perinatal conditions",
+              "organSystem": "Pregnancy, puerperium and perinatal conditions",
+              "sourceVocabulary": "MedDRA 17.0",
+              "assessmentType": "SYSTEMATIC_ASSESSMENT",
+              "stats": [
+                {
+                  "groupId": "EG000",
+                  "numEvents": 0,
+                  "numAffected": 0,
+                  "numAtRisk": 30
+                },
+                {
+                  "groupId": "EG001",
+                  "numEvents": 1,
+                  "numAffected": 1,
+                  "numAtRisk": 30
+                }
+              ]
+            }
+          ]
+        },
+        "moreInfoModule": {
+          "certainAgreement": {
+            "piSponsorEmployee": false,
+            "restrictionType": "LTE60",
+            "restrictiveAgreement": true
+          },
+          "pointOfContact": {
+            "title": "Dr. Martin A. Cheever",
+            "organization": "Fred Hutchinson Cancer Research Center",
+            "email": "mcheever@fredhutch.org",
+            "phone": "206-667-4141"
+          }
+        }
+      },
+      "derivedSection": {
+        "miscInfoModule": {
+          "versionHolder": "2026-08-06"
+        },
+        "conditionBrowseModule": {
+          "meshes": [
+            {
+              "id": "D008545",
+              "term": "Melanoma"
+            },
+            {
+              "id": "D000098943",
+              "term": "Uveal Melanoma"
+            }
+          ],
+          "ancestors": [
+            {
+              "id": "D018358",
+              "term": "Neuroendocrine Tumors"
+            },
+            {
+              "id": "D017599",
+              "term": "Neuroectodermal Tumors"
+            },
+            {
+              "id": "D009373",
+              "term": "Neoplasms, Germ Cell and Embryonal"
+            },
+            {
+              "id": "D009370",
+              "term": "Neoplasms by Histologic Type"
+            },
+            {
+              "id": "D009369",
+              "term": "Neoplasms"
+            },
+            {
+              "id": "D009380",
+              "term": "Neoplasms, Nerve Tissue"
+            },
+            {
+              "id": "D018326",
+              "term": "Nevi and Melanomas"
+            },
+            {
+              "id": "D012878",
+              "term": "Skin Neoplasms"
+            },
+            {
+              "id": "D009371",
+              "term": "Neoplasms by Site"
+            },
+            {
+              "id": "D012871",
+              "term": "Skin Diseases"
+            },
+            {
+              "id": "D017437",
+              "term": "Skin and Connective Tissue Diseases"
+            },
+            {
+              "id": "D014604",
+              "term": "Uveal Neoplasms"
+            },
+            {
+              "id": "D005134",
+              "term": "Eye Neoplasms"
+            },
+            {
+              "id": "D005128",
+              "term": "Eye Diseases"
+            },
+            {
+              "id": "D014603",
+              "term": "Uveal Diseases"
+            }
+          ]
+        },
+        "interventionBrowseModule": {
+          "meshes": [
+            {
+              "id": "C019531",
+              "term": "poly ICLC"
+            },
+            {
+              "id": "C084881",
+              "term": "flt3 ligand protein"
+            }
+          ]
+        }
+      },
+      "hasResults": true
+    },
+    {
+      "protocolSection": {
+        "identificationModule": {
+          "nctId": "NCT06999707",
+          "orgStudyIdInfo": {
+            "id": "202500671A3"
+          },
+          "organization": {
+            "fullName": "Chang Gung Memorial Hospital",
+            "class": "OTHER"
+          },
+          "briefTitle": "Photon Radiotherapy Plus Tremelimumab/Durvalumab for BCLC Stage B and C HCC",
+          "officialTitle": "Photon Radiotherapy Combined With Tremelimumab and Durvalumab for BCLC Stage B and C Hepatocellular Carcinoma",
+          "acronym": "Photon-STRIDE"
+        },
+        "statusModule": {
+          "statusVerifiedDate": "2025-06",
+          "overallStatus": "RECRUITING",
+          "expandedAccessInfo": {
+            "hasExpandedAccess": false
+          },
+          "startDateStruct": {
+            "date": "2025-05-22",
+            "type": "ACTUAL"
+          },
+          "primaryCompletionDateStruct": {
+            "date": "2030-05-31",
+            "type": "ESTIMATED"
+          },
+          "completionDateStruct": {
+            "date": "2033-05-31",
+            "type": "ESTIMATED"
+          },
+          "studyFirstSubmitDate": "2025-05-22",
+          "studyFirstSubmitQcDate": "2025-05-22",
+          "studyFirstPostDateStruct": {
+            "date": "2025-05-31",
+            "type": "ACTUAL"
+          },
+          "lastUpdateSubmitDate": "2025-06-03",
+          "lastUpdatePostDateStruct": {
+            "date": "2025-06-05",
+            "type": "ACTUAL"
+          }
+        },
+        "sponsorCollaboratorsModule": {
+          "responsibleParty": {
+            "type": "SPONSOR"
+          },
+          "leadSponsor": {
+            "name": "Chang Gung Memorial Hospital",
+            "class": "OTHER"
+          }
+        },
+        "oversightModule": {
+          "oversightHasDmc": false,
+          "isFdaRegulatedDrug": false,
+          "isFdaRegulatedDevice": false
+        },
+        "descriptionModule": {
+          "briefSummary": "Tremelimumab plus durvalumab (the STRIDE regimen) is an approved first-line therapy for unresectable hepatocellular carcinoma (HCC); however, it demonstrates limited efficacy, with an objective response rate (ORR) of only 20.1%. Radiation therapy (RT) is highly effective in controlling localized solid tumors and has become an integral component of the treatment algorithm for unresectable HCC. Preclinical studies have shown that combining RT with PD-L1/PD-1 blockade promotes immunogenic cell death and enhances antigen presentation by dendritic cells, thereby boosting systemic T cell-mediated antitumor responses in mouse models. The addition of CTLA-4 inhibition further enhances antigen cross-priming following RT. Recent retrospective data also indicate that combining RT with immune-oncology agents is associated with improved overall survival and prolonged time to progression compared to RT or immunotherapy alone. However, the clinical benefit and immunologic impact of combining RT with tremelimumab and durvalumab have not yet been evaluated in prospective clinical trials for unresectable HCC.\n\nThis phase II, single-arm clinical trial aims to assess the safety, efficacy, and immunologic effects of combining proton RT with tremelimumab and durvalumab in patients with unresectable HCC."
+        },
+        "conditionsModule": {
+          "conditions": [
+            "HCC - Hepatocellular Carcinoma",
+            "Tremelimumab",
+            "Durvalumab",
+            "Radiotherapy"
+          ]
+        },
+        "designModule": {
+          "studyType": "INTERVENTIONAL",
+          "phases": [
+            "PHASE2"
+          ],
+          "designInfo": {
+            "allocation": "NA",
+            "interventionModel": "SINGLE_GROUP",
+            "primaryPurpose": "TREATMENT",
+            "maskingInfo": {
+              "masking": "NONE"
+            }
+          },
+          "enrollmentInfo": {
+            "count": 45,
+            "type": "ESTIMATED"
+          }
+        },
+        "armsInterventionsModule": {
+          "armGroups": [
+            {
+              "label": "Photon radiotherapy combined with Tremelimumab and Durvalumab",
+              "type": "EXPERIMENTAL",
+              "description": "Patients undergo photon radiotherapy combined with Tremelimumab and Durvalumab.",
+              "interventionNames": [
+                "Radiation: Photon radiotherapy",
+                "Drug: Tremelimumab",
+                "Drug: Durvalumab"
+              ]
+            }
+          ],
+          "interventions": [
+            {
+              "type": "RADIATION",
+              "name": "Photon radiotherapy",
+              "description": "* 39.6-72.6 Gy in 22 fractions for tumors ≤1 cm from hepatic hilum, bowel, and heart.\n* 30-66 Gy in 10 fractions for tumors \\>1 cm from hepatic hilum, bowel, and heart.\n* 27.5-50 Gy in 5 fractions using stereotactic body radiation therapy (SBRT) techniques",
+              "armGroupLabels": [
+                "Photon radiotherapy combined with Tremelimumab and Durvalumab"
+              ]
+            },
+            {
+              "type": "DRUG",
+              "name": "Tremelimumab",
+              "description": "Tremelimumab 300 mg will be administered as an IV infusion for one dose",
+              "armGroupLabels": [
+                "Photon radiotherapy combined with Tremelimumab and Durvalumab"
+              ]
+            },
+            {
+              "type": "DRUG",
+              "name": "Durvalumab",
+              "description": "Treatment Duration Guidelines: \\* Complete Response (CR): Patients who achieve a CR within one year of treatment will continue durvalumab for a total duration of two years. \\* Partial Response (PR): Patients who achieve a PR should continue durvalumab until achieving CR, disease progression (PD), or for a total duration of two years. \\* Stable Disease (SD): Patients with SD will receive duvalumab for a total of 6 doses.",
+              "armGroupLabels": [
+                "Photon radiotherapy combined with Tremelimumab and Durvalumab"
+              ]
+            }
+          ]
+        },
+        "outcomesModule": {
+          "primaryOutcomes": [
+            {
+              "measure": "Progression free survival",
+              "description": "Progression free survival is defined as the time from signing the informed consent to the first occurrence of disease progression or death from any cause (whichever occurs first) according to RECIST1.1",
+              "timeFrame": "12 months"
+            }
+          ],
+          "secondaryOutcomes": [
+            {
+              "measure": "Local control",
+              "description": "Local control is defined as the time from signing the informed consent to the first occurrence of disease progression in the irradiated field according to RECIST1.1",
+              "timeFrame": "12 months"
+            },
+            {
+              "measure": "Time to progression",
+              "description": "Time to progression is defined as the time from signing the informed consent to the first occurrence of disease progression according to RECIST1.1",
+              "timeFrame": "12 months"
+            },
+            {
+              "measure": "Overall Response Rate",
+              "description": "Overall Response Rate is defined as a complete or partial response according to RECIST1.1",
+              "timeFrame": "12 months"
+            },
+            {
+              "measure": "Overall survival",
+              "description": "Overall survival is defined as the time from signing the informed consent to death from any cause.",
+              "timeFrame": "12 months"
+            },
+            {
+              "measure": "Incidence and severity of adverse events",
+              "description": "Description: Adverse events will be graded using CTCAE v5",
+              "timeFrame": "12 months"
+            }
+          ]
+        },
+        "eligibilityModule": {
+          "eligibilityCriteria": "Inclusion Criteria:\n\n1. Participants must have diagnosis of HCC that is deemed unsuitable for surgical resection or transplant. Participants may have multiple lesions with a total maximal tumor dimension of \\< 20 cm, and no one lesion \\> 15 cm. Diagnosis should be confirmed by at least 1 criterion listed below:\n\n   * Histologically or cytologically proven diagnosis of HCC.\n   * Typical arterial enhancement and delayed washout on multiphasic CT or MRI.\n2. Age ≥18 years at the time of signing informed consent document.\n3. ECOG performance status 0-1.\n4. Barcelona Clinic Liver Cancer (BCLC) stages Intermediate (B) or Advanced (C).\n5. Child-Pugh score 5-6 liver function within 28 days of study registration.\n6. Documented virology status of hepatitis B virus (HBV), as confirmed by screening HBV serology test.\n7. Documented virology status of hepatitis C virus (HCV), as confirmed by screening HCV serology test.\n8. Ability to understand and the willingness to sign a written informed consent document\n9. Adequate bone marrow, liver, and renal function within 4 weeks before study registration\n\n   * Hemoglobin ≥ 9.0 g/dL\n   * Absolute neutrophil count (ANC) ≥ 1,000/mm3\n   * Platelet count ≥ 50,000/μL\n   * Total bilirubin \\< 2.5 mg/dL\n   * Serum albumin \\>2.8 g/dL\n   * Alanine aminotransferase (ALT) and aspartate aminotransferase (AST) ≤ 3 × upper limit of normal (ULN)\n   * Prothrombin time ≤ 6 seconds prolonged\n   * Serum creatinine ≤ 1.5 mg/dL\n\nExclusion Criteria:\n\n1. Prior invasive malignancy unless disease free for a minimum of 2 years\n2. Prior radiotherapy to the region of the liver that would result in overlap of radiation therapy fields\n3. Prior selective internal radiotherapy/hepatic arterial yttrium therapy, at any time\n4. Untreated active hepatitis B or hepatitis C\n5. Moderate to severe or intractable ascites\n6. Presence of distant metastases that cannot be encompassed by photon radiotherapy\n7. Untreated or incomplete treated esophageal or gastric varices\n8. Severe, active co-morbidity, defined as follows:\n\n   * Unstable angina and/or congestive heart failure requiring hospitalization within the last 6 months prior to registration\n   * Myocardial infarction within the last 6 months prior to study entry\n   * Acute bacterial or fungal infection requiring intravenous antibiotics within 28 days prior to study entry\n   * A bleeding episode within 6 months prior to study entry due to any cause.\n   * Thrombolytic therapy within 28 days prior to study entry.\n   * Known bleeding or clotting disorder.\n   * Uncontrolled psychotic disorder\n9. Pregnancy or women of childbearing potential and men who are sexually active and not willing/able to use medically acceptable forms of contraception\n10. Prior solid organ transplantation.\n11. Prior or active autoimmune disease (AID) including autoimmune hepatitis, inflammatory bowel disease, myasthenia gravis, systemic lupus erythematosus, rheumatoid arthritis, antiphospholipid antibody syndrome, Wegener granulomatosis, Sjogren's syndrome, Guillain-Barre syndrome, and multiple sclerosis.\n12. Inability to treat all sites of disease by photon radiotherapy (such as extrahepatic metastases or massive liver tumors whereby the liver constraints cannot be met for covering all sites of liver tumors using photon radiotherapy.)\n13. Known HIV infection.",
+          "healthyVolunteers": false,
+          "sex": "ALL",
+          "minimumAge": "18 Years",
+          "stdAges": [
+            "ADULT",
+            "OLDER_ADULT"
+          ]
+        },
+        "contactsLocationsModule": {
+          "centralContacts": [
+            {
+              "name": "Rodney Cheng-En Hsieh, MD, PhD",
+              "role": "CONTACT",
+              "phone": "+886975361338",
+              "phoneExt": "7000",
+              "email": "rodney445@gmail.com"
+            }
+          ],
+          "locations": [
+            {
+              "facility": "Chang Gung Memorial Hospital at Linkou",
+              "status": "RECRUITING",
+              "city": "Taoyuan City",
+              "state": "Taiwan",
+              "zip": "333",
+              "country": "Taiwan",
+              "contacts": [
+                {
+                  "name": "Rodney Cheng-En Hsieh, MD, PhD",
+                  "role": "CONTACT",
+                  "phone": "+886-3-328-1200",
+                  "phoneExt": "7000",
+                  "email": "rodney445@gmail.com"
+                },
+                {
+                  "name": "Rodney Cheng En Hsieh, MD, PhD",
+                  "role": "PRINCIPAL_INVESTIGATOR"
+                }
+              ],
+              "geoPoint": {
+                "lat": 24.99368,
+                "lon": 121.29696
+              }
+            }
+          ]
+        },
+        "ipdSharingStatementModule": {
+          "ipdSharing": "NO",
+          "description": "Sharing individual participant data (IPD) with other researchers requires IRB review and approval. Presently, we do not have a plan to provide IPD to other researchers."
+        }
+      },
+      "derivedSection": {
+        "miscInfoModule": {
+          "versionHolder": "2026-08-06"
+        },
+        "conditionBrowseModule": {
+          "meshes": [
+            {
+              "id": "D006528",
+              "term": "Carcinoma, Hepatocellular"
+            }
+          ],
+          "ancestors": [
+            {
+              "id": "D000230",
+              "term": "Adenocarcinoma"
+            },
+            {
+              "id": "D002277",
+              "term": "Carcinoma"
+            },
+            {
+              "id": "D009375",
+              "term": "Neoplasms, Glandular and Epithelial"
+            },
+            {
+              "id": "D009370",
+              "term": "Neoplasms by Histologic Type"
+            },
+            {
+              "id": "D009369",
+              "term": "Neoplasms"
+            },
+            {
+              "id": "D008113",
+              "term": "Liver Neoplasms"
+            },
+            {
+              "id": "D004067",
+              "term": "Digestive System Neoplasms"
+            },
+            {
+              "id": "D009371",
+              "term": "Neoplasms by Site"
+            },
+            {
+              "id": "D004066",
+              "term": "Digestive System Diseases"
+            },
+            {
+              "id": "D008107",
+              "term": "Liver Diseases"
+            }
+          ]
+        },
+        "interventionBrowseModule": {
+          "meshes": [
+            {
+              "id": "C520704",
+              "term": "tremelimumab"
+            },
+            {
+              "id": "C000613593",
+              "term": "durvalumab"
+            }
+          ]
+        }
+      },
+      "hasResults": false
+    },
+    {
+      "protocolSection": {
+        "identificationModule": {
+          "nctId": "NCT06527898",
+          "orgStudyIdInfo": {
+            "id": "2024-ky302"
+          },
+          "organization": {
+            "fullName": "Anhui Provincial Hospital",
+            "class": "OTHER_GOV"
+          },
+          "briefTitle": "Hypofractionated Radiotherapy Combined with Immunotherapy for Limited-stage Small-cell Lung Cancer",
+          "officialTitle": "Hypofractionated Radiotherapy Combined with Immunotherapy for Limited-stage Small-cell Lung Cancer: a Phase II Trial"
+        },
+        "statusModule": {
+          "statusVerifiedDate": "2024-07",
+          "overallStatus": "RECRUITING",
+          "expandedAccessInfo": {
+            "hasExpandedAccess": false
+          },
+          "startDateStruct": {
+            "date": "2024-07-01",
+            "type": "ACTUAL"
+          },
+          "primaryCompletionDateStruct": {
+            "date": "2026-07-31",
+            "type": "ESTIMATED"
+          },
+          "completionDateStruct": {
+            "date": "2027-07-31",
+            "type": "ESTIMATED"
+          },
+          "studyFirstSubmitDate": "2024-07-26",
+          "studyFirstSubmitQcDate": "2024-07-26",
+          "studyFirstPostDateStruct": {
+            "date": "2024-07-30",
+            "type": "ACTUAL"
+          },
+          "lastUpdateSubmitDate": "2024-09-12",
+          "lastUpdatePostDateStruct": {
+            "date": "2024-09-19",
+            "type": "ACTUAL"
+          }
+        },
+        "sponsorCollaboratorsModule": {
+          "responsibleParty": {
+            "type": "SPONSOR"
+          },
+          "leadSponsor": {
+            "name": "Anhui Provincial Hospital",
+            "class": "OTHER_GOV"
+          }
+        },
+        "oversightModule": {
+          "oversightHasDmc": true,
+          "isFdaRegulatedDrug": false,
+          "isFdaRegulatedDevice": false,
+          "isUsExport": false
+        },
+        "descriptionModule": {
+          "briefSummary": "Concurrent chemoradiotherapy has long been the standard modality for locally advanced small-cell lung cancer, which could achieve median overall survival of 25 mos. Conventional fractionation of 66Gy/33f and hyperfractionation of 45Gy/30f twice daily have been acknowledged as the two standard radiotherapy modalities according to CONVERT study. With the introduction of immune checkpoint inhibitors, ADRIATIC study concluded that consolidative Durvalumab after concurrent chemoradiotherapy could achieve a far longer median overall survival of 55.9 months compared with 33.4 months for concurrent chemoradiotherapy. Recently, several studies have demonstrated the safety and efficacy of hypofractionated radiotherapy (3 to 4 Gy) for limited-stage small-cell lung cancer. Hypofractionated radiotherapy processes the advantage of short treatment duration compared with conventional fractionated radiotherapy, which may allow the early participation of immunotherapy. Therefore, we suppose that whether hypofractionated radiotherapy combined with immunotherapy could improve the survival of limited-stage of small-cell lung cancer.",
+          "detailedDescription": "Trial design: To enroll 45 patients diagnosed with limited stage small-cell lung cancer to receive concurrent chemoradiotherapy with consolidative Adebrelimab maintenance.\n\nPrimary endpoint: Progression-free Survival Secondary endpoint: 2-year progression-free survival, 2-year overall survival rate.\n\nAll enrolled patients are proposed to receive concurrent chemoradiotherapy and consolidative Adebrelimab maintenance up to 2 years. After concurrent chemoradiotherapy, hippocampus-sparing prophylactic cranial irradiation or MRI surveillance are both allowed.\n\nChemotherapy: Etoposide 80-100mg/m2 day 1, 2, 3 and cisplatin 75-80mg/m2 day 1 \\&amp; carboplatin AUC 5 day 1 q3w for totally 6 cycles.\n\nRadiotherapy began at the second cycle of chemotherapy followed by hippocampus-sparing prophylactic cranial irradiation or MRI surveillance.\n\nImmunotherapy consolidation began at the third cycle of chemotherapy: Adebrelimab 1200mg q3w to 2 year or disease progression \\&amp; untolerated toxicity.\n\nRadiotherapy details:\n\nRadiotherapy CT simulation: 4-Dimensional CT (4D-CT) with intravenous contrast is recommended for simulation. Scan thickness should be less than 5 mm. Thermal mask or vacuum bag is recommended.\n\nTarget Delineation: Considering hypofraction and involved field irradiation (IFI), only Internal Tumor Volume (ITV) should be delineated without the need to delineate Clinical Tumor Volume (CTV).\n\nDelineation of ITV: ITV should include pulmonary gross tumor and metastatic mediastinal lymph nodes. PET-CT registration with simulation CT is recommended for patients with obstructive atelectasis. For patients with suspected mediastinal lymph nodes, Endobronchial Ultrasound-guided Transbronchial Needle Aspiration (EBUS-TBNA) is recommended.\n\nProduction of Planning Tumor Volume (PTV): PTV is produced by a margin of 5 mm added to ITV. Modification of PTV is suggested to respect anatomic boundary.\n\nDosimetric Limitation: 95% prescription dose should cover 100% PTV and 95% PTV should receive 100% prescription dose. Total Lung: V20\\&lt;23%, Dmean\\&lt;13Gy, V5\\&lt;50%. Spinal Cord: Dmax\\&lt;40Gy. Heart: V30\\&lt;40%, Dmean\\&lt;25Gy. Esophagus: V40\\&lt;5cc.\n\nTreatment Implementation: Radiotherapy is implemented every day. Cone-beam CT should be utilized every day to minimize set-up error.\n\nFollow-up: Patients should be follow-up every three months right after the completion of the final cycle of immunotherapy to 3 years after that. Then follow-up every half year is allowed to 5 years. After 5 years, follow-up every year is appropriate. In follow-up, chest CT and abdominal ultrasonography should be implemented. Cranial MRI should be performed every half year. Bone scan should be undertaken every year for all patients.\n\nInclusion Criteria:\n\n1. 18-70 years old;\n2. ECOG 0-1;\n3. Adequate organ function to tolerate chemotherapy, immunotherapy and radiotherapy;\n4. Small-cell lung cancer;\n5. Limited stage confirmed by cranial MRI, chest CT, abdominal ultrasonograph, bone scan or cranial MRI and PET-CT;\n6. Signature of inform consent.\n\nExclusion Criteria:\n\n1. Younger than 18 years old or older than 70 years old;\n2. ECOG\\&gt;1;\n3. Inadequate organ function to tolerate chemotherapy, immunotherapy and radiotherapy;\n4. Non-small cell lung cancer and other neuroendocrine carcinoma including typical or atypical carcinoid, large-cell neuroendocrine carcinoma;\n5. Extensive stage confirmed by cranial MRI, chest CT, abdominal ultrasonograph, bone scan or cranial MRI and PET-CT;\n6. No signature of inform consent."
+        },
+        "conditionsModule": {
+          "conditions": [
+            "Small-cell Lung Cancer"
+          ],
+          "keywords": [
+            "Hypofraction radiotherapy, Small cell lung cancer, immune checkpoint inhibitor"
+          ]
+        },
+        "designModule": {
+          "studyType": "INTERVENTIONAL",
+          "phases": [
+            "PHASE1",
+            "PHASE2"
+          ],
+          "designInfo": {
+            "allocation": "NA",
+            "interventionModel": "SINGLE_GROUP",
+            "interventionModelDescription": "Hypofractionated radiotherapy combined with immunotherapy",
+            "primaryPurpose": "TREATMENT",
+            "maskingInfo": {
+              "masking": "NONE"
+            }
+          },
+          "enrollmentInfo": {
+            "count": 45,
+            "type": "ESTIMATED"
+          }
+        },
+        "armsInterventionsModule": {
+          "interventions": [
+            {
+              "type": "DRUG",
+              "name": "hypofractionated radiotherapy with immunotherapy",
+              "description": "hypofractionated radiotherapy with Adebrelimab consolidation"
+            }
+          ]
+        },
+        "outcomesModule": {
+          "primaryOutcomes": [
+            {
+              "measure": "progression-free survival",
+              "description": "progression-free survival",
+              "timeFrame": "1 to 2 years"
+            }
+          ],
+          "secondaryOutcomes": [
+            {
+              "measure": "2-year progression-free survival rate",
+              "description": "2-year progression-free survival rate",
+              "timeFrame": "2 year"
+            },
+            {
+              "measure": "2-year overall survival rate",
+              "description": "2-year overall survival rate",
+              "timeFrame": "2 year"
+            }
+          ]
+        },
+        "eligibilityModule": {
+          "eligibilityCriteria": "Inclusion Criteria:\n\n* 18-70 years old;\n* ECOG 0-1;\n* Adequate organ function to tolerate chemotherapy, immunotherapy and radiotherapy;\n* Small-cell lung cancer;\n* Limited stage confirmed by cranial MRI, chest CT, abdominal ultrasonograph, bone scan or cranial MRI and PET-CT;\n* Signature of inform consent.\n\nExclusion Criteria:\n\n* Younger than 18 years old or older than 70 years old;\n* ECOG\\>1;\n* Inadequate organ function to tolerate chemotherapy, immunotherapy and radiotherapy;\n* Non-small cell lung cancer and other neuroendocrine carcinoma including typical or atypical carcinoid, large-cell neuroendocrine carcinoma;\n* Extensive stage confirmed by cranial MRI, chest CT, abdominal ultrasonograph, bone scan or cranial MRI and PET-CT;\n* No signature of inform consent.",
+          "healthyVolunteers": false,
+          "sex": "ALL",
+          "minimumAge": "18 Years",
+          "maximumAge": "70 Years",
+          "stdAges": [
+            "ADULT",
+            "OLDER_ADULT"
+          ]
+        },
+        "contactsLocationsModule": {
+          "centralContacts": [
+            {
+              "name": "Dong Qian, M.D.",
+              "role": "CONTACT",
+              "phone": "+8619156007756",
+              "email": "qiandong@ustc.edu.cn"
+            },
+            {
+              "name": "Xiao-Yang Li",
+              "role": "CONTACT",
+              "phone": "+8618701851829",
+              "email": "drxyl@ustc.edu.cn"
+            }
+          ],
+          "locations": [
+            {
+              "facility": "Anhui Provicial Hospital",
+              "status": "RECRUITING",
+              "city": "Hefei",
+              "state": "Anhui",
+              "zip": "230011",
+              "country": "China",
+              "contacts": [
+                {
+                  "name": "Xiao-Yang Li",
+                  "role": "CONTACT",
+                  "phone": "+8618701851829",
+                  "email": "drxyl@ustc.edu.cn"
+                }
+              ],
+              "geoPoint": {
+                "lat": 31.86389,
+                "lon": 117.28083
+              }
+            }
+          ]
+        },
+        "ipdSharingStatementModule": {
+          "ipdSharing": "NO"
+        }
+      },
+      "derivedSection": {
+        "miscInfoModule": {
+          "versionHolder": "2026-08-06"
+        },
+        "conditionBrowseModule": {
+          "meshes": [
+            {
+              "id": "D055752",
+              "term": "Small Cell Lung Carcinoma"
+            }
+          ],
+          "ancestors": [
+            {
+              "id": "D002283",
+              "term": "Carcinoma, Bronchogenic"
+            },
+            {
+              "id": "D001984",
+              "term": "Bronchial Neoplasms"
+            },
+            {
+              "id": "D008175",
+              "term": "Lung Neoplasms"
+            },
+            {
+              "id": "D012142",
+              "term": "Respiratory Tract Neoplasms"
+            },
+            {
+              "id": "D013899",
+              "term": "Thoracic Neoplasms"
+            },
+            {
+              "id": "D009371",
+              "term": "Neoplasms by Site"
+            },
+            {
+              "id": "D009369",
+              "term": "Neoplasms"
+            },
+            {
+              "id": "D008171",
+              "term": "Lung Diseases"
+            },
+            {
+              "id": "D012140",
+              "term": "Respiratory Tract Diseases"
+            }
+          ]
+        },
+        "interventionBrowseModule": {
+          "meshes": [
+            {
+              "id": "D007167",
+              "term": "Immunotherapy"
+            }
+          ],
+          "ancestors": [
+            {
+              "id": "D056747",
+              "term": "Immunomodulation"
+            },
+            {
+              "id": "D001691",
+              "term": "Biological Therapy"
+            },
+            {
+              "id": "D013812",
+              "term": "Therapeutics"
+            }
+          ]
+        }
+      },
+      "hasResults": false
+    }
+  ],
+  "nextPageToken": "ZVdj7o2Elu8o3lp2VNio5bbumpOQJJxuZPCh0A"
+}

@@ -124,8 +124,14 @@ Sections, Components, Slots or permissions from natural-language docs
   attribution, no investment advice — enforced in prompt + output
   validation + abstention path; agent_observation claims; live DeepSeek
   end-to-end verified; 5 tests)
+- OS-020 Research Domain — done (4 frozen launch topics:
+  oncology-immunotherapy / synthetic-biology / generative-ai /
+  quantum-computing; topic definitions + baseline queries + entity
+  mappings in infra/topics/research-frontier.yaml; OpenAlex + 
+  ClinicalTrials.gov adapters with real-API fixtures; 7 tests)
 
-Next milestones: OS-020 Research domain, OS-021 investigation candidates.
+Next milestones: OS-021 investigation candidates, OS-022 Research
+Charter Agent.
 
 ## Database
 
