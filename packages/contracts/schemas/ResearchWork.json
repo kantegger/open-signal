@@ -1,0 +1,138 @@
+{
+  "additionalProperties": false,
+  "description": "spec §106.",
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "publicationDate": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Publicationdate"
+    },
+    "workType": {
+      "enum": [
+        "article",
+        "preprint",
+        "review",
+        "dataset",
+        "book",
+        "conference",
+        "other"
+      ],
+      "title": "Worktype",
+      "type": "string"
+    },
+    "doi": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Doi"
+    },
+    "externalIds": {
+      "items": {
+        "additionalProperties": {
+          "type": "string"
+        },
+        "type": "object"
+      },
+      "title": "Externalids",
+      "type": "array"
+    },
+    "authorEntityIds": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Authorentityids",
+      "type": "array"
+    },
+    "institutionEntityIds": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Institutionentityids",
+      "type": "array"
+    },
+    "topicIds": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Topicids",
+      "type": "array"
+    },
+    "abstractText": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Abstracttext"
+    },
+    "abstractRights": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Abstractrights"
+    },
+    "openAccessLocations": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Openaccesslocations",
+      "type": "array"
+    },
+    "sourceRecordIds": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Sourcerecordids",
+      "type": "array"
+    },
+    "status": {
+      "enum": [
+        "active",
+        "retracted",
+        "corrected",
+        "merged"
+      ],
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "workType",
+    "status"
+  ],
+  "title": "ResearchWork",
+  "type": "object"
+}

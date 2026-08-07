@@ -1,0 +1,368 @@
+{
+  "$defs": {
+    "StructuredProposition": {
+      "additionalProperties": false,
+      "description": "spec §157.",
+      "properties": {
+        "subjectIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Subjectids",
+          "type": "array"
+        },
+        "predicate": {
+          "title": "Predicate",
+          "type": "string"
+        },
+        "objectIds": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Objectids"
+        },
+        "operator": {
+          "anyOf": [
+            {
+              "enum": [
+                "equals",
+                "greater_than",
+                "less_than",
+                "increased",
+                "decreased",
+                "transitioned_to",
+                "will_occur",
+                "will_persist",
+                "is_forming",
+                "is_associated_with"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Operator"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "baseline": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Baseline"
+        },
+        "observationWindow": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observationwindow"
+        },
+        "qualifiers": {
+          "additionalProperties": true,
+          "title": "Qualifiers",
+          "type": "object"
+        },
+        "propositionVersion": {
+          "title": "Propositionversion",
+          "type": "string"
+        }
+      },
+      "required": [
+        "predicate",
+        "propositionVersion"
+      ],
+      "title": "StructuredProposition",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "spec §156.",
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "institutionId": {
+      "title": "Institutionid",
+      "type": "string"
+    },
+    "deskId": {
+      "title": "Deskid",
+      "type": "string"
+    },
+    "agentLineageId": {
+      "title": "Agentlineageid",
+      "type": "string"
+    },
+    "modelVersion": {
+      "title": "Modelversion",
+      "type": "string"
+    },
+    "charterVersion": {
+      "title": "Charterversion",
+      "type": "string"
+    },
+    "runId": {
+      "title": "Runid",
+      "type": "string"
+    },
+    "sectionId": {
+      "title": "Sectionid",
+      "type": "string"
+    },
+    "capabilityId": {
+      "title": "Capabilityid",
+      "type": "string"
+    },
+    "claimType": {
+      "enum": [
+        "source_fact",
+        "derived_observation",
+        "attributed_interpretation",
+        "analytical_inference",
+        "editorial_judgment",
+        "forecast",
+        "structural_hypothesis"
+      ],
+      "title": "Claimtype",
+      "type": "string"
+    },
+    "claimFamilyId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Claimfamilyid"
+    },
+    "publicStatement": {
+      "title": "Publicstatement",
+      "type": "string"
+    },
+    "structuredProposition": {
+      "$ref": "#/$defs/StructuredProposition"
+    },
+    "confidence": {
+      "anyOf": [
+        {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Confidence"
+    },
+    "confidenceLabel": {
+      "anyOf": [
+        {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "very_high"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Confidencelabel"
+    },
+    "epistemicStatus": {
+      "enum": [
+        "observed",
+        "derived",
+        "attributed",
+        "inferred",
+        "assessed",
+        "forecasted",
+        "hypothesized"
+      ],
+      "title": "Epistemicstatus",
+      "type": "string"
+    },
+    "evidenceBundleId": {
+      "title": "Evidencebundleid",
+      "type": "string"
+    },
+    "primaryEvidenceIds": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Primaryevidenceids",
+      "type": "array"
+    },
+    "counterEvidenceIds": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Counterevidenceids",
+      "type": "array"
+    },
+    "alternativeExplanationIds": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Alternativeexplanationids",
+      "type": "array"
+    },
+    "evidenceSnapshotHash": {
+      "title": "Evidencesnapshothash",
+      "type": "string"
+    },
+    "issuedAt": {
+      "title": "Issuedat",
+      "type": "string"
+    },
+    "validFrom": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Validfrom"
+    },
+    "validUntil": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Validuntil"
+    },
+    "resolutionContractId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Resolutioncontractid"
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "verified",
+        "published",
+        "active",
+        "degraded",
+        "amended",
+        "withdrawn",
+        "expired",
+        "resolution_due",
+        "resolution_observed",
+        "resolved",
+        "ambiguous",
+        "unresolvable"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "currentVersionId": {
+      "title": "Currentversionid",
+      "type": "string"
+    },
+    "createdAt": {
+      "title": "Createdat",
+      "type": "string"
+    },
+    "updatedAt": {
+      "title": "Updatedat",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "institutionId",
+    "deskId",
+    "agentLineageId",
+    "modelVersion",
+    "charterVersion",
+    "runId",
+    "sectionId",
+    "capabilityId",
+    "claimType",
+    "publicStatement",
+    "structuredProposition",
+    "epistemicStatus",
+    "evidenceBundleId",
+    "evidenceSnapshotHash",
+    "issuedAt",
+    "status",
+    "currentVersionId",
+    "createdAt",
+    "updatedAt"
+  ],
+  "title": "Claim",
+  "type": "object"
+}

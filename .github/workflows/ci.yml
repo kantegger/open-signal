@@ -35,3 +35,28 @@ jobs:
       - name: Build
         working-directory: apps/web
         run: npm run build
+
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install worker
+        run: pip install ./apps/worker[dev]
+      - name: Generate contracts
+        run: python scripts/gen_contracts.py
+      - name: Round-trip check
+        run: python scripts/check_contracts.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install contracts deps
+        working-directory: packages/contracts
+        run: npm install
+      - name: TS typecheck
+        working-directory: packages/contracts
+        run: npm run typecheck
+      - name: Verify generated types are current
+        run: git diff --exit-code -- packages/contracts/src packages/contracts/schemas

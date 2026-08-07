@@ -1,0 +1,105 @@
+{
+  "additionalProperties": false,
+  "description": "spec §64 / D.5.",
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "slotId": {
+      "title": "Slotid",
+      "type": "string"
+    },
+    "sectionInstanceId": {
+      "title": "Sectioninstanceid",
+      "type": "string"
+    },
+    "claimIds": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Claimids",
+      "type": "array"
+    },
+    "componentId": {
+      "title": "Componentid",
+      "type": "string"
+    },
+    "componentVersion": {
+      "title": "Componentversion",
+      "type": "string"
+    },
+    "componentVariant": {
+      "enum": [
+        "compact",
+        "standard",
+        "lead",
+        "mobile"
+      ],
+      "title": "Componentvariant",
+      "type": "string"
+    },
+    "headline": {
+      "title": "Headline",
+      "type": "string"
+    },
+    "dek": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Dek"
+    },
+    "displayFields": {
+      "additionalProperties": true,
+      "title": "Displayfields",
+      "type": "object"
+    },
+    "hiddenDetailFields": {
+      "additionalProperties": true,
+      "title": "Hiddendetailfields",
+      "type": "object"
+    },
+    "evidenceBundleId": {
+      "title": "Evidencebundleid",
+      "type": "string"
+    },
+    "visualPriority": {
+      "title": "Visualpriority",
+      "type": "integer"
+    },
+    "mobilePriority": {
+      "title": "Mobilepriority",
+      "type": "integer"
+    },
+    "generatedBy": {
+      "title": "Generatedby",
+      "type": "string"
+    },
+    "approvedByVerificationRunId": {
+      "title": "Approvedbyverificationrunid",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "slotId",
+    "sectionInstanceId",
+    "componentId",
+    "componentVersion",
+    "componentVariant",
+    "headline",
+    "evidenceBundleId",
+    "visualPriority",
+    "mobilePriority",
+    "generatedBy",
+    "approvedByVerificationRunId"
+  ],
+  "title": "RenderPlan",
+  "type": "object"
+}

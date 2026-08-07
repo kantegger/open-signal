@@ -64,5 +64,8 @@ Sections, Components, Slots or permissions from natural-language docs
 
 ## Status
 
-Monorepo bootstrap (OS-001). Next milestones: OS-002 Pydantic contract
-source, OS-003 database migrations, OS-004 PostgreSQL job queue.
+- OS-001 Monorepo bootstrap — done
+- OS-002 Pydantic contract source — done (9 first-batch objects, JSON Schema
+  + generated TypeScript types under `packages/contracts`)
+
+Next milestones: OS-003 database migrations, OS-004 PostgreSQL job queue.

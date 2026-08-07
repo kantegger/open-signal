@@ -1,0 +1,130 @@
+{
+  "additionalProperties": false,
+  "description": "spec §100.",
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "canonicalQuestion": {
+      "title": "Canonicalquestion",
+      "type": "string"
+    },
+    "subjectEntityIds": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Subjectentityids",
+      "type": "array"
+    },
+    "eventType": {
+      "title": "Eventtype",
+      "type": "string"
+    },
+    "outcomeType": {
+      "enum": [
+        "binary",
+        "categorical",
+        "threshold",
+        "range"
+      ],
+      "title": "Outcometype",
+      "type": "string"
+    },
+    "threshold": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Threshold"
+    },
+    "thresholdUnit": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Thresholdunit"
+    },
+    "observationStartAt": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Observationstartat"
+    },
+    "resolutionDeadlineAt": {
+      "title": "Resolutiondeadlineat",
+      "type": "string"
+    },
+    "resolutionAuthority": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Resolutionauthority"
+    },
+    "resolutionRuleSummary": {
+      "title": "Resolutionrulesummary",
+      "type": "string"
+    },
+    "resolutionRuleHash": {
+      "title": "Resolutionrulehash",
+      "type": "string"
+    },
+    "sourceMarketIds": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Sourcemarketids",
+      "type": "array"
+    },
+    "status": {
+      "enum": [
+        "active",
+        "resolved",
+        "void",
+        "ambiguous",
+        "retired"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "canonicalizationVersion": {
+      "title": "Canonicalizationversion",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "canonicalQuestion",
+    "eventType",
+    "outcomeType",
+    "resolutionDeadlineAt",
+    "resolutionRuleSummary",
+    "resolutionRuleHash",
+    "status",
+    "canonicalizationVersion"
+  ],
+  "title": "CanonicalExpectation",
+  "type": "object"
+}

@@ -1,0 +1,151 @@
+{
+  "additionalProperties": false,
+  "description": "spec §102.",
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "sourceMarketId": {
+      "title": "Sourcemarketid",
+      "type": "string"
+    },
+    "observedAt": {
+      "title": "Observedat",
+      "type": "string"
+    },
+    "probability": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Probability"
+    },
+    "bestBid": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Bestbid"
+    },
+    "bestAsk": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Bestask"
+    },
+    "midpoint": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Midpoint"
+    },
+    "lastTradePrice": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Lasttradeprice"
+    },
+    "spread": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Spread"
+    },
+    "volume": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Volume"
+    },
+    "openInterest": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Openinterest"
+    },
+    "priceMethod": {
+      "enum": [
+        "midpoint",
+        "last_trade",
+        "source_probability",
+        "unknown"
+      ],
+      "title": "Pricemethod",
+      "type": "string"
+    },
+    "dataQualityFlags": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Dataqualityflags",
+      "type": "array"
+    },
+    "rawSourceRecordId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rawsourcerecordid"
+    }
+  },
+  "required": [
+    "id",
+    "sourceMarketId",
+    "observedAt",
+    "priceMethod"
+  ],
+  "title": "MarketObservation",
+  "type": "object"
+}

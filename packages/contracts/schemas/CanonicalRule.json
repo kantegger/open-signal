@@ -1,0 +1,228 @@
+{
+  "additionalProperties": false,
+  "description": "spec §103.",
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "jurisdictionId": {
+      "title": "Jurisdictionid",
+      "type": "string"
+    },
+    "issuingAuthorityId": {
+      "title": "Issuingauthorityid",
+      "type": "string"
+    },
+    "ruleType": {
+      "title": "Ruletype",
+      "type": "string"
+    },
+    "currentState": {
+      "enum": [
+        "announced",
+        "draft",
+        "consultation",
+        "committee_review",
+        "adopted",
+        "signed",
+        "effective",
+        "enforced",
+        "delayed",
+        "withdrawn",
+        "superseded"
+      ],
+      "title": "Currentstate",
+      "type": "string"
+    },
+    "previousState": {
+      "anyOf": [
+        {
+          "enum": [
+            "announced",
+            "draft",
+            "consultation",
+            "committee_review",
+            "adopted",
+            "signed",
+            "effective",
+            "enforced",
+            "delayed",
+            "withdrawn",
+            "superseded"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Previousstate"
+    },
+    "officialIdentifier": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Officialidentifier"
+    },
+    "docketIdentifiers": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Docketidentifiers",
+      "type": "array"
+    },
+    "announcedAt": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Announcedat"
+    },
+    "adoptedAt": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Adoptedat"
+    },
+    "signedAt": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Signedat"
+    },
+    "effectiveAt": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Effectiveat"
+    },
+    "enforcementAt": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Enforcementat"
+    },
+    "delayedAt": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Delayedat"
+    },
+    "withdrawnAt": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Withdrawnat"
+    },
+    "supersededAt": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Supersededat"
+    },
+    "affectedEntityTypeIds": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Affectedentitytypeids",
+      "type": "array"
+    },
+    "topicIds": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Topicids",
+      "type": "array"
+    },
+    "currentVersionId": {
+      "title": "Currentversionid",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "active",
+        "withdrawn",
+        "superseded",
+        "expired"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "ontologyVersion": {
+      "title": "Ontologyversion",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "jurisdictionId",
+    "issuingAuthorityId",
+    "ruleType",
+    "currentState",
+    "currentVersionId",
+    "status",
+    "ontologyVersion"
+  ],
+  "title": "CanonicalRule",
+  "type": "object"
+}

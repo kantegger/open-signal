@@ -1,0 +1,152 @@
+{
+  "additionalProperties": false,
+  "description": "spec §84.",
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "category": {
+      "enum": [
+        "prediction_market",
+        "official_legal",
+        "official_government",
+        "scholarly_metadata",
+        "open_access_literature",
+        "clinical_registry",
+        "patent_data",
+        "news_metadata",
+        "other"
+      ],
+      "title": "Category",
+      "type": "string"
+    },
+    "authorityLevel": {
+      "enum": [
+        "primary_official",
+        "official_repository",
+        "licensed_aggregator",
+        "open_aggregator",
+        "secondary_source"
+      ],
+      "title": "Authoritylevel",
+      "type": "string"
+    },
+    "accessMode": {
+      "enum": [
+        "rest",
+        "graphql",
+        "websocket",
+        "rss",
+        "atom",
+        "sparql",
+        "bulk_snapshot",
+        "file_download",
+        "web_fetch"
+      ],
+      "title": "Accessmode",
+      "type": "string"
+    },
+    "baseUrl": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Baseurl"
+    },
+    "documentationUrl": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Documentationurl"
+    },
+    "adapterId": {
+      "title": "Adapterid",
+      "type": "string"
+    },
+    "rightsManifestId": {
+      "title": "Rightsmanifestid",
+      "type": "string"
+    },
+    "updateCadence": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Updatecadence"
+    },
+    "expectedLatency": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expectedlatency"
+    },
+    "sourceStatus": {
+      "enum": [
+        "candidate",
+        "shadow",
+        "active",
+        "degraded",
+        "suspended",
+        "retired"
+      ],
+      "title": "Sourcestatus",
+      "type": "string"
+    },
+    "healthCheckInterval": {
+      "title": "Healthcheckinterval",
+      "type": "string"
+    },
+    "lastSuccessfulFetchAt": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Lastsuccessfulfetchat"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "category",
+    "authorityLevel",
+    "accessMode",
+    "adapterId",
+    "rightsManifestId",
+    "sourceStatus",
+    "healthCheckInterval"
+  ],
+  "title": "SourceDefinition",
+  "type": "object"
+}

@@ -1,0 +1,123 @@
+{
+  "additionalProperties": false,
+  "description": "spec §94.",
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "sourceId": {
+      "title": "Sourceid",
+      "type": "string"
+    },
+    "externalId": {
+      "title": "Externalid",
+      "type": "string"
+    },
+    "externalParentId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Externalparentid"
+    },
+    "recordType": {
+      "title": "Recordtype",
+      "type": "string"
+    },
+    "mimeType": {
+      "title": "Mimetype",
+      "type": "string"
+    },
+    "payload": {
+      "title": "Payload"
+    },
+    "sourceCreatedAt": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sourcecreatedat"
+    },
+    "sourceUpdatedAt": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sourceupdatedat"
+    },
+    "firstSeenAt": {
+      "title": "Firstseenat",
+      "type": "string"
+    },
+    "lastSeenAt": {
+      "title": "Lastseenat",
+      "type": "string"
+    },
+    "ingestedAt": {
+      "title": "Ingestedat",
+      "type": "string"
+    },
+    "contentHash": {
+      "title": "Contenthash",
+      "type": "string"
+    },
+    "transportMetadata": {
+      "additionalProperties": true,
+      "description": "statusCode/etag/lastModified/requestId (spec §94)",
+      "title": "Transportmetadata",
+      "type": "object"
+    },
+    "rightsManifestId": {
+      "title": "Rightsmanifestid",
+      "type": "string"
+    },
+    "adapterVersion": {
+      "title": "Adapterversion",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "active",
+        "changed",
+        "deleted",
+        "retracted",
+        "unavailable"
+      ],
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "sourceId",
+    "externalId",
+    "recordType",
+    "mimeType",
+    "payload",
+    "firstSeenAt",
+    "lastSeenAt",
+    "ingestedAt",
+    "contentHash",
+    "rightsManifestId",
+    "adapterVersion",
+    "status"
+  ],
+  "title": "RawSourceRecord",
+  "type": "object"
+}

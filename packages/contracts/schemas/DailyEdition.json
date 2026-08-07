@@ -1,0 +1,217 @@
+{
+  "$defs": {
+    "RenderPlan": {
+      "additionalProperties": false,
+      "description": "spec §64 / D.5.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "slotId": {
+          "title": "Slotid",
+          "type": "string"
+        },
+        "sectionInstanceId": {
+          "title": "Sectioninstanceid",
+          "type": "string"
+        },
+        "claimIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Claimids",
+          "type": "array"
+        },
+        "componentId": {
+          "title": "Componentid",
+          "type": "string"
+        },
+        "componentVersion": {
+          "title": "Componentversion",
+          "type": "string"
+        },
+        "componentVariant": {
+          "enum": [
+            "compact",
+            "standard",
+            "lead",
+            "mobile"
+          ],
+          "title": "Componentvariant",
+          "type": "string"
+        },
+        "headline": {
+          "title": "Headline",
+          "type": "string"
+        },
+        "dek": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dek"
+        },
+        "displayFields": {
+          "additionalProperties": true,
+          "title": "Displayfields",
+          "type": "object"
+        },
+        "hiddenDetailFields": {
+          "additionalProperties": true,
+          "title": "Hiddendetailfields",
+          "type": "object"
+        },
+        "evidenceBundleId": {
+          "title": "Evidencebundleid",
+          "type": "string"
+        },
+        "visualPriority": {
+          "title": "Visualpriority",
+          "type": "integer"
+        },
+        "mobilePriority": {
+          "title": "Mobilepriority",
+          "type": "integer"
+        },
+        "generatedBy": {
+          "title": "Generatedby",
+          "type": "string"
+        },
+        "approvedByVerificationRunId": {
+          "title": "Approvedbyverificationrunid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "slotId",
+        "sectionInstanceId",
+        "componentId",
+        "componentVersion",
+        "componentVariant",
+        "headline",
+        "evidenceBundleId",
+        "visualPriority",
+        "mobilePriority",
+        "generatedBy",
+        "approvedByVerificationRunId"
+      ],
+      "title": "RenderPlan",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "spec §63.",
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "editionDate": {
+      "title": "Editiondate",
+      "type": "string"
+    },
+    "generatedAt": {
+      "title": "Generatedat",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "shadow",
+        "published",
+        "corrected",
+        "archived"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "leadRegion": {
+      "$ref": "#/$defs/RenderPlan"
+    },
+    "secondarySignals": {
+      "items": {
+        "$ref": "#/$defs/RenderPlan"
+      },
+      "title": "Secondarysignals",
+      "type": "array"
+    },
+    "liveFeed": {
+      "$ref": "#/$defs/RenderPlan"
+    },
+    "digest": {
+      "$ref": "#/$defs/RenderPlan"
+    },
+    "mainContent": {
+      "items": {
+        "$ref": "#/$defs/RenderPlan"
+      },
+      "title": "Maincontent",
+      "type": "array"
+    },
+    "utilityContent": {
+      "items": {
+        "$ref": "#/$defs/RenderPlan"
+      },
+      "title": "Utilitycontent",
+      "type": "array"
+    },
+    "archivePreview": {
+      "$ref": "#/$defs/RenderPlan"
+    },
+    "includedSectionIds": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Includedsectionids",
+      "type": "array"
+    },
+    "includedClaimIds": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Includedclaimids",
+      "type": "array"
+    },
+    "composerVersion": {
+      "title": "Composerversion",
+      "type": "string"
+    },
+    "componentVersions": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Componentversions",
+      "type": "object"
+    },
+    "generationCostUsd": {
+      "title": "Generationcostusd",
+      "type": "number"
+    },
+    "correctionCount": {
+      "default": 0,
+      "title": "Correctioncount",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "id",
+    "editionDate",
+    "generatedAt",
+    "status",
+    "leadRegion",
+    "liveFeed",
+    "digest",
+    "archivePreview",
+    "composerVersion",
+    "generationCostUsd"
+  ],
+  "title": "DailyEdition",
+  "type": "object"
+}
