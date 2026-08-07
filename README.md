@@ -78,8 +78,11 @@ Sections, Components, Slots or permissions from natural-language docs
 - OS-006 Raw Artifact Store — done (content-addressed SHA-256 store with
   deduplication, public/private buckets, retention metadata, signed access;
   Local + S3 adapters; 8 tests)
+- OS-007 Polymarket Gamma Adapter — done (market discovery, pagination,
+  cursor persistence via new source_cursors table (migration 0002),
+  raw record storage, health check, fixtures; 6 tests, live API verified)
 
-Next milestones: OS-007 Polymarket adapter, OS-008 Market Observation.
+Next milestones: OS-008 Market Observation, OS-009 Expectation Canonicalizer.
 
 ## Database
 

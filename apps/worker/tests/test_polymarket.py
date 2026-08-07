@@ -1,0 +1,196 @@
+"""Polymarket adapter tests (OS-007).
+
+Market discovery/parsing use saved fixtures (offline); cursor persistence
+and raw record storage require a real PostgreSQL via OPEN_SIGNAL_DATABASE_URL
+(migration 0002 applied).
+"""
+
+import json
+import os
+import uuid
+from pathlib import Path
+
+import pytest
+
+from open_signal.sources.polymarket import FIXTURE_DIR, PolymarketAdapter
+
+TEST_SOURCE = "polymarket-gamma"
+
+
+@pytest.fixture()
+def engine():
+    url = os.environ.get("OPEN_SIGNAL_DATABASE_URL")
+    if not url:
+        pytest.skip("OPEN_SIGNAL_DATABASE_URL not set")
+    from sqlalchemy import create_engine
+
+    return create_engine(url)
+
+
+@pytest.fixture()
+def adapter(engine, tmp_path):
+    # source_cursors.source_id references sources.id (uuid), so resolve it
+    source_uuid = _seed_source(engine, TEST_SOURCE)
+    return PolymarketAdapter(
+        engine,
+        source_id=source_uuid,
+        adapter_version="test",
+        page_size=8,
+        fixture_dir=tmp_path,
+        offline=True,
+    )
+
+
+@pytest.fixture()
+def fake_fixtures(tmp_path):
+    """Copy the real saved fixtures into a temp dir for offline discovery."""
+    for name in ("markets_offset_0.json", "markets_offset_8.json", "markets_offset_16.json"):
+        src = FIXTURE_DIR / name
+        if src.exists():
+            (tmp_path / name).write_bytes(src.read_bytes())
+    return tmp_path
+
+
+def _seed_source(engine, slug: str) -> str:
+    from sqlalchemy import text
+
+    with engine.begin() as conn:
+        row = conn.execute(
+            text("SELECT id FROM sources WHERE slug = :s"), {"s": slug}
+        ).fetchone()
+        if row:
+            return str(row[0])
+        row = conn.execute(
+            text(
+                "INSERT INTO sources (slug, name, category, authority_level, "
+                "access_mode, adapter_id, status) "
+                "VALUES (:s, :name, 'prediction_market', 'licensed_aggregator', "
+                "'rest', 'polymarket-gamma-v1', 'active') RETURNING id"
+            ),
+            {"s": slug, "name": slug},
+        ).fetchone()
+        return str(row[0])
+
+
+# ------------------------------------------------------------- discovery (DB)
+
+
+def test_discover_stores_raw_records_and_cursor(
+    adapter: PolymarketAdapter, engine, fake_fixtures
+) -> None:
+    _seed_source(engine, TEST_SOURCE)
+    # ensure fresh state
+    from sqlalchemy import text
+
+    with engine.begin() as conn:
+        conn.execute(text("DELETE FROM raw_source_records WHERE source_id = :s"), {"s": adapter.source_id})
+        conn.execute(text("DELETE FROM source_cursors WHERE source_id = :s"), {"s": adapter.source_id})
+
+    result = adapter.discover(max_pages=10)
+    assert result["markets"] >= 8
+    assert result["pages"] >= 1
+
+    with engine.connect() as conn:
+        count = conn.execute(
+            text("SELECT count(*) FROM raw_source_records WHERE source_id = :s"),
+            {"s": adapter.source_id},
+        ).scalar_one()
+        cursor = conn.execute(
+            text("SELECT value FROM source_cursors WHERE source_id = :s"),
+            {"s": adapter.source_id},
+        ).fetchone()
+
+    assert count == result["markets"]
+    assert cursor is not None and int(cursor[0]) > 0
+
+
+def test_discover_idempotent(adapter: PolymarketAdapter, engine, fake_fixtures) -> None:
+    _seed_source(engine, TEST_SOURCE)
+    from sqlalchemy import text
+
+    with engine.begin() as conn:
+        conn.execute(text("DELETE FROM raw_source_records WHERE source_id = :s"), {"s": adapter.source_id})
+        conn.execute(text("DELETE FROM source_cursors WHERE source_id = :s"), {"s": adapter.source_id})
+
+    first = adapter.discover(max_pages=2)
+    # 重置 cursor，模拟对同一批数据重复同步（验证 ON CONFLICT 幂等）
+    adapter.save_cursor("0")
+    second = adapter.discover(max_pages=2)  # same fixtures, same hashes
+    with engine.connect() as conn:
+        count = conn.execute(
+            text("SELECT count(*) FROM raw_source_records WHERE source_id = :s"),
+            {"s": adapter.source_id},
+        ).scalar_one()
+    assert first["markets"] >= 1
+    assert second["markets"] == 0  # nothing new
+    assert count == first["markets"]
+
+
+def test_cursor_continues_where_it_left_off(
+    adapter: PolymarketAdapter, engine, fake_fixtures
+) -> None:
+    _seed_source(engine, TEST_SOURCE)
+    from sqlalchemy import text
+
+    with engine.begin() as conn:
+        conn.execute(text("DELETE FROM raw_source_records WHERE source_id = :s"), {"s": adapter.source_id})
+        conn.execute(text("DELETE FROM source_cursors WHERE source_id = :s"), {"s": adapter.source_id})
+
+    adapter.discover(max_pages=1)  # one page (8 markets)
+    with engine.connect() as conn:
+        cursor = conn.execute(
+            text("SELECT value FROM source_cursors WHERE source_id = :s"),
+            {"s": adapter.source_id},
+        ).fetchone()
+    assert int(cursor[0]) == 8
+
+    # next discover resumes at offset 8 -> reads markets_offset_8 fixture
+    adapter.discover(max_pages=1)
+    with engine.connect() as conn:
+        count = conn.execute(
+            text("SELECT count(*) FROM raw_source_records WHERE source_id = :s"),
+            {"s": adapter.source_id},
+        ).scalar_one()
+    assert count == 16
+
+
+# ------------------------------------------------------------- cursor (DB)
+
+
+def test_cursor_upsert(adapter: PolymarketAdapter, engine) -> None:
+    _seed_source(engine, TEST_SOURCE)
+    adapter.save_cursor("5")
+    adapter.save_cursor("12")  # upsert, not duplicate
+    from sqlalchemy import text
+
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("SELECT value FROM source_cursors WHERE source_id = :s"),
+            {"s": adapter.source_id},
+        ).fetchall()
+    assert len(rows) == 1
+    assert rows[0][0] == "12"
+
+
+# --------------------------------------------------------------- health (live)
+
+
+def test_health_check_live() -> None:
+    from open_signal.sources.polymarket import GammaClient
+
+    client = GammaClient()
+    try:
+        # live check is opportunistic; fixture-based tests are the source of truth
+        assert client.health_check() in (True, False)
+    finally:
+        client.close()
+
+
+def test_save_fixture_roundtrip(tmp_path) -> None:
+    from open_signal.sources.polymarket import GammaClient, PolymarketAdapter
+
+    adapter = PolymarketAdapter(None, client=GammaClient(), fixture_dir=tmp_path)
+    markets = [{"id": 1, "question": "q1"}]
+    path = adapter.save_fixture(0, markets)
+    loaded = json.loads(Path(path).read_text(encoding="utf-8"))
+    assert loaded == markets

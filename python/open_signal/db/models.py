@@ -714,6 +714,19 @@ jobs = Table(
     Index("jobs_claim_idx", "queue_name", "status", "run_after", "priority"),
 )
 
+# spec §93 Source Cursor (appendix C did not include this table; added by OS-007)
+source_cursors = Table(
+    "source_cursors",
+    metadata,
+    Column("source_id", Text, ForeignKey("sources.id"), primary_key=True),
+    Column("cursor_type", Text, nullable=False),
+    Column("value", Text, nullable=False),
+    Column("last_successful_fetch_at", _tz, nullable=False, server_default=text("now()")),
+    Column("last_seen_source_timestamp", _tz),
+    Column("adapter_version", Text, nullable=False),
+    Column("updated_at", _tz, nullable=False, server_default=text("now()")),
+)
+
 
 # Circular foreign keys emitted as ALTER TABLE by the initial migration.
 def _postponed_fks() -> None:
