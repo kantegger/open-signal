@@ -732,7 +732,7 @@ source_cursors = Table(
 calculation_records = Table(
     "calculation_records",
     metadata,
-    Column("id", Uuid(), primary_key=True, server_default="gen_random_uuid()"),
+    Column("id", Uuid(), primary_key=True, server_default=text("gen_random_uuid()")),
     Column("calculation_type", Text, nullable=False),
     Column("subject_id", Uuid()),
     Column("subject_type", Text, nullable=False),
@@ -747,7 +747,7 @@ calculation_records = Table(
 section_instances = Table(
     "section_instances",
     metadata,
-    Column("id", Uuid(), primary_key=True, server_default="gen_random_uuid()"),
+    Column("id", Uuid(), primary_key=True, server_default=text("gen_random_uuid()")),
     Column("section_id", Text, nullable=False),
     Column("capability_id", Text, nullable=False),
     Column("subject_id", Uuid()),
@@ -761,7 +761,7 @@ section_instances = Table(
 feature_flags = Table(
     "feature_flags",
     metadata,
-    Column("id", Uuid(), primary_key=True, server_default="gen_random_uuid()"),
+    Column("id", Uuid(), primary_key=True, server_default=text("gen_random_uuid()")),
     Column("flag_name", Text, nullable=False, unique=True),
     Column("enabled", Boolean, nullable=False, server_default="true"),
     Column("description", Text),
@@ -772,7 +772,7 @@ feature_flags = Table(
 audit_events = Table(
     "audit_events",
     metadata,
-    Column("id", Uuid(), primary_key=True, server_default="gen_random_uuid()"),
+    Column("id", Uuid(), primary_key=True, server_default=text("gen_random_uuid()")),
     Column("action", Text, nullable=False),
     Column("actor", Text, nullable=False),
     Column("target", Text),

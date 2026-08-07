@@ -55,9 +55,11 @@ def upgrade() -> None:
 
     # --- tables (topologically sorted; use_alter FKs excluded) ---
     # NOTE: 0001 creates only the 36 appendix-C tables; later revisions add
-    # their own tables (source_cursors is added by 0002).
+    # their own tables (source_cursors, calculation_records, section_instances,
+    # feature_flags, audit_events).
+    _LATER_TABLES = frozenset({"source_cursors", "calculation_records", "section_instances", "feature_flags", "audit_events"})
     for table in models.metadata.sorted_tables:
-        if table.name == "source_cursors":
+        if table.name in _LATER_TABLES:
             continue
         op.execute(str(CreateTable(table).compile(dialect=_dialect)).strip())
         for index in table.indexes:
