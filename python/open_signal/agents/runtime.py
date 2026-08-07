@@ -257,7 +257,27 @@ class AgentRuntime:
             content, usage = self.client.chat(
                 messages, model=model, json_mode=output_schema is not None, max_tokens=max_tokens
             )
-            structured = self._parse_structured(content, output_schema)
+            try:
+                structured = self._parse_structured(content, output_schema)
+            except StructuredOutputError as first_error:
+                # one corrective retry: feed the schema error back to the model
+                if output_schema is None:
+                    raise
+                retry_messages = messages + [
+                    {"role": "assistant", "content": content},
+                    {
+                        "role": "user",
+                        "content": (
+                            f"你的输出不符合要求的 JSON Schema：{first_error}. "
+                            "请重新只输出一个严格符合该 JSON Schema 的 JSON 对象，"
+                            "包含所有 required 字段。"
+                        ),
+                    },
+                ]
+                content, usage = self.client.chat(
+                    retry_messages, model=model, json_mode=True, max_tokens=max_tokens
+                )
+                structured = self._parse_structured(content, output_schema)
 
             abstained, reason = self._check_abstention(structured)
             status = "abstained" if abstained else "completed"

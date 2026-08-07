@@ -132,8 +132,12 @@ Sections, Components, Slots or permissions from natural-language docs
 - OS-021 Investigation Candidates — done (deterministic institution-entry,
   trial stage-transition, cross-topic relation detection →
   research_signal_candidates only, no Claims; 6 tests)
+- OS-022 Research Domain Agent — done (Historian + Skeptic + Verification
+  roles, verdict → Shadow Ledger only (no Claims), abstention path;
+  runtime gained corrective schema retry; live DeepSeek end-to-end
+  verified; 4+1 tests)
 
-Next milestones: OS-022 Research Charter Agent, OS-023 Verification.
+Next milestones: OS-023 Claim ledger, OS-024 Claim verification checks.
 
 ## Database
 

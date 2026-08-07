@@ -113,6 +113,41 @@ def test_structured_output_non_json(runtime) -> None:
         runtime._parse_structured("not json at all", OUTPUT_SCHEMA)
 
 
+class RetryClient:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def chat(self, messages, **kw):
+        self.calls += 1
+        if self.calls == 1:
+            return '{"verdict": "yes", "reason": "x"', LlmUsage(10, 5, 15)  # invalid JSON
+        return json.dumps({"verdict": "yes", "reason": "ok", "confidence": 0.6}), LlmUsage(20, 10, 30)
+
+
+def test_schema_failure_triggers_corrective_retry(engine) -> None:
+    from sqlalchemy import text
+
+    client = RetryClient()
+    rt = AgentRuntime(engine, client=client)
+    _seed_lineage(engine)
+    result = rt.run(
+        lineage_id="os017-lineage",
+        desk_id="expectations-desk",
+        section_id="expectations-moved",
+        capability_id="expectation.probability-change",
+        context={},
+        output_schema=OUTPUT_SCHEMA,
+    )
+    assert client.calls == 2
+    assert result.structured["verdict"] == "yes"
+    with engine.connect() as conn:
+        tokens = conn.execute(
+            text("SELECT total_input_tokens FROM investigation_runs WHERE id = :id"),
+            {"id": result.run_id},
+        ).scalar_one()
+    assert tokens == 20  # second (retry) usage recorded
+
+
 # ---------------------------------------------------------------- abstention
 
 
