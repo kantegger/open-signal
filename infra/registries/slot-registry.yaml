@@ -1,0 +1,157 @@
+version: "0.1.0"
+
+slots:
+  - id: "lead-region"
+    type: "lead"
+    size: "lead_large"
+    required: true
+    collapsible: false
+    minimum_section_maturity: "beta"
+    minimum_capability_maturity: "beta"
+    allowed_section_ids:
+      - "expectations-moved"
+      - "rules-moved"
+      - "research-frontier"
+    allowed_component_family_ids:
+      - "signal-hero"
+    allows_observation: true
+    allows_analysis: true
+    allows_editorial_judgment: true
+    allows_experimental_judgment: false
+    minimum_evidence_level: "verified"
+    maximum_items: 1
+    desktop_order: 10
+    mobile_order: 10
+
+  - id: "secondary-signals"
+    type: "secondary"
+    size: "medium"
+    required: true
+    collapsible: false
+    minimum_section_maturity: "beta"
+    minimum_capability_maturity: "beta"
+    allowed_section_ids:
+      - "expectations-moved"
+      - "rules-moved"
+      - "research-frontier"
+    allowed_component_family_ids:
+      - "signal-hero"
+      - "time-series"
+      - "state-transition"
+      - "evidence-relationship"
+    allows_observation: true
+    allows_analysis: true
+    allows_editorial_judgment: true
+    allows_experimental_judgment: true
+    minimum_evidence_level: "verified"
+    maximum_items: 3
+    desktop_order: 20
+    mobile_order: 30
+
+  - id: "live-signal-feed"
+    type: "live_feed"
+    size: "strip"
+    required: true
+    collapsible: false
+    minimum_section_maturity: "beta"
+    minimum_capability_maturity: "production"
+    allowed_section_ids:
+      - "expectations-moved"
+      - "rules-moved"
+      - "research-frontier"
+    allowed_component_family_ids:
+      - "signal-feed"
+    allows_observation: true
+    allows_analysis: false
+    allows_editorial_judgment: false
+    allows_experimental_judgment: false
+    minimum_evidence_level: "verified"
+    maximum_items: 20
+    desktop_order: 30
+    mobile_order: 20
+
+  - id: "significant-changes"
+    type: "digest"
+    size: "full_width"
+    required: true
+    collapsible: false
+    minimum_section_maturity: "beta"
+    minimum_capability_maturity: "beta"
+    allowed_section_ids:
+      - "*"
+    allowed_component_family_ids:
+      - "signal-feed"
+    allows_observation: true
+    allows_analysis: false
+    allows_editorial_judgment: false
+    allows_experimental_judgment: false
+    minimum_evidence_level: "verified"
+    maximum_items: 8
+    desktop_order: 40
+    mobile_order: 40
+
+  - id: "main-content"
+    type: "main"
+    size: "medium"
+    required: false
+    collapsible: true
+    minimum_section_maturity: "beta"
+    minimum_capability_maturity: "beta"
+    allowed_section_ids:
+      - "*"
+    allowed_component_family_ids:
+      - "time-series"
+      - "state-transition"
+      - "document-change"
+      - "evidence-relationship"
+      - "resolution-comparison"
+    allows_observation: true
+    allows_analysis: true
+    allows_editorial_judgment: true
+    allows_experimental_judgment: true
+    minimum_evidence_level: "verified"
+    maximum_items: 4
+    desktop_order: 50
+    mobile_order: 50
+
+  - id: "utility"
+    type: "utility"
+    size: "small"
+    required: false
+    collapsible: true
+    minimum_section_maturity: "beta"
+    minimum_capability_maturity: "production"
+    allowed_section_ids:
+      - "expectations-moved"
+      - "rules-moved"
+    allowed_component_family_ids:
+      - "signal-feed"
+      - "resolution-comparison"
+    allows_observation: true
+    allows_analysis: false
+    allows_editorial_judgment: false
+    allows_experimental_judgment: false
+    minimum_evidence_level: "verified"
+    maximum_items: 2
+    desktop_order: 60
+    mobile_order: 60
+
+  - id: "archive-region"
+    type: "archive"
+    size: "full_width"
+    required: true
+    collapsible: false
+    minimum_section_maturity: "beta"
+    minimum_capability_maturity: "production"
+    allowed_section_ids:
+      - "*"
+    allowed_component_family_ids:
+      - "archive-snapshot"
+    allows_observation: true
+    allows_analysis: true
+    allows_editorial_judgment: false
+    allows_experimental_judgment: false
+    minimum_evidence_level: "published"
+    maximum_items: 5
+    desktop_order: 70
+    mobile_order: 70

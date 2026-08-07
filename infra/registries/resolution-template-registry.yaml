@@ -1,0 +1,51 @@
+version: "0.1.0"
+
+templates:
+  - id: "expectation.binary-event"
+    version: "1.0.0"
+    claim_type: "forecast"
+    section_ids:
+      - "expectations-moved"
+    description: "Resolve a binary event using a predeclared authority and deadline."
+    required_proposition_fields:
+      - "subject_ids"
+      - "predicate"
+      - "probability"
+      - "resolution_deadline"
+    default_evaluation_window: "until-resolution"
+    scoring_rule_id: "brier-binary-v1"
+    partial_credit_allowed: false
+    maturity: "production"
+
+  - id: "rule.effective-by-date"
+    version: "1.0.0"
+    claim_type: "forecast"
+    section_ids:
+      - "rules-moved"
+    description: "Resolve whether a rule becomes effective by a fixed date."
+    required_proposition_fields:
+      - "rule_id"
+      - "target_state"
+      - "deadline"
+    default_evaluation_window: "until-deadline-plus-30d"
+    scoring_rule_id: "binary-state-transition-v1"
+    partial_credit_allowed: false
+    maturity: "beta"
+
+  - id: "research.cross-field-bridge"
+    version: "0.1.0-shadow"
+    claim_type: "structural_hypothesis"
+    section_ids:
+      - "research-frontier"
+    description: >
+      Operationally evaluate whether a proposed research bridge persists,
+      broadens across institutions, and appears in multiple evidence types.
+    required_proposition_fields:
+      - "left_topic_id"
+      - "right_topic_id"
+      - "baseline_definition"
+      - "evaluation_deadline"
+    default_evaluation_window: "12m"
+    scoring_rule_id: "research-bridge-composite-v1"
+    partial_credit_allowed: true
+    maturity: "shadow"

@@ -1,0 +1,578 @@
+version: "0.1.0"
+
+components:
+  - id: "time-series.probability-move"
+    family_id: "time-series"
+    version: "1.0.0"
+    supported_section_ids:
+      - "expectations-moved"
+    supported_capability_ids:
+      - "expectation.probability-change"
+      - "expectation.sustained-move"
+    supported_claim_types:
+      - "derived_observation"
+      - "analytical_inference"
+    supported_slot_types:
+      - "secondary"
+      - "main"
+    narrative_mode: "mixed"
+    required_fields:
+      - "expectation_title"
+      - "current_probability"
+      - "start_probability"
+      - "delta_percentage_points"
+      - "window"
+      - "series"
+      - "source_name"
+      - "updated_at"
+    optional_fields:
+      - "persistence_label"
+      - "signal_quality"
+      - "resolution_deadline"
+    fallback_component_id: "signal-feed.compact-change"
+    fallback_conditions:
+      - "series_points_below_3"
+      - "series_completeness_below_0.80"
+    prohibited_uses:
+      - "non_probability_series"
+      - "relative_percentage_as_default_delta"
+      - "synthetic_interpolation_without_label"
+
+  - id: "state-transition.rule-stage"
+    family_id: "state-transition"
+    version: "1.0.0"
+    supported_section_ids:
+      - "rules-moved"
+    supported_capability_ids:
+      - "rule.state-transition"
+      - "rule.withdrawal"
+    supported_claim_types:
+      - "source_fact"
+      - "derived_observation"
+    supported_slot_types:
+      - "secondary"
+      - "main"
+      - "utility"
+    narrative_mode: "observation"
+    required_fields:
+      - "rule_title"
+      - "previous_state"
+      - "current_state"
+      - "transition_date"
+      - "authority"
+      - "source_url"
+    optional_fields:
+      - "effective_at"
+      - "affected_categories"
+    prohibited_uses:
+      - "unverified_transition"
+      - "cross_jurisdiction_state_comparison_without_mapping"
+
+  - id: "evidence-relationship.cross-field-bridge"
+    family_id: "evidence-relationship"
+    version: "0.3.0-beta"
+    supported_section_ids:
+      - "research-frontier"
+    supported_capability_ids:
+      - "research.cross-field-bridge"
+    supported_claim_types:
+      - "derived_observation"
+      - "analytical_inference"
+      - "editorial_judgment"
+      - "structural_hypothesis"
+    supported_slot_types:
+      - "secondary"
+      - "main"
+    narrative_mode: "mixed"
+    required_fields:
+      - "left_topic"
+      - "right_topic"
+      - "relation_types"
+      - "supporting_evidence"
+      - "counter_evidence"
+      - "historical_context"
+      - "confidence"
+      - "claim_id"
+    optional_fields:
+      - "network_nodes"
+      - "relation_strength"
+      - "resolution_deadline"
+    fallback_component_id: "evidence-relationship.evidence-timeline"
+    fallback_conditions:
+      - "independent_evidence_types_below_2"
+      - "network_edges_unverified"
+      - "historical_context_incomplete"
+    prohibited_uses:
+      - "decorative_edges"
+      - "breakthrough_claim_without_resolution_contract"
+      - "publication_count_only"
+
+  - id: "signal-hero.expectations"
+    family_id: "signal-hero"
+    version: "1.0.0"
+    supported_section_ids:
+      - "expectations-moved"
+    supported_capability_ids:
+      - "expectation.probability-change"
+      - "expectation.sustained-move"
+    supported_claim_types:
+      - "derived_observation"
+      - "analytical_inference"
+      - "editorial_judgment"
+    supported_slot_types:
+      - "lead"
+      - "secondary"
+    narrative_mode: "mixed"
+    required_fields:
+      - "expectation_title"
+      - "current_probability"
+      - "start_probability"
+      - "delta_percentage_points"
+      - "window"
+      - "series"
+      - "source_name"
+      - "updated_at"
+      - "headline"
+      - "primary_observation"
+    optional_fields:
+      - "analysis"
+      - "editorial_judgment"
+      - "evidence_summary"
+      - "counterpoint"
+    prohibited_uses:
+      - "market_psychology_claim"
+      - "investment_advice"
+      - "causal_news_explanation_without_evidence"
+
+  - id: "signal-hero.rules"
+    family_id: "signal-hero"
+    version: "1.0.0"
+    supported_section_ids:
+      - "rules-moved"
+    supported_capability_ids:
+      - "rule.state-transition"
+      - "rule.material-text-change"
+    supported_claim_types:
+      - "source_fact"
+      - "derived_observation"
+      - "analytical_inference"
+      - "editorial_judgment"
+    supported_slot_types:
+      - "lead"
+      - "secondary"
+    narrative_mode: "mixed"
+    required_fields:
+      - "rule_title"
+      - "previous_state"
+      - "current_state"
+      - "transition_date"
+      - "authority"
+      - "source_url"
+      - "headline"
+      - "primary_observation"
+    optional_fields:
+      - "analysis"
+      - "editorial_judgment"
+      - "affected_categories"
+    prohibited_uses:
+      - "hidden_intent_claim"
+      - "expected_market_impact_claim"
+      - "legal_advice"
+
+  - id: "signal-hero.research"
+    family_id: "signal-hero"
+    version: "0.3.0-beta"
+    supported_section_ids:
+      - "research-frontier"
+    supported_capability_ids:
+      - "research.cross-field-bridge"
+      - "research.stage-transition"
+    supported_claim_types:
+      - "derived_observation"
+      - "analytical_inference"
+      - "editorial_judgment"
+      - "structural_hypothesis"
+    supported_slot_types:
+      - "lead"
+      - "secondary"
+    narrative_mode: "mixed"
+    required_fields:
+      - "judgment_type"
+      - "headline_observation"
+      - "supporting_evidence"
+      - "counter_evidence"
+      - "historical_context"
+      - "confidence"
+      - "claim_id"
+    optional_fields:
+      - "network_nodes"
+      - "relation_strength"
+    fallback_component_id: "evidence-relationship.cross-field-bridge"
+    fallback_conditions:
+      - "hero_eligibility_unmet"
+      - "evidence_below_section_minimum"
+    prohibited_uses:
+      - "breakthrough_claim_without_resolution_contract"
+      - "publication_count_only"
+      - "single_source_evidence"
+
+  - id: "time-series.reversal"
+    family_id: "time-series"
+    version: "1.0.0"
+    supported_section_ids:
+      - "expectations-moved"
+    supported_capability_ids:
+      - "expectation.reversal"
+    supported_claim_types:
+      - "analytical_inference"
+    supported_slot_types:
+      - "secondary"
+      - "main"
+    narrative_mode: "analysis"
+    required_fields:
+      - "expectation_title"
+      - "previous_direction"
+      - "reversal_time"
+      - "probability_before"
+      - "probability_after"
+      - "sustained"
+      - "source_name"
+      - "updated_at"
+    optional_fields:
+      - "persistence_label"
+    prohibited_uses:
+      - "noise_as_reversal"
+      - "direction_reversal_without_rule"
+
+  - id: "time-series.near-resolution"
+    family_id: "time-series"
+    version: "1.0.0"
+    supported_section_ids:
+      - "expectations-moved"
+    supported_capability_ids:
+      - "expectation.near-resolution"
+      - "expectation.current-probability"
+    supported_claim_types:
+      - "derived_observation"
+    supported_slot_types:
+      - "secondary"
+      - "utility"
+    narrative_mode: "observation"
+    required_fields:
+      - "expectation_title"
+      - "current_probability"
+      - "resolution_deadline"
+      - "volatility_7d"
+      - "resolution_source"
+      - "updated_at"
+    optional_fields:
+      - "window"
+    prohibited_uses:
+      - "fabricated_countdown"
+
+  - id: "resolution.forecast-vs-outcome"
+    family_id: "resolution-comparison"
+    version: "1.0.0"
+    supported_section_ids:
+      - "expectations-moved"
+    supported_capability_ids:
+      - "expectation.forecast-vs-outcome"
+    supported_claim_types:
+      - "forecast"
+    supported_slot_types:
+      - "secondary"
+      - "main"
+      - "utility"
+    narrative_mode: "observation"
+    required_fields:
+      - "expectation_title"
+      - "final_probability"
+      - "outcome"
+      - "resolution_date"
+      - "error_metric"
+      - "claim_id"
+    optional_fields:
+      - "brier_contribution"
+    prohibited_uses:
+      - "commentary_scoring_without_contract"
+      - "retroactive_contract_change"
+
+  - id: "state-transition.effective-timeline"
+    family_id: "state-transition"
+    version: "1.0.0"
+    supported_section_ids:
+      - "rules-moved"
+    supported_capability_ids:
+      - "rule.effective-date"
+      - "rule.delay"
+    supported_claim_types:
+      - "source_fact"
+      - "derived_observation"
+    supported_slot_types:
+      - "secondary"
+      - "main"
+      - "utility"
+    narrative_mode: "observation"
+    required_fields:
+      - "rule_title"
+      - "announced_at"
+      - "adopted_at"
+      - "signed_at"
+      - "effective_at"
+      - "enforcement_at"
+      - "source_url"
+    optional_fields:
+      - "delayed_at"
+      - "withdrawn_at"
+    prohibited_uses:
+      - "cross_jurisdiction_timeline_without_mapping"
+      - "missing_stage_implied_as_complete"
+
+  - id: "state-transition.research-stage"
+    family_id: "state-transition"
+    version: "1.0.0"
+    supported_section_ids:
+      - "research-frontier"
+    supported_capability_ids:
+      - "research.stage-transition"
+    supported_claim_types:
+      - "source_fact"
+      - "derived_observation"
+    supported_slot_types:
+      - "secondary"
+      - "main"
+    narrative_mode: "observation"
+    required_fields:
+      - "work_title"
+      - "previous_stage"
+      - "current_stage"
+      - "transition_date"
+      - "evidence_ids"
+    optional_fields:
+      - "source_url"
+    prohibited_uses:
+      - "implicit_transition"
+      - "stage_order_from_single_source"
+
+  - id: "document-change.rule-diff"
+    family_id: "document-change"
+    version: "1.0.0"
+    supported_section_ids:
+      - "rules-moved"
+    supported_capability_ids:
+      - "rule.material-text-change"
+    supported_claim_types:
+      - "derived_observation"
+      - "analytical_inference"
+    supported_slot_types:
+      - "secondary"
+      - "main"
+    narrative_mode: "observation"
+    required_fields:
+      - "rule_title"
+      - "document_version"
+      - "diff_summary"
+      - "change_type"
+      - "source_url"
+    optional_fields:
+      - "affected_sections"
+    prohibited_uses:
+      - "technical_change_as_substantive"
+      - "formatting_change_presented_as_material"
+
+  - id: "signal-feed.upcoming-event"
+    family_id: "signal-feed"
+    version: "1.0.0"
+    supported_section_ids:
+      - "rules-moved"
+    supported_capability_ids:
+      - "rule.effective-date"
+    supported_claim_types:
+      - "source_fact"
+    supported_slot_types:
+      - "live_feed"
+      - "utility"
+    narrative_mode: "observation"
+    required_fields:
+      - "event_title"
+      - "event_date"
+      - "event_type"
+      - "source_name"
+    optional_fields:
+      - "source_url"
+    prohibited_uses:
+      - "event_without_authoritative_source"
+
+  - id: "signal-feed.near-deadline"
+    family_id: "signal-feed"
+    version: "1.0.0"
+    supported_section_ids:
+      - "expectations-moved"
+      - "rules-moved"
+    supported_capability_ids:
+      - "expectation.near-resolution"
+      - "rule.effective-date"
+    supported_claim_types:
+      - "source_fact"
+      - "derived_observation"
+    supported_slot_types:
+      - "live_feed"
+      - "utility"
+    narrative_mode: "observation"
+    required_fields:
+      - "item_title"
+      - "deadline_date"
+      - "deadline_type"
+      - "current_state"
+      - "source_name"
+    optional_fields:
+      - "source_url"
+    prohibited_uses:
+      - "fabricated_countdown"
+      - "deadline_type_mixed"
+
+  - id: "signal-feed.compact-change"
+    family_id: "signal-feed"
+    version: "1.0.0"
+    supported_section_ids:
+      - "expectations-moved"
+      - "rules-moved"
+      - "research-frontier"
+    supported_capability_ids:
+      - "expectation.probability-change"
+      - "expectation.current-probability"
+      - "expectation.reversal"
+      - "rule.state-transition"
+      - "rule.withdrawal"
+      - "rule.delay"
+      - "research.institution-entry"
+    supported_claim_types:
+      - "source_fact"
+      - "derived_observation"
+    supported_slot_types:
+      - "live_feed"
+      - "digest"
+      - "secondary"
+    narrative_mode: "observation"
+    required_fields:
+      - "change_title"
+      - "change_value"
+      - "claim_type"
+      - "source_name"
+      - "updated_at"
+    optional_fields:
+      - "claim_id"
+    prohibited_uses:
+      - "tiny_numeric_update_flood"
+      - "unverified_change"
+
+  - id: "evidence-relationship.evidence-timeline"
+    family_id: "evidence-relationship"
+    version: "1.0.0"
+    supported_section_ids:
+      - "research-frontier"
+    supported_capability_ids:
+      - "research.stage-transition"
+      - "research.emerging-cluster"
+      - "research.cross-field-bridge"
+    supported_claim_types:
+      - "source_fact"
+      - "derived_observation"
+    supported_slot_types:
+      - "secondary"
+      - "main"
+    narrative_mode: "observation"
+    required_fields:
+      - "topic"
+      - "events"
+      - "evidence_ids"
+      - "source_url"
+    optional_fields:
+      - "relation_types"
+    prohibited_uses:
+      - "causality_implied_from_sequence"
+      - "node_without_source"
+
+  - id: "evidence-relationship.institution-entry"
+    family_id: "evidence-relationship"
+    version: "1.0.0"
+    supported_section_ids:
+      - "research-frontier"
+    supported_capability_ids:
+      - "research.institution-entry"
+    supported_claim_types:
+      - "analytical_inference"
+    supported_slot_types:
+      - "secondary"
+      - "main"
+    narrative_mode: "analysis"
+    required_fields:
+      - "institution_name"
+      - "entry_signal"
+      - "supporting_evidence"
+      - "counter_evidence"
+      - "confidence"
+      - "claim_id"
+    optional_fields:
+      - "first_entry_date"
+    fallback_component_id: "evidence-relationship.evidence-timeline"
+    fallback_conditions:
+      - "evidence_insufficient"
+    prohibited_uses:
+      - "database_first_ingestion"
+      - "institution_rename"
+      - "affiliation_correction"
+      - "single_paper_coincidence"
+
+  - id: "archive-snapshot.archive-card"
+    family_id: "archive-snapshot"
+    version: "1.0.0"
+    supported_section_ids:
+      - "expectations-moved"
+      - "rules-moved"
+      - "research-frontier"
+    supported_capability_ids: []   # 存档组件不依赖实时 Capability
+    supported_claim_types:
+      - "source_fact"
+    supported_slot_types:
+      - "archive"
+    narrative_mode: "observation"
+    required_fields:
+      - "edition_date"
+      - "primary_signal"
+      - "significant_changes_count"
+      - "section_distribution"
+      - "published_claim_ids"
+      - "resolved_claim_ids"
+      - "correction_count"
+    optional_fields:
+      - "archive_url"
+    prohibited_uses:
+      - "current_edition_representation"
+      - "unfrozen_edition"
+
+  - id: "archive-snapshot.edition-detail"
+    family_id: "archive-snapshot"
+    version: "1.0.0"
+    supported_section_ids:
+      - "expectations-moved"
+      - "rules-moved"
+      - "research-frontier"
+    supported_capability_ids: []
+    supported_claim_types:
+      - "source_fact"
+    supported_slot_types:
+      - "archive"
+    narrative_mode: "observation"
+    required_fields:
+      - "edition_date"
+      - "frozen_front_page"
+      - "original_claims"
+      - "claim_revisions"
+      - "final_resolutions"
+      - "agent_versions"
+      - "evidence_snapshot"
+    optional_fields:
+      - "corrections"
+    prohibited_uses:
+      - "rerender_with_current_renderer"

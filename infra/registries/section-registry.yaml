@@ -1,0 +1,247 @@
+version: "0.1.0"
+
+sections:
+  - id: "expectations-moved"
+    title: "Expectations Moved"
+    short_title: "Expectations"
+    editorial_question: "世界对哪些未来事件的判断正在发生变化？"
+    editorial_mission: >
+      Detect material repricing, reversals, deadline uncertainty,
+      and resolved forecast outcomes without converting them into
+      investment recommendations or unsupported claims about market psychology.
+    user_value: >
+      Let readers see how expectations about the future are changing,
+      how persistent those changes appear, and how previous expectations resolved.
+    maturity: "beta"
+    runtime: "hybrid"
+    desk_id: "expectations-desk"
+    agent_charter_id: "expectations-charter-v1"
+
+    capability_ids:
+      - "expectation.current-probability"
+      - "expectation.probability-change"
+      - "expectation.sustained-move"
+      - "expectation.reversal"
+      - "expectation.near-resolution"
+      - "expectation.forecast-vs-outcome"
+
+    required_source_types:
+      - "prediction_market"
+
+    optional_source_types:
+      - "official_government"
+      - "news_metadata"
+
+    allowed_claim_types:
+      - "source_fact"
+      - "derived_observation"
+      - "analytical_inference"
+      - "forecast"
+
+    allowed_component_ids:
+      - "signal-hero.expectations"
+      - "time-series.probability-move"
+      - "time-series.reversal"
+      - "time-series.near-resolution"
+      - "resolution.forecast-vs-outcome"
+      - "signal-feed.compact-change"
+      - "signal-feed.near-deadline"
+
+    allowed_slot_types:
+      - "lead"
+      - "secondary"
+      - "live_feed"
+      - "digest"
+      - "main"
+      - "utility"
+
+    can_be_hero: true
+    can_appear_daily: true
+    can_run_without_agent: true
+
+    minimum_evidence_level: "derived_verified"
+    minimum_agent_maturity: "beta"
+    refresh_cadence: "15m-observation / 2h-editorial"
+    daily_cost_budget_usd: 3.0
+
+    repetition_policy:
+      maximum_consecutive_hero_days: 2
+      maximum_daily_instances: 4
+      entity_cooldown_hours: 24
+      topic_cooldown_hours: 12
+      continuation_requires_new_evidence: true
+
+    known_failure_modes:
+      - "low_liquidity_move_presented_as_information"
+      - "ambiguous_resolution_rules"
+      - "probability_presented_as_fact"
+      - "market_psychology_inferred_without_evidence"
+      - "investment_advice_drift"
+
+    suspension_conditions:
+      - "numeric_replay_rate_below_0.995"
+      - "source_schema_unresolved"
+      - "primary_source_unavailable_over_24h"
+
+  - id: "rules-moved"
+    title: "Rules Moved"
+    short_title: "Rules"
+    editorial_question: "哪些正式规则进入了新的阶段、发生了实质性修改或开始生效？"
+    editorial_mission: >
+      Track formal legal and regulatory movement using authoritative documents,
+      distinguishing announcement, proposal, adoption, effectiveness,
+      enforcement, delay, withdrawal, and supersession.
+    user_value: >
+      Convert long and fragmented official processes into a traceable
+      state machine without presenting legal advice.
+    maturity: "beta"
+    runtime: "hybrid"
+    desk_id: "rules-desk"
+    agent_charter_id: "rules-charter-v1"
+
+    capability_ids:
+      - "rule.state-transition"
+      - "rule.effective-date"
+      - "rule.delay"
+      - "rule.withdrawal"
+      - "rule.material-text-change"
+
+    required_source_types:
+      - "official_legal"
+      - "official_government"
+
+    optional_source_types:
+      - "licensed_aggregator"
+
+    allowed_claim_types:
+      - "source_fact"
+      - "derived_observation"
+      - "attributed_interpretation"
+      - "analytical_inference"
+      - "editorial_judgment"
+
+    allowed_component_ids:
+      - "signal-hero.rules"
+      - "state-transition.rule-stage"
+      - "state-transition.effective-timeline"
+      - "document-change.rule-diff"
+      - "signal-feed.upcoming-event"
+      - "signal-feed.near-deadline"
+      - "signal-feed.compact-change"
+
+    allowed_slot_types:
+      - "lead"
+      - "secondary"
+      - "live_feed"
+      - "digest"
+      - "main"
+      - "utility"
+
+    can_be_hero: true
+    can_appear_daily: true
+    can_run_without_agent: true
+
+    minimum_evidence_level: "authoritative_primary"
+    minimum_agent_maturity: "beta"
+    refresh_cadence: "2h-source / 4h-editorial"
+    daily_cost_budget_usd: 3.0
+
+    repetition_policy:
+      maximum_consecutive_hero_days: 3
+      maximum_daily_instances: 4
+      entity_cooldown_hours: 24
+      topic_cooldown_hours: 12
+      continuation_requires_new_evidence: true
+
+    known_failure_modes:
+      - "announcement_confused_with_enactment"
+      - "adoption_confused_with_effectiveness"
+      - "formatting_change_presented_as_substantive"
+      - "jurisdiction_specific_state_misclassified"
+      - "legal_advice_drift"
+
+    suspension_conditions:
+      - "authoritative_source_unavailable"
+      - "state_mapping_conflict_rate_above_0.02"
+      - "materiality_error_rate_above_0.05"
+
+  - id: "research-frontier"
+    title: "Research Frontier"
+    short_title: "Research"
+    editorial_question: "知识生产中正在形成哪些新的结构、关系或阶段变化？"
+    editorial_mission: >
+      Identify consequential changes in research structure through
+      autonomous investigation, historical comparison, multi-source evidence,
+      counterargument search, and explicit editorial judgment.
+    user_value: >
+      Surface research developments that cannot be understood from publication
+      counts alone: bridges, stage transitions, institutional entry,
+      and emerging clusters.
+    maturity: "shadow"
+    runtime: "agentic"
+    desk_id: "research-frontier-desk"
+    agent_charter_id: "research-frontier-charter-v1"
+
+    capability_ids:
+      - "research.stage-transition"
+      - "research.institution-entry"
+      - "research.cross-field-bridge"
+      - "research.emerging-cluster"
+
+    required_source_types:
+      - "scholarly_metadata"
+      - "open_access_literature"
+
+    optional_source_types:
+      - "clinical_registry"
+      - "patent_data"
+      - "official_research_program"
+
+    allowed_claim_types:
+      - "source_fact"
+      - "derived_observation"
+      - "analytical_inference"
+      - "editorial_judgment"
+      - "structural_hypothesis"
+
+    allowed_component_ids:
+      - "signal-hero.research"   # 能力声明；Desk 达到 Beta/Production 前不得进入 Lead Region（§34.12）
+      - "evidence-relationship.cross-field-bridge"
+      - "evidence-relationship.evidence-timeline"
+      - "evidence-relationship.institution-entry"
+      - "state-transition.research-stage"
+      - "signal-feed.compact-change"
+
+    allowed_slot_types:
+      - "secondary"
+      - "main"
+
+    can_be_hero: false   # 当前 maturity=shadow 为 false；Desk 达 Beta 后置 true（§34.12、§35）
+    can_appear_daily: false
+    can_run_without_agent: false
+
+    minimum_evidence_level: "multi_source_with_counterevidence"
+    minimum_agent_maturity: "shadow"
+    refresh_cadence: "daily"
+    daily_cost_budget_usd: 8.0
+
+    repetition_policy:
+      maximum_consecutive_hero_days: 0
+      maximum_daily_instances: 2
+      entity_cooldown_hours: 168
+      topic_cooldown_hours: 168
+      continuation_requires_new_evidence: true
+
+    known_failure_modes:
+      - "publication_volume_misread_as_frontier"
+      - "old_concept_renamed_as_new"
+      - "taxonomy_change_misread_as_scientific_change"
+      - "single_paper_dominates_signal"
+      - "database_coverage_change"
+      - "scientific_validity_overclaim"
+      - "decorative_network_without_semantic_edges"
+
+    suspension_conditions:
+      - "prior_art_omission_rate_above_0.10"
+      - "citation_support_rate_below_0.95"
+      - "high_severity_overclaim_count_above_1"

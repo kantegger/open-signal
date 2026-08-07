@@ -1,0 +1,382 @@
+version: "0.1.0"
+
+capabilities:
+  - id: "expectation.probability-change"
+    section_id: "expectations-moved"
+    title: "Probability Change"
+    maturity: "production"
+    runtime: "analytical"
+    required_inputs:
+      - "canonical_expectation"
+      - "market_observation_series"
+    required_tools:
+      - "calculate_probability_delta"
+      - "verify_market_rules"
+    output_claim_types:
+      - "derived_observation"
+    supported_components:
+      - "time-series.probability-move"
+      - "signal-feed.compact-change"
+      - "signal-hero.expectations"
+    validation_mode: "exact_replay"
+    minimum_evidence_items: 1
+    requires_counter_evidence: false
+    requires_resolution_contract: false
+    may_enter_hero: true
+    maximum_confidence: 0.99
+    cost_class: "low"
+
+  - id: "expectation.sustained-move"
+    section_id: "expectations-moved"
+    title: "Sustained Repricing"
+    maturity: "beta"
+    runtime: "hybrid"
+    required_inputs:
+      - "expectation_features"
+      - "market_quality_metrics"
+    required_tools:
+      - "get_expectation_series"
+      - "calculate_persistence"
+      - "inspect_market_quality"
+    output_claim_types:
+      - "analytical_inference"
+    supported_components:
+      - "signal-hero.expectations"
+      - "time-series.probability-move"
+    validation_mode: "statistical_validation"
+    minimum_evidence_items: 2
+    requires_counter_evidence: true
+    requires_resolution_contract: false
+    may_enter_hero: true
+    maximum_confidence: 0.90
+    cost_class: "medium"
+
+  - id: "rule.state-transition"
+    section_id: "rules-moved"
+    title: "Rule State Transition"
+    maturity: "production"
+    runtime: "hybrid"
+    required_inputs:
+      - "canonical_rule"
+      - "authoritative_rule_version"
+    required_tools:
+      - "get_rule_history"
+      - "get_official_document"
+      - "verify_rule_transition"
+    output_claim_types:
+      - "source_fact"
+      - "derived_observation"
+    supported_components:
+      - "signal-hero.rules"
+      - "state-transition.rule-stage"
+      - "signal-feed.compact-change"
+    validation_mode: "source_reconciliation"
+    minimum_evidence_items: 1
+    requires_counter_evidence: false
+    requires_resolution_contract: false
+    may_enter_hero: true
+    maximum_confidence: 0.99
+    cost_class: "low"
+
+  - id: "rule.material-text-change"
+    section_id: "rules-moved"
+    title: "Material Rule Text Change"
+    maturity: "beta"
+    runtime: "hybrid"
+    required_inputs:
+      - "rule_version_pair"
+      - "document_diff"
+    required_tools:
+      - "compare_rule_versions"
+      - "classify_rule_change"
+      - "get_official_document"
+    output_claim_types:
+      - "derived_observation"
+      - "analytical_inference"
+      - "editorial_judgment"
+    supported_components:
+      - "document-change.rule-diff"
+      - "signal-hero.rules"
+    validation_mode: "agent_evaluation"
+    minimum_evidence_items: 2
+    requires_counter_evidence: true
+    requires_resolution_contract: false
+    may_enter_hero: true
+    maximum_confidence: 0.90
+    cost_class: "medium"
+
+  - id: "research.stage-transition"
+    section_id: "research-frontier"
+    title: "Explicit Research Stage Transition"
+    maturity: "beta"
+    runtime: "hybrid"
+    required_inputs:
+      - "research_objects"
+      - "explicit_transition_relation"
+    required_tools:
+      - "get_research_work"
+      - "get_trial_history"
+      - "verify_research_transition"
+    output_claim_types:
+      - "source_fact"
+      - "derived_observation"
+      - "analytical_inference"
+    supported_components:
+      - "state-transition.research-stage"
+      - "evidence-relationship.evidence-timeline"
+      - "signal-hero.research"
+    validation_mode: "source_reconciliation"
+    minimum_evidence_items: 2
+    requires_counter_evidence: true
+    requires_resolution_contract: false
+    may_enter_hero: false
+    maximum_confidence: 0.90
+    cost_class: "medium"
+
+  - id: "research.cross-field-bridge"
+    section_id: "research-frontier"
+    title: "Cross-field Bridge"
+    maturity: "shadow"
+    runtime: "agentic"
+    required_inputs:
+      - "research_signal_candidate"
+      - "historical_research_context"
+      - "multi_source_evidence"
+    required_tools:
+      - "search_research_works"
+      - "get_topic_history"
+      - "compare_topic_relations"
+      - "find_prior_art"
+      - "find_counterexamples"
+    output_claim_types:
+      - "derived_observation"
+      - "analytical_inference"
+      - "editorial_judgment"
+      - "structural_hypothesis"
+    supported_components:
+      - "evidence-relationship.cross-field-bridge"
+      - "evidence-relationship.evidence-timeline"
+      - "signal-hero.research"
+    validation_mode: "retrospective_evaluation"
+    minimum_evidence_items: 5
+    requires_counter_evidence: true
+    requires_resolution_contract: true
+    may_enter_hero: false
+    maximum_confidence: 0.75
+    cost_class: "high"
+
+  - id: "expectation.current-probability"
+    section_id: "expectations-moved"
+    title: "Current Probability"
+    maturity: "production"
+    runtime: "analytical"
+    required_inputs:
+      - "canonical_expectation"
+      - "latest_market_observation"
+    required_tools:
+      - "get_expectation_series"
+      - "verify_market_rules"
+    output_claim_types:
+      - "derived_observation"
+    supported_components:
+      - "time-series.near-resolution"
+      - "signal-feed.compact-change"
+    validation_mode: "exact_replay"
+    minimum_evidence_items: 1
+    requires_counter_evidence: false
+    requires_resolution_contract: false
+    may_enter_hero: false
+    maximum_confidence: 0.99
+    cost_class: "low"
+
+  - id: "expectation.reversal"
+    section_id: "expectations-moved"
+    title: "Expectation Reversal"
+    maturity: "beta"
+    runtime: "analytical"
+    required_inputs:
+      - "expectation_features"
+      - "direction_history"
+    required_tools:
+      - "calculate_probability_delta"
+      - "calculate_reversal"
+    output_claim_types:
+      - "analytical_inference"
+    supported_components:
+      - "time-series.reversal"
+      - "signal-feed.compact-change"
+    validation_mode: "statistical_validation"
+    minimum_evidence_items: 2
+    requires_counter_evidence: true
+    requires_resolution_contract: false
+    may_enter_hero: true
+    maximum_confidence: 0.90
+    cost_class: "medium"
+
+  - id: "expectation.near-resolution"
+    section_id: "expectations-moved"
+    title: "Near Resolution"
+    maturity: "beta"
+    runtime: "analytical"
+    required_inputs:
+      - "canonical_expectation"
+      - "market_observation_series"
+    required_tools:
+      - "get_expectation_series"
+      - "calculate_distance_to_resolution"
+    output_claim_types:
+      - "derived_observation"
+    supported_components:
+      - "time-series.near-resolution"
+      - "signal-feed.near-deadline"
+    validation_mode: "exact_replay"
+    minimum_evidence_items: 1
+    requires_counter_evidence: false
+    requires_resolution_contract: false
+    may_enter_hero: false
+    maximum_confidence: 0.99
+    cost_class: "low"
+
+  - id: "expectation.forecast-vs-outcome"
+    section_id: "expectations-moved"
+    title: "Forecast vs Outcome"
+    maturity: "production"
+    runtime: "deterministic"
+    required_inputs:
+      - "published_forecast_claim"
+      - "resolution_record"
+    required_tools:
+      - "load_resolution_contract"
+      - "compute_brier_contribution"
+    output_claim_types:
+      - "forecast"
+    supported_components:
+      - "resolution.forecast-vs-outcome"
+    validation_mode: "source_reconciliation"
+    minimum_evidence_items: 1
+    requires_counter_evidence: false
+    requires_resolution_contract: true
+    may_enter_hero: false
+    maximum_confidence: 0.99
+    cost_class: "low"
+
+  - id: "rule.effective-date"
+    section_id: "rules-moved"
+    title: "Rule Effective Date"
+    maturity: "production"
+    runtime: "deterministic"
+    required_inputs:
+      - "canonical_rule"
+      - "authoritative_rule_version"
+    required_tools:
+      - "get_rule_history"
+      - "get_official_document"
+    output_claim_types:
+      - "source_fact"
+      - "derived_observation"
+    supported_components:
+      - "state-transition.effective-timeline"
+      - "signal-feed.near-deadline"
+      - "signal-feed.upcoming-event"
+    validation_mode: "source_reconciliation"
+    minimum_evidence_items: 1
+    requires_counter_evidence: false
+    requires_resolution_contract: true
+    may_enter_hero: false
+    maximum_confidence: 0.99
+    cost_class: "low"
+
+  - id: "rule.delay"
+    section_id: "rules-moved"
+    title: "Rule Delay"
+    maturity: "beta"
+    runtime: "analytical"
+    required_inputs:
+      - "canonical_rule"
+      - "rule_version_pair"
+    required_tools:
+      - "compare_rule_versions"
+      - "get_official_document"
+    output_claim_types:
+      - "analytical_inference"
+    supported_components:
+      - "state-transition.effective-timeline"
+      - "signal-feed.compact-change"
+    validation_mode: "source_reconciliation"
+    minimum_evidence_items: 2
+    requires_counter_evidence: true
+    requires_resolution_contract: false
+    may_enter_hero: false
+    maximum_confidence: 0.90
+    cost_class: "medium"
+
+  - id: "rule.withdrawal"
+    section_id: "rules-moved"
+    title: "Rule Withdrawal"
+    maturity: "production"
+    runtime: "analytical"
+    required_inputs:
+      - "canonical_rule"
+      - "authoritative_rule_version"
+    required_tools:
+      - "get_rule_history"
+      - "get_official_document"
+    output_claim_types:
+      - "source_fact"
+    supported_components:
+      - "state-transition.rule-stage"
+      - "signal-feed.compact-change"
+    validation_mode: "source_reconciliation"
+    minimum_evidence_items: 1
+    requires_counter_evidence: false
+    requires_resolution_contract: false
+    may_enter_hero: false
+    maximum_confidence: 0.99
+    cost_class: "low"
+
+  - id: "research.institution-entry"
+    section_id: "research-frontier"
+    title: "Institution Entry"
+    maturity: "beta"
+    runtime: "analytical"
+    required_inputs:
+      - "research_relations"
+      - "institution_metadata"
+    required_tools:
+      - "get_research_work"
+      - "compare_topic_relations"
+    output_claim_types:
+      - "analytical_inference"
+    supported_components:
+      - "evidence-relationship.institution-entry"
+      - "signal-feed.compact-change"
+    validation_mode: "agent_evaluation"
+    minimum_evidence_items: 2
+    requires_counter_evidence: true
+    requires_resolution_contract: false
+    may_enter_hero: false
+    maximum_confidence: 0.90
+    cost_class: "medium"
+
+  - id: "research.emerging-cluster"
+    section_id: "research-frontier"
+    title: "Emerging Cluster"
+    maturity: "laboratory"
+    runtime: "agentic"
+    required_inputs:
+      - "research_signal_candidate"
+      - "topic_cluster_history"
+    required_tools:
+      - "get_topic_history"
+      - "find_counterexamples"
+    output_claim_types:
+      - "structural_hypothesis"
+    supported_components:
+      - "evidence-relationship.evidence-timeline"
+    validation_mode: "retrospective_evaluation"
+    minimum_evidence_items: 3
+    requires_counter_evidence: true
+    requires_resolution_contract: true
+    may_enter_hero: false
+    maximum_confidence: 0.75
+    cost_class: "high"
