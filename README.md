@@ -70,8 +70,13 @@ Sections, Components, Slots or permissions from natural-language docs
 - OS-003 Database migration foundation — done (36 tables from spec appendix C,
   Alembic; verified against real PostgreSQL: 52 FKs, 3 triggers, smoke test
   passing)
+- OS-004 PostgreSQL job queue — done (enqueue / claim SKIP LOCKED / retry /
+  dead-letter / idempotency / heartbeat; 9 tests against real PostgreSQL)
+- OS-005 Source Registry & Rights Manifest — done (YAML loader with read
+  views + reference validation, rights capability checks, agent_desks sync;
+  11 tests, registry passes validation)
 
-Next milestones: OS-004 PostgreSQL job queue, OS-005 Source Registry.
+Next milestones: OS-006 Raw Artifact Store, OS-007 Polymarket adapter.
 
 ## Database
 
