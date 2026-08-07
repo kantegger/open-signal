@@ -160,8 +160,12 @@ Sections, Components, Slots or permissions from natural-language docs
 - OS-029 Edition Writer — done (render_plans + daily_editions rows,
   Edition JSON, content-addressed CDN cache key, immutable archive
   snapshot, rollback and correction as new rows; 8 tests)
+- OS-030 Public Claim Page — done (8 display blocks: Observation,
+  Analysis, Assessment, Evidence, Counterevidence, Agent lineage, Claim
+  ID, Version history; ClaimPagePresenter + FastAPI read-only endpoints
+  (apps/api) + Next.js claim page (apps/web); 3 tests, web build passes)
 
-Next milestones: OS-030 Frontend shell, OS-031 Verification agent.
+Next milestones: OS-031 Verification agent, OS-032 Archive service.
 
 ## Database
 
