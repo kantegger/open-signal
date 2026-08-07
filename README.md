@@ -188,8 +188,12 @@ Sections, Components, Slots or permissions from natural-language docs
 - OS-039 30-day Review Metrics — done (Hero Fill Rate, Publishable
   Edition Rate, Research Value Rate, Correction Rate, Cost per Edition,
   Section Diversity, Agent Abstention Rate, No-Go findings; 2 tests)
+- OS-033 Shadow Environment — done (isolated shadow schema cloned from
+  core metadata, shadow object-store dir, shadow- prefixed lineages/
+  ledger ids, /shadow/editions URLs under OPEN_SIGNAL_SHADOW=1; fixed
+  source_cursors.source_id type mismatch Text→Uuid; 6 tests)
 
-Next milestones: OS-040 Public Beta Release, OS-033 Shadow Environment.
+Next milestones: OS-034 Evaluation Harness, OS-040 Public Beta Release.
 
 ## Database
 

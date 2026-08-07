@@ -718,7 +718,7 @@ jobs = Table(
 source_cursors = Table(
     "source_cursors",
     metadata,
-    Column("source_id", Text, ForeignKey("sources.id"), primary_key=True),
+    Column("source_id", Uuid(), ForeignKey("sources.id"), primary_key=True),
     Column("cursor_type", Text, nullable=False),
     Column("value", Text, nullable=False),
     Column("last_successful_fetch_at", _tz, nullable=False, server_default=text("now()")),
