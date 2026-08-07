@@ -122,5 +122,7 @@ jobs:
         run: pytest apps/worker/tests/test_expectations_agent.py -q
       - name: Research source tests
         run: pytest apps/worker/tests/test_research_sources.py -q
+      - name: Research candidate tests
+        run: pytest apps/worker/tests/test_research_candidates.py -q
       - name: Verify offline migration SQL
         run: python -m alembic -c infra/migrations/alembic.ini upgrade head --sql > /tmp/mig.sql && grep -c 'CREATE TABLE' /tmp/mig.sql

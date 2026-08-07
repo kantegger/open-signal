@@ -129,9 +129,11 @@ Sections, Components, Slots or permissions from natural-language docs
   quantum-computing; topic definitions + baseline queries + entity
   mappings in infra/topics/research-frontier.yaml; OpenAlex + 
   ClinicalTrials.gov adapters with real-API fixtures; 7 tests)
+- OS-021 Investigation Candidates — done (deterministic institution-entry,
+  trial stage-transition, cross-topic relation detection →
+  research_signal_candidates only, no Claims; 6 tests)
 
-Next milestones: OS-021 investigation candidates, OS-022 Research
-Charter Agent.
+Next milestones: OS-022 Research Charter Agent, OS-023 Verification.
 
 ## Database
 
