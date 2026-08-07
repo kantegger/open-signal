@@ -154,8 +154,14 @@ Sections, Components, Slots or permissions from natural-language docs
 - OS-027 Edition Composer — done (hard rules: eligibility=verified only,
   claim dedup, section diversity cap, family repetition avoidance, slot
   compatibility, registry fallback; 6 tests)
+- OS-028 Edition Orchestration — done (Lead/Lead Set, page pacing,
+  component choice, Sparse Edition threshold; claims never mutated;
+  part of EditionWriter)
+- OS-029 Edition Writer — done (render_plans + daily_editions rows,
+  Edition JSON, content-addressed CDN cache key, immutable archive
+  snapshot, rollback and correction as new rows; 8 tests)
 
-Next milestones: OS-028 Daily Edition writer, OS-029 Frontend shell.
+Next milestones: OS-030 Frontend shell, OS-031 Verification agent.
 
 ## Database
 
