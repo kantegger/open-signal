@@ -727,6 +727,21 @@ source_cursors = Table(
     Column("updated_at", _tz, nullable=False, server_default=text("now()")),
 )
 
+# Calculation records (OS-010; appendix C omitted this table — evidence_bundles
+# and resolution_records reference calculation_record_ids)
+calculation_records = Table(
+    "calculation_records",
+    metadata,
+    Column("id", Uuid(), primary_key=True, server_default="gen_random_uuid()"),
+    Column("calculation_type", Text, nullable=False),
+    Column("subject_id", Uuid()),
+    Column("subject_type", Text, nullable=False),
+    Column("input_snapshot", JSONB, nullable=False, server_default="{}"),
+    Column("output", JSONB, nullable=False),
+    Column("calculation_version", Text, nullable=False),
+    Column("calculated_at", _tz, nullable=False, server_default=text("now()")),
+)
+
 
 # Circular foreign keys emitted as ALTER TABLE by the initial migration.
 def _postponed_fks() -> None:

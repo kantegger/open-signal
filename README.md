@@ -87,8 +87,12 @@ Sections, Components, Slots or permissions from natural-language docs
 - OS-009 Expectation Canonicalizer — done (single-source canonical
   expectations from binary source markets with explicit deadline and YES
   direction; idempotent; 6 tests)
+- OS-010 Candidate Detection — done (delta_1h/24h/7d, direction,
+  persistence, acceleration, reversal, data completeness; §32.5
+  thresholds; every evaluation writes a Calculation Record (migration
+  0004); 6 tests)
 
-Next milestones: OS-010 Candidate Detection, OS-011 Expectations Desk Agent.
+Next milestones: OS-011 Expectations Desk Agent, OS-012 Evidence Bundle.
 
 ## Database
 
