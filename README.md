@@ -104,9 +104,13 @@ Sections, Components, Slots or permissions from natural-language docs
 - OS-014 Rule Change Detection — done (paragraph alignment, add/delete/
   change hunks, technical-change filtering, Rule Change Type candidates;
   materiality deferred to agent; 11 tests)
+- OS-015 Agent Tool Registry — done (JSON-Schema validated tools,
+  permission scopes, cost tracking, result-size limits, tool-call log via
+  agent_tool_calls (migration 0006); no arbitrary SQL/URL — 4 built-in
+  read-only tools; 12 tests)
 
-Next milestones: OS-015 Agent Tool Registry (DeepSeek), OS-016 Agent
-Runtime.
+Next milestones: OS-016 DeepSeek Agent Runtime, OS-017 Expectations Desk
+Agent.
 
 ## Database
 
