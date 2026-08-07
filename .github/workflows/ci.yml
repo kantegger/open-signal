@@ -60,3 +60,35 @@ jobs:
         run: npm run typecheck
       - name: Verify generated types are current
         run: git diff --exit-code -- packages/contracts/src packages/contracts/schemas
+
+  db:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: open_signal
+          POSTGRES_PASSWORD: open_signal
+          POSTGRES_DB: open_signal
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U open_signal"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      OPEN_SIGNAL_DATABASE_URL: postgresql://open_signal:open_signal@localhost:5432/open_signal
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install worker
+        run: pip install ./apps/worker[dev]
+      - name: Migrate
+        run: python -m alembic -c infra/migrations/alembic.ini upgrade head
+      - name: Smoke test
+        run: python scripts/smoke_db.py
+      - name: Verify offline migration SQL
+        run: python -m alembic -c infra/migrations/alembic.ini upgrade head --sql > /tmp/mig.sql && grep -c 'CREATE TABLE' /tmp/mig.sql

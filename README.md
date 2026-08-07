@@ -67,5 +67,19 @@ Sections, Components, Slots or permissions from natural-language docs
 - OS-001 Monorepo bootstrap — done
 - OS-002 Pydantic contract source — done (9 first-batch objects, JSON Schema
   + generated TypeScript types under `packages/contracts`)
+- OS-003 Database migration foundation — done (36 tables from spec appendix C,
+  Alembic; verified against real PostgreSQL: 52 FKs, 3 triggers, smoke test
+  passing)
 
-Next milestones: OS-003 database migrations, OS-004 PostgreSQL job queue.
+Next milestones: OS-004 PostgreSQL job queue, OS-005 Source Registry.
+
+## Database
+
+Schema metadata: `python/open_signal/db/models.py` (SQLAlchemy Core, 36 tables).
+Migrations: `infra/migrations/` (Alembic). To run against a database:
+
+```powershell
+$env:OPEN_SIGNAL_DATABASE_URL = "postgresql://..."
+python -m alembic -c infra/migrations/alembic.ini upgrade head
+python scripts/smoke_db.py
+```
