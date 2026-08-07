@@ -65,6 +65,7 @@ def _cleanup(engine) -> None:
     from sqlalchemy import text
 
     with engine.begin() as conn:
+        conn.execute(text("DELETE FROM agent_tool_calls"))
         conn.execute(text("DELETE FROM investigation_runs"))
         conn.execute(text("DELETE FROM agent_lineages"))
         conn.execute(text("DELETE FROM agent_desks"))

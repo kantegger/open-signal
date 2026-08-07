@@ -13,7 +13,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install worker
-        run: pip install ./apps/worker[dev]
+        run: pip install -e ./python && pip install ./apps/worker[dev]
       - name: Lint
         run: ruff check python
       - name: Test
@@ -44,7 +44,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install worker
-        run: pip install ./apps/worker[dev]
+        run: pip install -e ./python && pip install ./apps/worker[dev]
       - name: Generate contracts
         run: python scripts/gen_contracts.py
       - name: Round-trip check
@@ -85,7 +85,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install worker
-        run: pip install ./apps/worker[dev]
+        run: pip install -e ./python && pip install ./apps/worker[dev]
       - name: Migrate
         run: python -m alembic -c infra/migrations/alembic.ini upgrade head
       - name: Smoke test
@@ -137,7 +137,7 @@ jobs:
       - name: Edition writer tests
         run: pytest apps/worker/tests/test_edition_writer.py -q
       - name: Claim page + API tests
-        run: pip install ./apps/api && pytest apps/worker/tests/test_claim_page.py -q
+        run: pip install -e ./python && pip install ./apps/api && pytest apps/worker/tests/test_claim_page.py -q
       - name: Operations + budget tests
         run: pytest apps/worker/tests/test_ops.py apps/worker/tests/test_budget.py -q
       - name: Verify offline migration SQL
