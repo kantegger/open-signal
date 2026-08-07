@@ -1,0 +1,62 @@
+# US Federal Rule status ontology (OS-013)
+# Lifecycle states for US federal rules as published in the Federal Register.
+version: 0.1.0
+jurisdiction: US
+domain: rule_status
+statuses:
+  - id: proposed
+    label: Proposed Rule
+    description: Published as a proposed rule; comment period open.
+  - id: withdrawn
+    label: Withdrawn
+    description: Proposed rule withdrawn by the agency.
+  - id: final
+    label: Final Rule
+    description: Published as a final rule; effective date not yet reached.
+  - id: effective
+    label: Effective
+    description: Final rule whose effective date has passed; in force.
+  - id: partially_effective
+    label: Partially Effective
+    description: Different provisions take effect on different dates.
+  - id: amended
+    label: Amended
+    description: Later rule modifies one or more provisions.
+  - id: revoked
+    label: Revoked
+    description: Rule (or a provision) is revoked / rescinded.
+
+transitions:
+  - from: proposed
+    to: withdrawn
+  - from: proposed
+    to: final
+  - from: final
+    to: effective
+  - from: final
+    to: partially_effective
+  - from: partially_effective
+    to: effective
+  - from: effective
+    to: amended
+  - from: effective
+    to: revoked
+  - from: amended
+    to: effective
+  - from: amended
+    to: revoked
+
+# FR document types that map to lifecycle events.
+document_type_mapping:
+  Proposed Rule: proposed
+  Rule: final_or_effective   # decided by effective_date vs now
+  Withdrawal: withdrawn
+  Correction: amended        # corrections amend prior rules
+  Presidential Document: revoked_or_effective
+
+# Signals that indicate partial effectiveness (checked in order).
+partial_effectiveness_signals:
+  - "different dates"
+  - "effective on different"
+  - "except for"
+  - "shall take effect on the following dates"

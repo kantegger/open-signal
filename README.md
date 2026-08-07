@@ -98,9 +98,15 @@ Sections, Components, Slots or permissions from natural-language docs
   document metadata, authoritative HTML artifact into public content-
   addressed store, version hash, publication dates, fixtures from live
   API; 4 tests)
+- OS-013 US Rule Status Mapping — done (ontology YAML with 7 states +
+  transitions, FR document mapping, transition validation,
+  partial-effectiveness detection; 11 tests)
+- OS-014 Rule Change Detection — done (paragraph alignment, add/delete/
+  change hunks, technical-change filtering, Rule Change Type candidates;
+  materiality deferred to agent; 11 tests)
 
-Next milestones: OS-013/OS-014 (Agent runtime with DeepSeek, composer
-skeleton), OS-015 Expectations Desk Agent.
+Next milestones: OS-015 Agent Tool Registry (DeepSeek), OS-016 Agent
+Runtime.
 
 ## Database
 
