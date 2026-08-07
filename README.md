@@ -195,8 +195,13 @@ Sections, Components, Slots or permissions from natural-language docs
 - OS-034 Evaluation Harness — done (fixture cases + agent rubrics
   (evidence grounding / guardrails / numerical accuracy / conciseness),
   lineage comparison, composer edition scoring, cost report; 9 tests)
+- OS-040 Public Beta Release — done (docs/OS-040-PUBLIC-BETA.md: launch
+  scope (front page / 3 sections / archive / claim page / method / system
+  status), explicit non-goals (accounts / payments / alerts / public API /
+  scorecard), deploy + rollback runbooks; scripts/release_check.py
+  pre-flight with 11 checks; 3 tests)
 
-Next milestones: OS-040 Public Beta Release.
+**All 40 OS milestones complete — 236/236 tests pass.**
 
 ## Database
 
