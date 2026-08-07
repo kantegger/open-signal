@@ -119,9 +119,13 @@ Sections, Components, Slots or permissions from natural-language docs
   rule-change candidates → Observation, Materiality, Affected categories,
   Limitations, Preferred component; rule_change_observation claims; live
   DeepSeek end-to-end verified; 5 tests)
+- OS-019 Expectations Desk Charter Agent — done (persistence judgment +
+  noise check over candidate metrics; hard guardrails: no psychological
+  attribution, no investment advice — enforced in prompt + output
+  validation + abstention path; agent_observation claims; live DeepSeek
+  end-to-end verified; 5 tests)
 
-Next milestones: OS-019 Expectations Charter Agent, OS-020 Research
-domain.
+Next milestones: OS-020 Research domain, OS-021 investigation candidates.
 
 ## Database
 
