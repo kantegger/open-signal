@@ -108,8 +108,11 @@ Sections, Components, Slots or permissions from natural-language docs
   permission scopes, cost tracking, result-size limits, tool-call log via
   agent_tool_calls (migration 0006); no arbitrary SQL/URL — 4 built-in
   read-only tools; 12 tests)
+- OS-016 Evidence Bundle Builder — done (primary/historical evidence,
+  counterexample candidates, computed metrics, token budget + estimate,
+  content-only snapshot hash; 3 tests)
 
-Next milestones: OS-016 DeepSeek Agent Runtime, OS-017 Expectations Desk
+Next milestones: OS-017 DeepSeek Agent Runtime, OS-018 Expectations Desk
 Agent.
 
 ## Database

@@ -112,5 +112,7 @@ jobs:
         run: pytest apps/worker/tests/test_us_rule_status.py apps/worker/tests/test_rule_changes.py -q
       - name: Agent tool registry tests
         run: pytest apps/worker/tests/test_tools.py -q
+      - name: Evidence bundle tests
+        run: pytest apps/worker/tests/test_evidence.py -q
       - name: Verify offline migration SQL
         run: python -m alembic -c infra/migrations/alembic.ini upgrade head --sql > /tmp/mig.sql && grep -c 'CREATE TABLE' /tmp/mig.sql
