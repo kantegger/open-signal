@@ -115,9 +115,13 @@ Sections, Components, Slots or permissions from natural-language docs
   structured JSON output with schema validation, abstention, token/cost
   recording on investigation_runs, retry policy; live DeepSeek API
   verified; 11 tests)
+- OS-018 Rules Desk Charter Agent — done (LLM materiality judgment on
+  rule-change candidates → Observation, Materiality, Affected categories,
+  Limitations, Preferred component; rule_change_observation claims; live
+  DeepSeek end-to-end verified; 5 tests)
 
-Next milestones: OS-018 Rules Desk Charter Agent, OS-019 Expectations
-Charter Agent.
+Next milestones: OS-019 Expectations Charter Agent, OS-020 Research
+domain.
 
 ## Database
 
