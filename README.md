@@ -170,8 +170,15 @@ Sections, Components, Slots or permissions from natural-language docs
 - OS-032 Budget Guard — done (per-run / daily desk / monthly global
   limits; soft limit → degraded mode; hard limit → deterministic-only,
   blocks new LLM runs; 5 tests)
+- OS-035 Source Retraction — done (invalidate source + raw records,
+  retire canonical expectations, degrade claims via ledger, correct
+  editions, immutable archive record; idempotent; 3 tests)
+- OS-036 Resolution MVP — done (binary expectation resolution via final
+  probability, rule effective-by-date, Resolution Records with Brier
+  contributions, Recently Resolved component view; 5 tests)
 
-Next milestones: OS-033 Verification agent, OS-034 Archive service.
+Next milestones: OS-037 Degraded modes, OS-038 Security hardening,
+OS-039 30-day review metrics.
 
 ## Database
 
