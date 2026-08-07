@@ -77,9 +77,10 @@ export interface EditionData {
   cards: CardData[];
 }
 
-export async function fetchLatestEdition(): Promise<EditionData> {
+export async function fetchLatestEdition(signal?: AbortSignal): Promise<EditionData> {
   const resp = await fetch(`${API_BASE}/api/editions/latest`, {
     cache: "no-store",
+    signal,
   });
   if (!resp.ok) {
     throw new Error(`edition fetch failed (${resp.status})`);

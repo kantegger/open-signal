@@ -21,7 +21,7 @@ export default function HomePage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchLatestEdition()
+    fetchLatestEdition(controller.signal)
       .then(setEdition)
       .catch((e) => {
         if (e.name !== "AbortError") setError(e.message);
