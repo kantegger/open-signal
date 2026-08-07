@@ -768,6 +768,18 @@ feature_flags = Table(
     Column("updated_at", _tz, nullable=False, server_default=text("now()")),
 )
 
+# Audit events (OS-038; appendix C omitted this table)
+audit_events = Table(
+    "audit_events",
+    metadata,
+    Column("id", Uuid(), primary_key=True, server_default="gen_random_uuid()"),
+    Column("action", Text, nullable=False),
+    Column("actor", Text, nullable=False),
+    Column("target", Text),
+    Column("detail", JSONB, nullable=False, server_default="{}"),
+    Column("created_at", _tz, nullable=False, server_default=text("now()")),
+)
+
 
 # Circular foreign keys emitted as ALTER TABLE by the initial migration.
 def _postponed_fks() -> None:

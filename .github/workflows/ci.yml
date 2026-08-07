@@ -144,5 +144,7 @@ jobs:
         run: pytest apps/worker/tests/test_retraction.py apps/worker/tests/test_resolution.py -q
       - name: Degraded mode tests
         run: pytest apps/worker/tests/test_degraded.py -q
+      - name: Security hardening tests
+        run: pytest apps/worker/tests/test_hardening.py -q
       - name: Verify offline migration SQL
         run: python -m alembic -c infra/migrations/alembic.ini upgrade head --sql > /tmp/mig.sql && grep -c 'CREATE TABLE' /tmp/mig.sql

@@ -180,10 +180,13 @@ Sections, Components, Slots or permissions from natural-language docs
   deterministic_only / section_restricted / archive_only via ops.mode.*
   feature flags + budget hard-limit fallback; edition + LLM policies;
   6 tests)
-- CI fix: worker now builds as an installable wheel via
-  apps/worker/src/open_signal_worker (hatchling needed a package dir)
+- OS-038 Security Hardening — done (prompt-injection detection +
+  fixtures, SSRF guard (https + host allowlist + internal-IP rejection),
+  size limits, secret scanning, ops auth (X-Ops-Token, fail closed),
+  audit_events (migration 0008); ops API endpoints now require the token;
+  15 tests)
 
-Next milestones: OS-038 Security hardening, OS-039 30-day review metrics.
+Next milestones: OS-039 30-day review metrics.
 
 ## Database
 
