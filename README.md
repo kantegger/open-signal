@@ -111,9 +111,13 @@ Sections, Components, Slots or permissions from natural-language docs
 - OS-016 Evidence Bundle Builder — done (primary/historical evidence,
   counterexample candidates, computed metrics, token budget + estimate,
   content-only snapshot hash; 3 tests)
+- OS-017 DeepSeek Agent Runtime — done (charter loader, agent lineage,
+  structured JSON output with schema validation, abstention, token/cost
+  recording on investigation_runs, retry policy; live DeepSeek API
+  verified; 11 tests)
 
-Next milestones: OS-017 DeepSeek Agent Runtime, OS-018 Expectations Desk
-Agent.
+Next milestones: OS-018 Rules Desk Charter Agent, OS-019 Expectations
+Charter Agent.
 
 ## Database
 
