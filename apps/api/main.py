@@ -55,7 +55,7 @@ def get_latest_edition() -> dict:
             text(
                 "SELECT id, edition_date, edition_payload, included_section_ids, "
                 "included_claim_ids, generated_at FROM daily_editions "
-                "WHERE status = 'published' ORDER BY generated_at DESC LIMIT 1"
+                "WHERE status IN ('published', 'sparse', 'beta') ORDER BY generated_at DESC LIMIT 1"
             )
         ).fetchone()
     if row is None:
@@ -89,7 +89,7 @@ def _claim_cards(claim_ids: list[str]) -> list[dict]:
                 "SELECT c.id, c.public_statement, c.structured_proposition, c.confidence, "
                 "c.confidence_label, c.status, c.desk_id, c.issued_at, "
                 "c.section_id, c.capability_id, c.claim_type "
-                "FROM claims c WHERE c.id = ANY(:ids) AND c.status = 'published'"
+                "FROM claims c WHERE c.id = ANY(:ids) AND c.status IN ('published', 'verified')"
             ),
             {"ids": [_uuid.UUID(cid) for cid in claim_ids]},
         ).fetchall()

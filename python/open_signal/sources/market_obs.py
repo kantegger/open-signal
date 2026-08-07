@@ -91,14 +91,14 @@ class MarketObservationCollector:
                 attempt += 1
         return None
 
-    def _store_observation(self, market: dict[str, Any], *, external_id: str | None) -> int:
+    def _store_observation(self, market: dict[str, Any], *, external_id: str | None, observed_at_override: datetime | None = None) -> int:
         from sqlalchemy import text
 
         market_uuid = external_id  # caller resolves Gamma id -> source_markets.uuid
         if market_uuid is None:
             return 0
 
-        observed_at = floor_to_bucket(datetime.now(timezone.utc), self.bucket_minutes)
+        observed_at = observed_at_override or floor_to_bucket(datetime.now(timezone.utc), self.bucket_minutes)
         flags: list[str] = []
 
         prices = market.get("outcomePrices") or []
