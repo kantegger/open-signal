@@ -742,6 +742,21 @@ calculation_records = Table(
     Column("calculated_at", _tz, nullable=False, server_default=text("now()")),
 )
 
+# Section instances (OS-011; referenced by claim_bundles.section_instance_id
+# and render_plans.section_instance_id but omitted from appendix C)
+section_instances = Table(
+    "section_instances",
+    metadata,
+    Column("id", Uuid(), primary_key=True, server_default="gen_random_uuid()"),
+    Column("section_id", Text, nullable=False),
+    Column("capability_id", Text, nullable=False),
+    Column("subject_id", Uuid()),
+    Column("subject_type", Text, nullable=False),
+    Column("claim_id", Uuid()),
+    Column("edition_id", Uuid()),
+    Column("created_at", _tz, nullable=False, server_default=text("now()")),
+)
+
 
 # Circular foreign keys emitted as ALTER TABLE by the initial migration.
 def _postponed_fks() -> None:

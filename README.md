@@ -91,8 +91,12 @@ Sections, Components, Slots or permissions from natural-language docs
   persistence, acceleration, reversal, data completeness; §32.5
   thresholds; every evaluation writes a Calculation Record (migration
   0004); 6 tests)
+- OS-011 Deterministic Claim Construction — done (candidate → Observation
+  Claim + Section Instance + Claim Bundle + Probability Move render
+  candidate; migration 0005 section_instances; 2 tests)
 
-Next milestones: OS-011 Expectations Desk Agent, OS-012 Evidence Bundle.
+Next milestones: OS-012 Evidence Bundle, OS-013 Verification, OS-014
+Composer skeleton, then Agent layer (DeepSeek).
 
 ## Database
 
