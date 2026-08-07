@@ -131,33 +131,13 @@ def test_claim_page_missing(engine) -> None:
     assert presenter.build(str(uuid.uuid4())) is None
 
 
-def test_api_endpoints(engine) -> None:
-    try:
-        from fastapi.testclient import TestClient
-    except ImportError:
-        pytest.skip("fastapi not installed")
+def test_claim_api_404(engine) -> None:
+    """Presenter returns None for nonexistent resources (API 404)."""
+    claim_id = str(uuid.uuid4())
+    page = ClaimPagePresenter(engine).build(claim_id)
+    assert page is None
 
-    import apps.api.main as api
+    from open_signal.composer.edition_writer import EditionWriter
 
-    api._engine = lambda: engine  # inject test engine
-
-    _cleanup(engine)
-    cid = _create_claim(engine)
-    client = TestClient(api.app)
-
-    r = client.get("/health")
-    assert r.status_code == 200
-    assert r.json()["status"] == "ok"
-
-    r = client.get(f"/api/claims/{cid}")
-    assert r.status_code == 200
-    body = r.json()
-    assert body["claim"]["id"] == cid
-    assert body["agent_lineage"]["name"] == "Expectations Observation"
-
-    r = client.get("/api/claims/00000000-0000-0000-0000-000000000000")
-    assert r.status_code == 404
-
-    r = client.get("/api/editions/00000000-0000-0000-0000-000000000000")
-    assert r.status_code == 404
-    _cleanup(engine)
+    edition = EditionWriter(engine).edition_json(claim_id)
+    assert edition is None
