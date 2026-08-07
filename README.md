@@ -185,8 +185,11 @@ Sections, Components, Slots or permissions from natural-language docs
   size limits, secret scanning, ops auth (X-Ops-Token, fail closed),
   audit_events (migration 0008); ops API endpoints now require the token;
   15 tests)
+- OS-039 30-day Review Metrics — done (Hero Fill Rate, Publishable
+  Edition Rate, Research Value Rate, Correction Rate, Cost per Edition,
+  Section Diversity, Agent Abstention Rate, No-Go findings; 2 tests)
 
-Next milestones: OS-039 30-day review metrics.
+Next milestones: OS-040 Public Beta Release, OS-033 Shadow Environment.
 
 ## Database
 
