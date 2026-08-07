@@ -136,8 +136,12 @@ Sections, Components, Slots or permissions from natural-language docs
   roles, verdict → Shadow Ledger only (no Claims), abstention path;
   runtime gained corrective schema retry; live DeepSeek end-to-end
   verified; 4+1 tests)
+- OS-023 Claims Ledger — done (create/update/status-transition over
+  claims + claim_versions + claim_events; SHA-256 event hash chain with
+  verification; append-only enforced by DB triggers; Claim page read API;
+  6 tests)
 
-Next milestones: OS-023 Claim ledger, OS-024 Claim verification checks.
+Next milestones: OS-024 Claim verification checks, OS-025 Composer.
 
 ## Database
 
