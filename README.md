@@ -144,8 +144,12 @@ Sections, Components, Slots or permissions from natural-language docs
   date / rights / claim type / component fields / prohibited language
   (investment advice + psychological attribution); failed claims rejected
   and never reach the Composer; 8 tests)
+- OS-025 Composer Component Runtime — done (8 launch components mapped to
+  frontend keys; runtime validation against component registry (required
+  fields / allowed slots / narrative mode / prohibited uses); render plan
+  item assembly; 8 tests)
 
-Next milestones: OS-025 Composer, OS-026 Render plan.
+Next milestones: OS-026 Render plan builder, OS-027 Edition composer.
 
 ## Database
 
