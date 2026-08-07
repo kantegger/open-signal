@@ -1,0 +1,300 @@
+{
+  "description": "Documents of type Rule",
+  "count": 10000,
+  "total_pages": 50,
+  "next_page_url": "https://www.federalregister.gov/api/v1/documents?conditions%5Btype%5D%5B%5D=RULE&format=json&page=2&per_page=10&search_after_cursor=WzE3ODYwNjA4MDAwMDAsIjIwMjYtMTYxMjMiXQ",
+  "results": [
+    {
+      "title": "Pacific Halibut Fisheries of the West Coast; 2026 Catch Sharing Plan; Inseason Action; Correction",
+      "type": "Rule",
+      "abstract": "NMFS is correcting a temporary rule for the Pacific halibut recreational fishery in the International Pacific Halibut Commission's (IPHC) regulatory Area 2A. The action added fishing dates in August and September in the Columbia River and Washington subareas. The dates listed under each subarea were incorrect.",
+      "document_number": "2026-16181",
+      "html_url": "https://www.federalregister.gov/documents/2026/08/07/2026-16181/pacific-halibut-fisheries-of-the-west-coast-2026-catch-sharing-plan-inseason-action-correction",
+      "pdf_url": "https://www.govinfo.gov/content/pkg/FR-2026-08-07/pdf/2026-16181.pdf",
+      "public_inspection_pdf_url": null,
+      "publication_date": "2026-08-07",
+      "agencies": [
+        {
+          "raw_name": "DEPARTMENT OF COMMERCE",
+          "name": "Commerce Department",
+          "id": 54,
+          "url": "https://www.federalregister.gov/agencies/commerce-department",
+          "json_url": "https://www.federalregister.gov/api/v1/agencies/54",
+          "parent_id": null,
+          "slug": "commerce-department"
+        },
+        {
+          "raw_name": "National Oceanic and Atmospheric Administration",
+          "name": "National Oceanic and Atmospheric Administration",
+          "id": 361,
+          "url": "https://www.federalregister.gov/agencies/national-oceanic-and-atmospheric-administration",
+          "json_url": "https://www.federalregister.gov/api/v1/agencies/361",
+          "parent_id": 54,
+          "slug": "national-oceanic-and-atmospheric-administration"
+        }
+      ],
+      "excerpts": "NMFS is correcting a temporary rule for the Pacific halibut recreational fishery in the International Pacific Halibut Commission's (IPHC) regulatory Area 2A. The action added fishing dates in August and September in the Columbia River and Washington..."
+    },
+    {
+      "title": "Special Local Regulations; Annual Les Cheneaux Islands Antique Wooden Boat Show, Marquette Bay, Hessel, MI",
+      "type": "Rule",
+      "abstract": "The Coast Guard will enforce the Annual Les Cheneaux Islands Antique Wooden Boat Show special local regulation on the U.S. navigable waters of Marquette Bay, Hessel, MI on August 8, 2026. This action is necessary to provide for the safety of life and property on these navigable waters prior to, during, and immediately after the boat show. While in the regulated area all vessels will operate at a no wake speed and follow the directions of the on-scene patrol commander.",
+      "document_number": "2026-16164",
+      "html_url": "https://www.federalregister.gov/documents/2026/08/07/2026-16164/special-local-regulations-annual-les-cheneaux-islands-antique-wooden-boat-show-marquette-bay-hessel",
+      "pdf_url": "https://www.govinfo.gov/content/pkg/FR-2026-08-07/pdf/2026-16164.pdf",
+      "public_inspection_pdf_url": null,
+      "publication_date": "2026-08-07",
+      "agencies": [
+        {
+          "raw_name": "DEPARTMENT OF HOMELAND SECURITY",
+          "name": "Homeland Security Department",
+          "id": 227,
+          "url": "https://www.federalregister.gov/agencies/homeland-security-department",
+          "json_url": "https://www.federalregister.gov/api/v1/agencies/227",
+          "parent_id": null,
+          "slug": "homeland-security-department"
+        },
+        {
+          "raw_name": "Coast Guard",
+          "name": "Coast Guard",
+          "id": 53,
+          "url": "https://www.federalregister.gov/agencies/coast-guard",
+          "json_url": "https://www.federalregister.gov/api/v1/agencies/53",
+          "parent_id": 227,
+          "slug": "coast-guard"
+        }
+      ],
+      "excerpts": "The Coast Guard will enforce the Annual Les Cheneaux Islands Antique Wooden Boat Show special local regulation on the U.S. navigable waters of Marquette Bay, Hessel, MI on August 8, 2026. This action is necessary to provide for the safety of life and..."
+    },
+    {
+      "title": "Revocation of Class E Airspace; Lake Geneva, WI",
+      "type": "Rule",
+      "abstract": "This action revokes the Class E airspace at Lake Geneva, WI. This action is due to the instrument procedures being cancelled and the closure of the airport.",
+      "document_number": "2026-16159",
+      "html_url": "https://www.federalregister.gov/documents/2026/08/07/2026-16159/revocation-of-class-e-airspace-lake-geneva-wi",
+      "pdf_url": "https://www.govinfo.gov/content/pkg/FR-2026-08-07/pdf/2026-16159.pdf",
+      "public_inspection_pdf_url": null,
+      "publication_date": "2026-08-07",
+      "agencies": [
+        {
+          "raw_name": "DEPARTMENT OF TRANSPORTATION",
+          "name": "Transportation Department",
+          "id": 492,
+          "url": "https://www.federalregister.gov/agencies/transportation-department",
+          "json_url": "https://www.federalregister.gov/api/v1/agencies/492",
+          "parent_id": null,
+          "slug": "transportation-department"
+        },
+        {
+          "raw_name": "Federal Aviation Administration",
+          "name": "Federal Aviation Administration",
+          "id": 159,
+          "url": "https://www.federalregister.gov/agencies/federal-aviation-administration",
+          "json_url": "https://www.federalregister.gov/api/v1/agencies/159",
+          "parent_id": 492,
+          "slug": "federal-aviation-administration"
+        }
+      ],
+      "excerpts": "This action revokes the Class E airspace at Lake Geneva, WI. This action is due to the instrument procedures being cancelled and the closure of the airport."
+    },
+    {
+      "title": "Amendment of Class D and Class E Airspace; Chicago/Rockford, IL",
+      "type": "Rule",
+      "abstract": "This action amends the Class D and Class E airspace at Chicago/Rockford, IL. This action is due to a biennial airspace review conducted pursuant to FAA Order JO 7400.2R, Procedures for Handling Airspace Matters. This action brings the airspace into compliance with FAA orders and supports instrument flight rule (IFR) procedures and operations.",
+      "document_number": "2026-16158",
+      "html_url": "https://www.federalregister.gov/documents/2026/08/07/2026-16158/amendment-of-class-d-and-class-e-airspace-chicagorockford-il",
+      "pdf_url": "https://www.govinfo.gov/content/pkg/FR-2026-08-07/pdf/2026-16158.pdf",
+      "public_inspection_pdf_url": null,
+      "publication_date": "2026-08-07",
+      "agencies": [
+        {
+          "raw_name": "DEPARTMENT OF TRANSPORTATION",
+          "name": "Transportation Department",
+          "id": 492,
+          "url": "https://www.federalregister.gov/agencies/transportation-department",
+          "json_url": "https://www.federalregister.gov/api/v1/agencies/492",
+          "parent_id": null,
+          "slug": "transportation-department"
+        },
+        {
+          "raw_name": "Federal Aviation Administration",
+          "name": "Federal Aviation Administration",
+          "id": 159,
+          "url": "https://www.federalregister.gov/agencies/federal-aviation-administration",
+          "json_url": "https://www.federalregister.gov/api/v1/agencies/159",
+          "parent_id": 492,
+          "slug": "federal-aviation-administration"
+        }
+      ],
+      "excerpts": "This action amends the Class D and Class E airspace at Chicago/Rockford, IL. This action is due to a biennial airspace review conducted pursuant to FAA Order JO 7400.2R, Procedures for Handling Airspace Matters. This action brings the airspace into..."
+    },
+    {
+      "title": "Fisheries of the Exclusive Economic Zone Off Alaska; Reapportionment of Halibut Prohibited Species Catch Limits in the Bering Sea and Aleutian Islands Management Area",
+      "type": "Rule",
+      "abstract": "NMFS is reapportioning the unused amounts of the Pacific cod Trawl Cooperative (PCTC) Program halibut prohibited species catch (PSC) limit to the Pacific cod trawl limited access catcher vessel sector C season in the Bering Sea and Aleutian Islands management area (BSAI).",
+      "document_number": "2026-16156",
+      "html_url": "https://www.federalregister.gov/documents/2026/08/07/2026-16156/fisheries-of-the-exclusive-economic-zone-off-alaska-reapportionment-of-halibut-prohibited-species",
+      "pdf_url": "https://www.govinfo.gov/content/pkg/FR-2026-08-07/pdf/2026-16156.pdf",
+      "public_inspection_pdf_url": null,
+      "publication_date": "2026-08-07",
+      "agencies": [
+        {
+          "raw_name": "DEPARTMENT OF COMMERCE",
+          "name": "Commerce Department",
+          "id": 54,
+          "url": "https://www.federalregister.gov/agencies/commerce-department",
+          "json_url": "https://www.federalregister.gov/api/v1/agencies/54",
+          "parent_id": null,
+          "slug": "commerce-department"
+        },
+        {
+          "raw_name": "National Oceanic and Atmospheric Administration",
+          "name": "National Oceanic and Atmospheric Administration",
+          "id": 361,
+          "url": "https://www.federalregister.gov/agencies/national-oceanic-and-atmospheric-administration",
+          "json_url": "https://www.federalregister.gov/api/v1/agencies/361",
+          "parent_id": 54,
+          "slug": "national-oceanic-and-atmospheric-administration"
+        }
+      ],
+      "excerpts": "NMFS is reapportioning the unused amounts of the Pacific cod Trawl Cooperative (PCTC) Program halibut prohibited species catch (PSC) limit to the Pacific cod trawl limited access catcher vessel sector C season in the Bering Sea and Aleutian Islands..."
+    },
+    {
+      "title": "Safety Zones; Annual Events in the Captain of the Port Detroit Zone",
+      "type": "Rule",
+      "abstract": "The Coast Guard will enforce the safety zone for the Roostertail Fireworks in Detroit, MI, from 9:30 p.m. to 11 p.m. on August 8, 2026, to protect the safety of life and property on the navigable waters of the Detroit River immediately prior to, during, and immediately after this event. During the enforcement period, no person or vessel may enter the safety zone without permission from the Captain of the Port (COTP) Detroit or a designated representative.",
+      "document_number": "2026-16155",
+      "html_url": "https://www.federalregister.gov/documents/2026/08/07/2026-16155/safety-zones-annual-events-in-the-captain-of-the-port-detroit-zone",
+      "pdf_url": "https://www.govinfo.gov/content/pkg/FR-2026-08-07/pdf/2026-16155.pdf",
+      "public_inspection_pdf_url": null,
+      "publication_date": "2026-08-07",
+      "agencies": [
+        {
+          "raw_name": "DEPARTMENT OF HOMELAND SECURITY",
+          "name": "Homeland Security Department",
+          "id": 227,
+          "url": "https://www.federalregister.gov/agencies/homeland-security-department",
+          "json_url": "https://www.federalregister.gov/api/v1/agencies/227",
+          "parent_id": null,
+          "slug": "homeland-security-department"
+        },
+        {
+          "raw_name": "Coast Guard",
+          "name": "Coast Guard",
+          "id": 53,
+          "url": "https://www.federalregister.gov/agencies/coast-guard",
+          "json_url": "https://www.federalregister.gov/api/v1/agencies/53",
+          "parent_id": 227,
+          "slug": "coast-guard"
+        }
+      ],
+      "excerpts": "The Coast Guard will enforce the safety zone for the Roostertail Fireworks in Detroit, MI, from 9:30 p.m. to 11 p.m. on August 8, 2026, to protect the safety of life and property on the navigable waters of the Detroit River immediately prior to,..."
+    },
+    {
+      "title": "Ohio Regulatory Program",
+      "type": "Rule",
+      "abstract": "The Office of Surface Mining Reclamation and Enforcement (OSM), is approving, in part, two amendments to the Ohio regulatory program (the Ohio program) under the Surface Mining Control and Reclamation Act of 1977 (SMCRA or the Act). As proposed by Ohio, the amendment involves statutory and regulatory changes to its bonding program (i.e., revising Ohio's alternative bonding system and providing the option for an applicant to post full-cost performance securities) and also includes statutory and regulatory changes pertaining to other subjects, such as abandoned mine land program funding, permitting standards, valid existing rights, remining, blasting, and topsoil handling. Ohio submitted this amendment, in part, to satisfy a program condition related to bonding inadequacies. We are removing this program condition.",
+      "document_number": "2026-16136",
+      "html_url": "https://www.federalregister.gov/documents/2026/08/07/2026-16136/ohio-regulatory-program",
+      "pdf_url": "https://www.govinfo.gov/content/pkg/FR-2026-08-07/pdf/2026-16136.pdf",
+      "public_inspection_pdf_url": null,
+      "publication_date": "2026-08-07",
+      "agencies": [
+        {
+          "raw_name": "DEPARTMENT OF THE INTERIOR",
+          "name": "Interior Department",
+          "id": 253,
+          "url": "https://www.federalregister.gov/agencies/interior-department",
+          "json_url": "https://www.federalregister.gov/api/v1/agencies/253",
+          "parent_id": null,
+          "slug": "interior-department"
+        },
+        {
+          "raw_name": "Office of Surface Mining Reclamation and Enforcement",
+          "name": "Surface Mining Reclamation and Enforcement Office",
+          "id": 480,
+          "url": "https://www.federalregister.gov/agencies/surface-mining-reclamation-and-enforcement-office",
+          "json_url": "https://www.federalregister.gov/api/v1/agencies/480",
+          "parent_id": 253,
+          "slug": "surface-mining-reclamation-and-enforcement-office"
+        }
+      ],
+      "excerpts": "The Office of Surface Mining Reclamation and Enforcement (OSM), is approving, in part, two amendments to the Ohio regulatory program (the Ohio program) under the Surface Mining Control and Reclamation Act of 1977 (SMCRA or the Act). As proposed by..."
+    },
+    {
+      "title": "Auction of FM Broadcasting Construction Permits Scheduled for February 2, 2027; Notice and Filing Requirements, Minimum Opening Bids, Upfront Payments, and Other Procedures for Auction 114",
+      "type": "Rule",
+      "abstract": "This document summarizes the procedures, deadlines, and upfront payment and minimum opening bid amounts for the upcoming auction of FM broadcast construction permits. The Auction 114 Procedures Public Notice summarized here provides details regarding the procedures, terms, conditions, dates, and deadlines governing participation in Auction 114 bidding, as well as overview of the post- auction application and payment processes.",
+      "document_number": "2026-16133",
+      "html_url": "https://www.federalregister.gov/documents/2026/08/07/2026-16133/auction-of-fm-broadcasting-construction-permits-scheduled-for-february-2-2027-notice-and-filing",
+      "pdf_url": "https://www.govinfo.gov/content/pkg/FR-2026-08-07/pdf/2026-16133.pdf",
+      "public_inspection_pdf_url": null,
+      "publication_date": "2026-08-07",
+      "agencies": [
+        {
+          "raw_name": "FEDERAL COMMUNICATIONS COMMISSION",
+          "name": "Federal Communications Commission",
+          "id": 161,
+          "url": "https://www.federalregister.gov/agencies/federal-communications-commission",
+          "json_url": "https://www.federalregister.gov/api/v1/agencies/161",
+          "parent_id": null,
+          "slug": "federal-communications-commission"
+        }
+      ],
+      "excerpts": "This document summarizes the procedures, deadlines, and upfront payment and minimum opening bid amounts for the upcoming auction of FM broadcast construction permits. The Auction 114 Procedures Public Notice summarized here provides details regarding..."
+    },
+    {
+      "title": "Special Conditions: ATR-GIE Avions de Transport Régional Model ATR42-500 and ATR72-212A Airplanes; Electronic System Security Protection From Unauthorized Internal Access",
+      "type": "Rule",
+      "abstract": "These special conditions are issued for the ATR-GIE Avions de Transport R[eacute]gional (ATR) Model ATR42-500 and ATR72-212A airplanes. These airplanes will have a novel or unusual design feature when compared to the state of technology envisioned in the airworthiness standards for transport-category airplanes. This design feature is the installation of a digital system that contains a wireless and hardwired network with hosted application functionality that allows access, from sources internal to the airplane, to the airplane's internal electronic components. The applicable airworthiness regulations do not contain adequate or appropriate safety standards for this design feature. These special conditions contain the additional safety standards that the Administrator considers necessary to establish a level of safety equivalent to that established by the existing airworthiness standards.",
+      "document_number": "2026-16129",
+      "html_url": "https://www.federalregister.gov/documents/2026/08/07/2026-16129/special-conditions-atr-gie-avions-de-transport-rgional-model-atr42-500-and-atr72-212a-airplanes",
+      "pdf_url": "https://www.govinfo.gov/content/pkg/FR-2026-08-07/pdf/2026-16129.pdf",
+      "public_inspection_pdf_url": "https://public-inspection.federalregister.gov/2026-16129.pdf?1786020313",
+      "publication_date": "2026-08-07",
+      "agencies": [
+        {
+          "raw_name": "DEPARTMENT OF TRANSPORTATION",
+          "name": "Transportation Department",
+          "id": 492,
+          "url": "https://www.federalregister.gov/agencies/transportation-department",
+          "json_url": "https://www.federalregister.gov/api/v1/agencies/492",
+          "parent_id": null,
+          "slug": "transportation-department"
+        },
+        {
+          "raw_name": "Federal Aviation Administration",
+          "name": "Federal Aviation Administration",
+          "id": 159,
+          "url": "https://www.federalregister.gov/agencies/federal-aviation-administration",
+          "json_url": "https://www.federalregister.gov/api/v1/agencies/159",
+          "parent_id": 492,
+          "slug": "federal-aviation-administration"
+        }
+      ],
+      "excerpts": "These special conditions are issued for the ATR-GIE Avions de Transport R[eacute]gional (ATR) Model ATR42-500 and ATR72-212A airplanes. These airplanes will have a novel or unusual design feature when compared to the state of technology envisioned in..."
+    },
+    {
+      "title": "2-Propenoic Acid, 2-Methyl-, Telomer With 1-Dodecanethiol, and 2-Methyloxirane Polymer With Oxirane Monoether With 1,2-Propanediol Mono(2-Methyl-2-Propenoate) in Pesticide Formulations; Exemption From the Requirement for a Tolerance",
+      "type": "Rule",
+      "abstract": "This regulation establishes an exemption from the requirement of a tolerance for residues of 2-propenoic acid, 2-methyl-, telomer with 1-dodecanethiol, and 2-methyloxirane polymer with oxirane monoether with 1,2-propanediol mono(2-methyl-2-propenoate) (CAS Reg. No 1186225-21-7) when used as an inert ingredient in a pesticide chemical formulation. Spring Regulatory Sciences on behalf of Clariant Corporation submitted a petition to EPA under the Federal Food, Drug, and Cosmetic Act (FFDCA), requesting an exemption from the requirement of a tolerance. This regulation eliminates the need to establish a maximum permissible level for residues of 2-propenoic acid, 2-methyl-, telomer with 1-dodecanethiol, and 2-methyloxirane polymer with oxirane monoether with 1,2-propanediol mono(2-methyl-2-propenoate) on food or feed commodities when used in accordance with these exemptions.",
+      "document_number": "2026-16123",
+      "html_url": "https://www.federalregister.gov/documents/2026/08/07/2026-16123/2-propenoic-acid-2-methyl--telomer-with-1-dodecanethiol-and-2-methyloxirane-polymer-with-oxirane",
+      "pdf_url": "https://www.govinfo.gov/content/pkg/FR-2026-08-07/pdf/2026-16123.pdf",
+      "public_inspection_pdf_url": null,
+      "publication_date": "2026-08-07",
+      "agencies": [
+        {
+          "raw_name": "ENVIRONMENTAL PROTECTION AGENCY",
+          "name": "Environmental Protection Agency",
+          "id": 145,
+          "url": "https://www.federalregister.gov/agencies/environmental-protection-agency",
+          "json_url": "https://www.federalregister.gov/api/v1/agencies/145",
+          "parent_id": null,
+          "slug": "environmental-protection-agency"
+        }
+      ],
+      "excerpts": "This regulation establishes an exemption from the requirement of a tolerance for residues of 2-propenoic acid, 2-methyl-, telomer with 1-dodecanethiol, and 2-methyloxirane polymer with oxirane monoether with 1,2-propanediol mono(2-methyl-2-propenoate)..."
+    }
+  ]
+}

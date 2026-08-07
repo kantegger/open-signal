@@ -94,9 +94,13 @@ Sections, Components, Slots or permissions from natural-language docs
 - OS-011 Deterministic Claim Construction — done (candidate → Observation
   Claim + Section Instance + Claim Bundle + Probability Move render
   candidate; migration 0005 section_instances; 2 tests)
+- OS-012 Federal Register Source Chain — done (US rules discovery with
+  document metadata, authoritative HTML artifact into public content-
+  addressed store, version hash, publication dates, fixtures from live
+  API; 4 tests)
 
-Next milestones: OS-012 Evidence Bundle, OS-013 Verification, OS-014
-Composer skeleton, then Agent layer (DeepSeek).
+Next milestones: OS-013/OS-014 (Agent runtime with DeepSeek, composer
+skeleton), OS-015 Expectations Desk Agent.
 
 ## Database
 
