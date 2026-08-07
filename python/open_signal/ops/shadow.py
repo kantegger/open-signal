@@ -18,9 +18,8 @@ import os
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import text
-
 from open_signal.db.models import metadata
+from sqlalchemy import text
 
 SHADOW_SCHEMA = "shadow"
 SHADOW_PREFIX = "shadow-"
@@ -67,8 +66,8 @@ class ShadowEnvironment:
 
         # clone tables from core metadata into the shadow schema
         from sqlalchemy import MetaData
-        from sqlalchemy.schema import CreateTable
         from sqlalchemy.dialects import postgresql
+        from sqlalchemy.schema import CreateTable
 
         shadow_meta = MetaData()
         for table in metadata.sorted_tables:

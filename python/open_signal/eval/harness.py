@@ -53,7 +53,6 @@ def score_agent_output(
     """Score one agent output against a fixture case using the rubrics."""
     rubrics = rubrics or load_rubrics()
     rubric_defs = rubrics.get("rubrics", [])
-    expected = case.get("golden_output", {})
 
     scores: dict[str, float] = {}
     for rubric in rubric_defs:
