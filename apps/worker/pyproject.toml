@@ -27,8 +27,8 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-# The worker package itself carries no Python code (all code lives in
-# open-signal-core); it exists to declare runtimes and dev tooling.
+[tool.hatch.build.targets.wheel]
+packages = ["src/open_signal_worker"]
 
 [tool.pytest.ini_options]
 pythonpath = ["../python"]

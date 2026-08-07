@@ -176,9 +176,14 @@ Sections, Components, Slots or permissions from natural-language docs
 - OS-036 Resolution MVP — done (binary expectation resolution via final
   probability, rule effective-by-date, Resolution Records with Brier
   contributions, Recently Resolved component view; 5 tests)
+- OS-037 Degraded Modes — done (normal / static_edition /
+  deterministic_only / section_restricted / archive_only via ops.mode.*
+  feature flags + budget hard-limit fallback; edition + LLM policies;
+  6 tests)
+- CI fix: worker now builds as an installable wheel via
+  apps/worker/src/open_signal_worker (hatchling needed a package dir)
 
-Next milestones: OS-037 Degraded modes, OS-038 Security hardening,
-OS-039 30-day review metrics.
+Next milestones: OS-038 Security hardening, OS-039 30-day review metrics.
 
 ## Database
 
