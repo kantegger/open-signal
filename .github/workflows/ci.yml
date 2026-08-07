@@ -138,5 +138,7 @@ jobs:
         run: pytest apps/worker/tests/test_edition_writer.py -q
       - name: Claim page + API tests
         run: pip install ./apps/api && pytest apps/worker/tests/test_claim_page.py -q
+      - name: Operations + budget tests
+        run: pytest apps/worker/tests/test_ops.py apps/worker/tests/test_budget.py -q
       - name: Verify offline migration SQL
         run: python -m alembic -c infra/migrations/alembic.ini upgrade head --sql > /tmp/mig.sql && grep -c 'CREATE TABLE' /tmp/mig.sql

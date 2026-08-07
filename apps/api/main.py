@@ -11,6 +11,7 @@ import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from open_signal.api.ops import OpsPresenter
 from open_signal.api.presenters import ClaimPagePresenter
 from open_signal.composer.edition_writer import EditionWriter
 
@@ -51,3 +52,47 @@ def get_edition(edition_id: str) -> dict:
     if payload is None:
         raise HTTPException(status_code=404, detail="edition not found")
     return payload
+
+
+# --------------------------------------------------------- operations console
+@app.get("/api/ops/current-edition")
+def ops_current_edition() -> dict:
+    data = OpsPresenter(_engine()).current_edition()
+    if data is None:
+        raise HTTPException(status_code=404, detail="no editions yet")
+    return data
+
+
+@app.get("/api/ops/source-health")
+def ops_source_health() -> list[dict]:
+    return OpsPresenter(_engine()).source_health()
+
+
+@app.get("/api/ops/job-queue")
+def ops_job_queue() -> dict:
+    return OpsPresenter(_engine()).job_queue()
+
+
+@app.get("/api/ops/agent-runs")
+def ops_agent_runs(limit: int = 20) -> list[dict]:
+    return OpsPresenter(_engine()).agent_runs(limit=min(limit, 100))
+
+
+@app.get("/api/ops/verification-failures")
+def ops_verification_failures() -> list[dict]:
+    return OpsPresenter(_engine()).verification_failures()
+
+
+@app.get("/api/ops/daily-cost")
+def ops_daily_cost(days: int = 14) -> list[dict]:
+    return OpsPresenter(_engine()).daily_cost(days=min(days, 90))
+
+
+@app.get("/api/ops/feature-flags")
+def ops_feature_flags() -> list[dict]:
+    return OpsPresenter(_engine()).feature_flags()
+
+
+@app.get("/api/ops/claims-corrected")
+def ops_claims_corrected() -> list[dict]:
+    return OpsPresenter(_engine()).claims_corrected()

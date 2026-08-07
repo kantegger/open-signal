@@ -164,8 +164,14 @@ Sections, Components, Slots or permissions from natural-language docs
   Analysis, Assessment, Evidence, Counterevidence, Agent lineage, Claim
   ID, Version history; ClaimPagePresenter + FastAPI read-only endpoints
   (apps/api) + Next.js claim page (apps/web); 3 tests, web build passes)
+- OS-031 Operations Console — done (8 read-only views: Current Edition,
+  Source Health, Job Queue, Agent Runs, Verification Failures, Daily
+  Cost, Feature Flags (migration 0007), Claims Corrected; 6 tests)
+- OS-032 Budget Guard — done (per-run / daily desk / monthly global
+  limits; soft limit → degraded mode; hard limit → deterministic-only,
+  blocks new LLM runs; 5 tests)
 
-Next milestones: OS-031 Verification agent, OS-032 Archive service.
+Next milestones: OS-033 Verification agent, OS-034 Archive service.
 
 ## Database
 

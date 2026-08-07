@@ -757,6 +757,17 @@ section_instances = Table(
     Column("created_at", _tz, nullable=False, server_default=text("now()")),
 )
 
+# Feature flags (OS-031; appendix C omitted this table)
+feature_flags = Table(
+    "feature_flags",
+    metadata,
+    Column("id", Uuid(), primary_key=True, server_default="gen_random_uuid()"),
+    Column("flag_name", Text, nullable=False, unique=True),
+    Column("enabled", Boolean, nullable=False, server_default="true"),
+    Column("description", Text),
+    Column("updated_at", _tz, nullable=False, server_default=text("now()")),
+)
+
 
 # Circular foreign keys emitted as ALTER TABLE by the initial migration.
 def _postponed_fks() -> None:
