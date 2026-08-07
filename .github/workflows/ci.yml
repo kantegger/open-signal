@@ -132,5 +132,7 @@ jobs:
         run: pytest apps/worker/tests/test_verification.py -q
       - name: Composer component tests
         run: pytest apps/worker/tests/test_components.py -q
+      - name: Edition composer tests
+        run: pytest apps/worker/tests/test_editions.py -q
       - name: Verify offline migration SQL
         run: python -m alembic -c infra/migrations/alembic.ini upgrade head --sql > /tmp/mig.sql && grep -c 'CREATE TABLE' /tmp/mig.sql

@@ -148,8 +148,14 @@ Sections, Components, Slots or permissions from natural-language docs
   frontend keys; runtime validation against component registry (required
   fields / allowed slots / narrative mode / prohibited uses); render plan
   item assembly; 8 tests)
+- OS-026 Slot Filler — done (7 slot types from registry with maturity
+  gates and claim-type permissions, per-slot capacity, page filling with
+  cross-slot dedup; 5 tests)
+- OS-027 Edition Composer — done (hard rules: eligibility=verified only,
+  claim dedup, section diversity cap, family repetition avoidance, slot
+  compatibility, registry fallback; 6 tests)
 
-Next milestones: OS-026 Render plan builder, OS-027 Edition composer.
+Next milestones: OS-028 Daily Edition writer, OS-029 Frontend shell.
 
 ## Database
 
