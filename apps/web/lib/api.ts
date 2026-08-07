@@ -54,3 +54,35 @@ export async function fetchClaim(claimId: string): Promise<ClaimPageData> {
   }
   return resp.json();
 }
+
+// ── edition ──
+
+export interface CardData {
+  id: string;
+  headline: string;
+  summary: string;
+  trend: "up" | "down" | "neutral";
+  probability?: number;
+  confidence?: number;
+  confidence_label?: string;
+  source_label: string;
+  section: string;
+  tags: string[];
+  issued_at: string | null;
+}
+
+export interface EditionData {
+  id: string;
+  edition_date: string;
+  cards: CardData[];
+}
+
+export async function fetchLatestEdition(): Promise<EditionData> {
+  const resp = await fetch(`${API_BASE}/api/editions/latest`, {
+    cache: "no-store",
+  });
+  if (!resp.ok) {
+    throw new Error(`edition fetch failed (${resp.status})`);
+  }
+  return resp.json();
+}

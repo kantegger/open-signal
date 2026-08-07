@@ -1,5 +1,5 @@
-import type { ClaimPageData } from "../../lib/api";
-import { fetchClaim } from "../../lib/api";
+import type { ClaimPageData } from "../../../lib/api";
+import { fetchClaim } from "../../../lib/api";
 
 export const metadata = { title: "Signal" };
 
@@ -70,7 +70,7 @@ export default async function ClaimPage({
       <section>
         <h2>▸ Evidence</h2>
         <ul style={{ paddingLeft: 18 }}>
-          {page.evidence.items.map((item, i) => (
+          {page.evidence.items.map((item: unknown, i: number) => (
             <li key={i} style={{ marginBottom: 6 }}>
               <pre>{JSON.stringify(item)}</pre>
             </li>
@@ -90,7 +90,7 @@ export default async function ClaimPage({
       <section>
         <h2>▸ Counterevidence</h2>
         <ul style={{ paddingLeft: 18 }}>
-          {page.counterevidence.items.map((item, i) => (
+          {page.counterevidence.items.map((item: unknown, i: number) => (
             <li key={i} style={{ marginBottom: 6 }}>
               <pre>{JSON.stringify(item)}</pre>
             </li>
@@ -117,7 +117,7 @@ export default async function ClaimPage({
       <section>
         <h2>▸ History</h2>
         <ol style={{ paddingLeft: 18 }}>
-          {page.version_history.map((v) => (
+          {page.version_history.map((v: { version_number: number; change_type: string; change_reason: string; public_statement: string; confidence?: number; created_at: string }) => (
             <li key={v.version_number} style={{ marginBottom: 8 }}>
               <strong>v{v.version_number}</strong> ({v.change_type}: {v.change_reason}){" "}
               — {v.public_statement}

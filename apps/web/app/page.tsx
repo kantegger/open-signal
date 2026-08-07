@@ -2,26 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-
-interface Card {
-  id: string;
-  headline: string;
-  summary: string;
-  trend: "up" | "down" | "neutral";
-  probability?: number;
-  confidence?: number;
-  confidence_label?: string;
-  source_label: string;
-  section: string;
-  tags: string[];
-  issued_at: string | null;
-}
-
-interface Edition {
-  id: string;
-  edition_date: string;
-  cards: Card[];
-}
+import type { CardData, EditionData } from "../lib/api";
+import { fetchLatestEdition } from "../lib/api";
 
 function timeAgo(iso: string | null): string {
   if (!iso) return "";
@@ -34,14 +16,17 @@ function timeAgo(iso: string | null): string {
 }
 
 export default function HomePage() {
-  const [edition, setEdition] = useState<Edition | null>(null);
+  const [edition, setEdition] = useState<EditionData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("http://localhost:8000/api/editions/latest")
-      .then((r) => (r.ok ? r.json() : null))
+    const controller = new AbortController();
+    fetchLatestEdition()
       .then(setEdition)
-      .catch((e) => setError(e.message));
+      .catch((e) => {
+        if (e.name !== "AbortError") setError(e.message);
+      });
+    return () => controller.abort();
   }, []);
 
   if (error)
