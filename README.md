@@ -84,8 +84,11 @@ Sections, Components, Slots or permissions from natural-language docs
 - OS-008 Market Observation — done (bucketed idempotent price sampling,
   midpoint/spread, data quality flags, rate-limit retry; default partition
   migration 0003; 5 tests)
+- OS-009 Expectation Canonicalizer — done (single-source canonical
+  expectations from binary source markets with explicit deadline and YES
+  direction; idempotent; 6 tests)
 
-Next milestones: OS-009 Expectation Canonicalizer, OS-010 Candidate Detection.
+Next milestones: OS-010 Candidate Detection, OS-011 Expectations Desk Agent.
 
 ## Database
 
