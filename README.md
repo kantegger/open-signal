@@ -140,8 +140,12 @@ Sections, Components, Slots or permissions from natural-language docs
   claims + claim_versions + claim_events; SHA-256 event hash chain with
   verification; append-only enforced by DB triggers; Claim page read API;
   6 tests)
+- OS-024 Claim Verification — done (8 gates: source / citation / number /
+  date / rights / claim type / component fields / prohibited language
+  (investment advice + psychological attribution); failed claims rejected
+  and never reach the Composer; 8 tests)
 
-Next milestones: OS-024 Claim verification checks, OS-025 Composer.
+Next milestones: OS-025 Composer, OS-026 Render plan.
 
 ## Database
 
