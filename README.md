@@ -192,8 +192,11 @@ Sections, Components, Slots or permissions from natural-language docs
   core metadata, shadow object-store dir, shadow- prefixed lineages/
   ledger ids, /shadow/editions URLs under OPEN_SIGNAL_SHADOW=1; fixed
   source_cursors.source_id type mismatch Text→Uuid; 6 tests)
+- OS-034 Evaluation Harness — done (fixture cases + agent rubrics
+  (evidence grounding / guardrails / numerical accuracy / conciseness),
+  lineage comparison, composer edition scoring, cost report; 9 tests)
 
-Next milestones: OS-034 Evaluation Harness, OS-040 Public Beta Release.
+Next milestones: OS-040 Public Beta Release.
 
 ## Database
 

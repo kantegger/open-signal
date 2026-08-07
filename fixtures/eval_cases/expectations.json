@@ -1,0 +1,50 @@
+{
+  "version": "0.1.0",
+  "description": "Expectations agent fixture cases (OS-034)",
+  "cases": [
+    {
+      "id": "expectations-01",
+      "input": {
+        "candidate_type": "probability_move",
+        "metrics": {
+          "delta_24h": 20.0,
+          "delta_1h": 3.2,
+          "persistence": 0.93,
+          "direction": 1,
+          "data_completeness": 0.8,
+          "series_size": 96,
+          "start_probability": 0.4,
+          "current_probability": 0.6
+        },
+        "evidence_bundle_id": "bundle-01",
+        "expected_outcome": "persistent",
+        "expected_noise": "clean"
+      },
+      "golden_output": {
+        "observation": "过去 24 小时 YES 概率从 0.40 上升至 0.60。",
+        "persistence": "persistent",
+        "noise_check": "clean"
+      }
+    },
+    {
+      "id": "expectations-02",
+      "input": {
+        "candidate_type": "probability_move",
+        "metrics": {
+          "delta_24h": 1.5,
+          "delta_1h": -0.8,
+          "persistence": 0.12,
+          "direction": 1,
+          "data_completeness": 0.3,
+          "series_size": 8
+        },
+        "evidence_bundle_id": "bundle-02",
+        "expected_outcome": "abstain"
+      },
+      "golden_output": {
+        "persistence": "abstain",
+        "reason_contains": "数据不足"
+      }
+    }
+  ]
+}
