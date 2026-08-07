@@ -3,8 +3,8 @@ OPEN_SIGNAL_DATABASE_URL (migrations 0001-0007 applied).
 """
 
 import os
-import pytest
 
+import pytest
 from open_signal.ops.degraded import DegradedModeError, DegradedModeManager
 
 

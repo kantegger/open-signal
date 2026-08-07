@@ -7,6 +7,7 @@ prohibited language. Any failure blocks the claim (status rejected).
 
 from __future__ import annotations
 
+import math
 import re
 from datetime import datetime, timezone
 from typing import Any
@@ -89,7 +90,7 @@ class ClaimVerifier:
 
     def check_citation(self, confidence: Any, proposition: dict[str, Any] | None) -> dict[str, Any]:
         prop = proposition or {}
-        if "subject_ids" in prop and prop["subject_ids"]:
+        if prop.get("subject_ids"):
             return {"passed": True, "detail": f"{len(prop['subject_ids'])} subject(s) cited"}
         return {"passed": False, "detail": "no subject_ids in proposition"}
 
@@ -102,7 +103,7 @@ class ClaimVerifier:
         prop = proposition or {}
         if "value" in prop and prop["value"] is not None:
             v = prop["value"]
-            if isinstance(v, float) and (v != v or v in (float("inf"), float("-inf"))):
+            if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
                 issues.append("non-finite value")
             elif not isinstance(v, (int, float, bool)):
                 issues.append(f"value is not numeric ({type(v).__name__})")

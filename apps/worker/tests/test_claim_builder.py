@@ -4,10 +4,9 @@ via OPEN_SIGNAL_DATABASE_URL (migration 0005 applied).
 
 import os
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
-
 from open_signal.agents.claim_builder import (
     CAPABILITY_ID,
     DESK_ID,
@@ -114,7 +113,7 @@ def test_full_pipeline(builder, engine) -> None:
     # sync desks first (from registry)
     Registry.load().sync_desks(engine)
 
-    now = datetime(2026, 8, 7, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 8, 7, 12, 0, tzinfo=UTC)
     market_uuid = _seed_market(engine, str(uuid.uuid4()), "Will X happen?")
     ce_id = _seed_canonical(engine, market_uuid, "Will X happen?")
     _seed_series(engine, market_uuid, [0.40 + 0.20 * (i / 29) for i in range(30)], now)

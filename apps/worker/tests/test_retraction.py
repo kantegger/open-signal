@@ -2,13 +2,11 @@
 OPEN_SIGNAL_DATABASE_URL (migration 0001 applied).
 """
 
-import json
 import os
 import uuid
 from datetime import date
 
 import pytest
-
 from open_signal.sources.retraction import RetractionHandler
 
 
@@ -118,7 +116,6 @@ def test_full_retraction_flow(engine) -> None:
 
 
 def test_retraction_idempotent(engine) -> None:
-    from sqlalchemy import text
 
     _cleanup(engine)
     ids = _seed_chain(engine)
@@ -131,7 +128,6 @@ def test_retraction_idempotent(engine) -> None:
 
 
 def test_edition_correction(engine) -> None:
-    from sqlalchemy import text
 
     _cleanup(engine)
     ids = _seed_chain(engine)

@@ -1,8 +1,7 @@
 """US rule status mapping tests (OS-013)."""
-from datetime import date, datetime, timezone
+from datetime import date
 
 import pytest
-
 from open_signal.sources.us_rule_status import (
     apply_transition,
     load_ontology,

@@ -145,7 +145,7 @@ class DeterministicClaimBuilder:
                 raise ValueError("source market not part of the canonical expectation")
 
             run_id = self._create_run(conn, source_market_id, calculation)
-            calc_id = calculation.get("_calc_record_id")
+            calculation.get("_calc_record_id")
             evidence_bundle_id = self._create_evidence_bundle(conn, source_market_id, calculation)
 
             direction = calculation.get("direction", 0)

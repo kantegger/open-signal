@@ -12,15 +12,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import httpx
 
-from open_signal.db.models import raw_source_records, source_cursors
-from open_signal.sources.registry import Registry
+from open_signal.db.models import source_cursors
 
 GAMMA_BASE_URL = "https://gamma-api.polymarket.com"
 DEFAULT_PAGE_SIZE = 100

@@ -8,7 +8,7 @@ signals defined in ``infra/ontologies/us-rule-status.yaml``.
 from __future__ import annotations
 
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -39,7 +39,7 @@ def _parse_effective_date(value: Any) -> date | None:
     text = str(value).strip()
     for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%B %d, %Y", "%b %d, %Y"):
         try:
-            return datetime.strptime(text, fmt).date()
+            return datetime.strptime(text, fmt).replace(tzinfo=timezone.utc).date()
         except ValueError:
             continue
     return None
@@ -49,7 +49,6 @@ def _detect_partial_effectiveness(doc: dict[str, Any]) -> bool:
     """Heuristics: multiple effective dates or text signals."""
     if doc.get("partial_effective"):
         return True
-    effective = doc.get("effective_date")
     dates = doc.get("dates")
     if isinstance(dates, list) and len(dates) > 1:
         return True
@@ -62,7 +61,7 @@ def _detect_partial_effectiveness(doc: dict[str, Any]) -> bool:
 
 def map_document_status(doc: dict[str, Any], now: date | datetime | None = None) -> str:
     """Map one Federal Register document to a rule status id."""
-    now = now.date() if isinstance(now, datetime) else (now or date.today())
+    now = now.date() if isinstance(now, datetime) else (now or datetime.now(timezone.utc).date())
     ontology = load_ontology()
     mapping = ontology["document_type_mapping"]
 

@@ -7,7 +7,6 @@ import os
 import uuid
 
 import pytest
-
 from open_signal.agents.expectations_agent import (
     EXPECTATIONS_OUTPUT_SCHEMA,
     ExpectationsCharterAgent,

@@ -7,7 +7,6 @@ PostgreSQL via OPEN_SIGNAL_DATABASE_URL (migration 0001 applied).
 import os
 
 import pytest
-
 from open_signal.sources.registry import Registry
 from open_signal.sources.rights import check_operation
 

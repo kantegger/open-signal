@@ -186,7 +186,7 @@ class Registry:
 
     # ------------------------------------------------------------- loading
     @classmethod
-    def load(cls, registries_dir: Path | str | None = None) -> "Registry":
+    def load(cls, registries_dir: Path | str | None = None) -> Registry:
         base = Path(registries_dir) if registries_dir else DEFAULT_REGISTRIES_DIR
         return cls(
             sections=_parse_file(base / "section-registry.yaml", "sections", SectionDefinition),

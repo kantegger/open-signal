@@ -6,19 +6,16 @@ PostgreSQL via OPEN_SIGNAL_DATABASE_URL (migration 0001 applied).
 
 import json
 import os
-import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
-
 from open_signal.sources.market_obs import MarketObservationCollector, floor_to_bucket
-
 
 # ------------------------------------------------------------ bucket (no DB)
 
 
 def test_floor_to_bucket() -> None:
-    now = datetime(2026, 8, 7, 12, 7, 33, tzinfo=timezone.utc)
+    now = datetime(2026, 8, 7, 12, 7, 33, tzinfo=UTC)
     floored = floor_to_bucket(now, 5)
     assert floored.minute == 5
     assert floored.second == 0

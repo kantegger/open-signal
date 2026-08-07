@@ -2,7 +2,6 @@
 
 from open_signal.derived.rule_changes import (
     align_paragraphs,
-    classify_change,
     is_technical_change,
     paragraph_id,
     split_paragraphs,

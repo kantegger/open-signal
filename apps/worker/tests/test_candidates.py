@@ -4,10 +4,9 @@ OPEN_SIGNAL_DATABASE_URL (migration 0004 applied).
 
 import os
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
-
 from open_signal.derived.candidates import CandidateDetector
 from open_signal.sources.market_obs import floor_to_bucket
 
@@ -100,7 +99,7 @@ def _cleanup(engine, market_uuid: str) -> None:
 def test_compute_metrics_flat_series(detector, engine) -> None:
     mid = _seed_market(engine, str(uuid.uuid4()), "Q?")
     _cleanup(engine, mid)
-    now = datetime(2026, 8, 7, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 8, 7, 12, 0, tzinfo=UTC)
     _seed_series(engine, mid, [0.5] * 30, now)  # flat
     output = detector.compute_for_market(mid, now=now)
     _cleanup(engine, mid)
@@ -112,7 +111,7 @@ def test_compute_metrics_flat_series(detector, engine) -> None:
 def test_compute_delta_and_eligible(detector, engine) -> None:
     mid = _seed_market(engine, str(uuid.uuid4()), "Q?")
     _cleanup(engine, mid)
-    now = datetime(2026, 8, 7, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 8, 7, 12, 0, tzinfo=UTC)
     # steady rise from 0.40 -> 0.60 over 24h: delta_24h = +20pp
     probs = [0.40 + 0.20 * (i / 29) for i in range(30)]
     _seed_series(engine, mid, probs, now)
@@ -127,7 +126,7 @@ def test_compute_delta_and_eligible(detector, engine) -> None:
 def test_candidate_rejected_when_below_threshold(detector, engine) -> None:
     mid = _seed_market(engine, str(uuid.uuid4()), "Q?")
     _cleanup(engine, mid)
-    now = datetime(2026, 8, 7, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 8, 7, 12, 0, tzinfo=UTC)
     # small move 0.50 -> 0.52 (+2pp < 3pp)
     probs = [0.50 + 0.02 * (i / 29) for i in range(30)]
     _seed_series(engine, mid, probs, now)
@@ -142,7 +141,7 @@ def test_candidate_rejected_on_bad_data_quality(detector, engine) -> None:
 
     mid = _seed_market(engine, str(uuid.uuid4()), "Q?")
     _cleanup(engine, mid)
-    now = datetime(2026, 8, 7, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 8, 7, 12, 0, tzinfo=UTC)
     _seed_series(engine, mid, [0.40 + 0.20 * (i / 29) for i in range(30)], now)
     # mark last observation as stale
     with engine.begin() as conn:
@@ -159,7 +158,7 @@ def test_candidate_rejected_on_bad_data_quality(detector, engine) -> None:
 def test_reversal_detected(detector, engine) -> None:
     mid = _seed_market(engine, str(uuid.uuid4()), "Q?")
     _cleanup(engine, mid)
-    now = datetime(2026, 8, 7, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 8, 7, 12, 0, tzinfo=UTC)
     # up then down sharply: 0.40 -> 0.80 -> 0.55
     probs = [0.40 + 0.40 * (i / 14) for i in range(15)] + [0.80 - 0.25 * (i / 14) for i in range(15)]
     _seed_series(engine, mid, probs, now)

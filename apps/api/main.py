@@ -8,9 +8,8 @@ from __future__ import annotations
 
 import os
 
-from fastapi import Depends, FastAPI, HTTPException, Header
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-
 from open_signal.api.ops import OpsPresenter
 from open_signal.api.presenters import ClaimPagePresenter
 from open_signal.composer.edition_writer import EditionWriter

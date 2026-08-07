@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import date, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -101,7 +101,7 @@ class OpenAlexChain:
 
         max_pages = max_pages or self.topics.get("max_pages_per_topic", 3)
         window_years = window_years or self.topics.get("default_window_years", 3)
-        from_date = (date.today() - timedelta(days=365 * window_years)).isoformat()
+        from_date = (datetime.now(timezone.utc) - timedelta(days=365 * window_years)).date().isoformat()
 
         stored = 0
         pages = 0

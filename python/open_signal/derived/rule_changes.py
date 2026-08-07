@@ -15,13 +15,13 @@ from typing import Any
 
 TECHNICAL_PATTERNS = [
     re.compile(r"\b\d{4}-\d{2}-\d{2}\b"),  # ISO dates
-    re.compile(r"\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2},\s+\d{4}\b", re.I),
-    re.compile(r"effective\s+(?:on|date)?\s*:?\s*\d{1,2}/\d{1,2}/\d{2,4}", re.I),
-    re.compile(r"\b\d{1,2}\s+days?\b", re.I),  # day counts
-    re.compile(r"FR\s+\d{1,6}", re.I),  # Federal Register citation
+    re.compile(r"\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2},\s+\d{4}\b", re.IGNORECASE),
+    re.compile(r"effective\s+(?:on|date)?\s*:?\s*\d{1,2}/\d{1,2}/\d{2,4}", re.IGNORECASE),
+    re.compile(r"\b\d{1,2}\s+days?\b", re.IGNORECASE),  # day counts
+    re.compile(r"FR\s+\d{1,6}", re.IGNORECASE),  # Federal Register citation
     re.compile(r"^\s*\(\s*[a-z0-9]+\s*\)\s*$"),  # bare numbering
-    re.compile(r"\b(amended|redesignated|republished)\b", re.I),  # procedural verbs
-    re.compile(r"^.*(federal register|document number|docket|comment period).*$", re.I),
+    re.compile(r"\b(amended|redesignated|republished)\b", re.IGNORECASE),  # procedural verbs
+    re.compile(r"^.*(federal register|document number|docket|comment period).*$", re.IGNORECASE),
 ]
 
 TECHNICAL_VERBS = {"is amended", "is revised", "is added", "is removed", "is redesignated"}
@@ -80,7 +80,7 @@ def paragraph_id(para: str) -> str | None:
     m = re.match(r"^\(\s*([a-z0-9]+)\s*\)", para)
     if m:
         return f"({m.group(1)})"
-    m = re.match(r"^(?:Sec\.|Section)\s+([\d.]+)", para, re.I)
+    m = re.match(r"^(?:Sec\.|Section)\s+([\d.]+)", para, re.IGNORECASE)
     if m:
         return f"sec-{m.group(1)}"
     return None

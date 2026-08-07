@@ -10,18 +10,16 @@ treated as crashed workers and re-claimed.
 
 from __future__ import annotations
 
-import os
 import json
+import os
 import time
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Mapping
+from typing import Any
 
-from sqlalchemy import MetaData, Table, create_engine, text
-from sqlalchemy.engine import Connection, Engine
-
-from open_signal.db.models import jobs as jobs_table
-from open_signal.db.models import metadata
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Engine
 
 #: Statuses per spec §120.
 QUEUED = "queued"

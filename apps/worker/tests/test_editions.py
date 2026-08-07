@@ -1,9 +1,8 @@
 """Slot filler + edition composer tests (OS-026, OS-027)."""
 
 import pytest
-
 from open_signal.composer.editions import ComposeError, EditionComposer
-from open_signal.composer.slots import SlotFillError, SlotFiller
+from open_signal.composer.slots import SlotFiller, SlotFillError
 from open_signal.sources.registry import Registry
 
 
@@ -113,7 +112,6 @@ def test_slot_compatibility(composer) -> None:
 
 
 def test_fallback_applied(composer) -> None:
-    from open_signal.sources.registry import Registry
 
     reg = Registry.load()
     # find a component with a fallback

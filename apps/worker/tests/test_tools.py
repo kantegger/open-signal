@@ -6,7 +6,6 @@ import os
 import uuid
 
 import pytest
-
 from open_signal.agents.tools import (
     ToolArgumentError,
     ToolPermissionError,
@@ -192,7 +191,6 @@ def test_tool_call_logged(registry, engine) -> None:
 
 
 def test_failed_call_logged(registry, engine) -> None:
-    from sqlalchemy import text
 
     run = _run_id(engine)
     spec = ToolSpec(

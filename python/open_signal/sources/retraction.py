@@ -100,7 +100,7 @@ class RetractionHandler:
                         claim_id=cid, new_status="degraded", reason=reason, actor_type="system", actor_id=actor
                     )
                     degraded.append(cid)
-                except (KeyError, Exception):
+                except KeyError:
                     continue
         return degraded
 

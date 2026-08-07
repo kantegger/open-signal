@@ -9,9 +9,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import text
-
 from open_signal.budget import BudgetGuard
+from sqlalchemy import text
 
 MODES = ("normal", "static_edition", "deterministic_only", "section_restricted", "archive_only")
 

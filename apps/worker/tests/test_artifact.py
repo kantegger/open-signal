@@ -8,7 +8,6 @@ import os
 import uuid
 
 import pytest
-
 from open_signal.sources.artifact_repo import ArtifactRepository
 from open_signal.sources.artifact_store import (
     LocalArtifactStore,

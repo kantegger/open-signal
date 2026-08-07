@@ -13,6 +13,7 @@ First-version thresholds (spec §32.5):
 
 from __future__ import annotations
 
+import itertools
 import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -213,7 +214,7 @@ def _persistence(rows: list[tuple[Any, ...]], direction: int, now: datetime) -> 
     if len(window) < 2:
         return 0.0
     aligned = 0
-    for prev, cur in zip(window, window[1:]):
+    for prev, cur in itertools.pairwise(window):
         if prev[0] is None or cur[0] is None:
             continue
         step = 1 if cur[0] > prev[0] else (-1 if cur[0] < prev[0] else 0)

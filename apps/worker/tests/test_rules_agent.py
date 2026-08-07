@@ -4,10 +4,8 @@ OPEN_SIGNAL_DATABASE_URL (migration 0001 applied).
 
 import json
 import os
-import uuid
 
 import pytest
-
 from open_signal.agents.rules_agent import RULES_OUTPUT_SCHEMA, RulesCharterAgent
 from open_signal.agents.runtime import AgentRuntime, LlmUsage
 

@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-from jsonschema import Draft7Validator, ValidationError
+from jsonschema import Draft7Validator
 
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 DEFAULT_MODEL = "deepseek-chat"

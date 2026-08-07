@@ -4,10 +4,9 @@ OPEN_SIGNAL_DATABASE_URL (migration 0001 applied).
 
 import os
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
-
 from open_signal.agents.evidence import EvidenceBundleBuilder
 
 
@@ -87,7 +86,7 @@ def builder(engine) -> EvidenceBundleBuilder:
 def test_build_for_candidate(builder, engine) -> None:
     mid = _seed_market(engine, str(uuid.uuid4()))
     _cleanup(engine, mid)
-    now = datetime(2026, 8, 7, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 8, 7, 12, 0, tzinfo=UTC)
     probs = [0.40 + 0.20 * (i / 39) for i in range(40)]
     _seed_series(engine, mid, probs, now)
 
@@ -116,7 +115,7 @@ def test_build_for_candidate(builder, engine) -> None:
 def test_snapshot_hash_is_stable(builder, engine) -> None:
     mid = _seed_market(engine, str(uuid.uuid4()))
     _cleanup(engine, mid)
-    now = datetime(2026, 8, 7, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 8, 7, 12, 0, tzinfo=UTC)
     _seed_series(engine, mid, [0.5] * 10, now)
 
     calc = {"delta_24h": 0.0, "direction": 0, "eligible": False}
@@ -131,7 +130,7 @@ def test_persisted_row_matches(builder, engine) -> None:
 
     mid = _seed_market(engine, str(uuid.uuid4()))
     _cleanup(engine, mid)
-    now = datetime(2026, 8, 7, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 8, 7, 12, 0, tzinfo=UTC)
     _seed_series(engine, mid, [0.5] * 6, now)
 
     result = builder.build_for_candidate(source_market_id=mid, calculation={"delta_24h": 0.0})

@@ -18,8 +18,6 @@ from typing import Any
 
 from sqlalchemy import text
 
-from open_signal.sources.market_obs import parse_probability
-
 YES_LABELS = {"yes", "true", "for", "pass", "approve", "in"}
 
 CANONICALIZATION_VERSION = "0.1.0"

@@ -6,7 +6,6 @@ import os
 import uuid
 
 import pytest
-
 from open_signal.canonical.canonicalizer import ExpectationCanonicalizer
 
 

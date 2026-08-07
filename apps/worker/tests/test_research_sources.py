@@ -6,12 +6,10 @@ Fixtures were captured from the live APIs.
 """
 
 import os
-import uuid
 
 import pytest
-
+from open_signal.sources.clinicaltrials import ClinicalTrialsChain
 from open_signal.sources.openalex import OpenAlexChain, OpenAlexClient
-from open_signal.sources.clinicaltrials import ClinicalTrialsChain, ClinicalTrialsClient
 
 
 @pytest.fixture()

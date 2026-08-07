@@ -20,7 +20,7 @@ from typing import Any
 
 from sqlalchemy import text
 
-from open_signal.composer.editions import EditionComposer, ComposeError
+from open_signal.composer.editions import EditionComposer
 
 COMPOSER_VERSION = "os-028"
 SPARSE_THRESHOLD = 3  # fewer items -> sparse edition
@@ -40,11 +40,8 @@ class EditionWriter:
         section_maturity: str = "production",
     ) -> dict[str, Any]:
         """Compose + persist a daily edition. Returns the edition summary."""
-        edition_date = edition_date or date.today()
-        try:
-            plan = self.composer.compose(candidates, section_maturity=section_maturity)
-        except ComposeError as exc:
-            raise
+        edition_date = edition_date or datetime.now(timezone.utc).date()
+        plan = self.composer.compose(candidates, section_maturity=section_maturity)
 
         items = plan["items"]
         sparse = len(items) < SPARSE_THRESHOLD

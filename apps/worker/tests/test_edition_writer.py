@@ -7,9 +7,7 @@ import uuid
 from datetime import date
 
 import pytest
-
 from open_signal.composer.edition_writer import EditionWriter
-from open_signal.composer.editions import EditionComposer
 
 
 @pytest.fixture()

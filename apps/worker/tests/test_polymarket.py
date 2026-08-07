@@ -7,11 +7,9 @@ and raw record storage require a real PostgreSQL via OPEN_SIGNAL_DATABASE_URL
 
 import json
 import os
-import uuid
 from pathlib import Path
 
 import pytest
-
 from open_signal.sources.polymarket import FIXTURE_DIR, PolymarketAdapter
 
 TEST_SOURCE = "polymarket-gamma"

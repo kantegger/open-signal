@@ -7,10 +7,8 @@ is available (migration 0001 applied).
 
 import json
 import os
-import uuid
 
 import pytest
-
 from open_signal.agents.runtime import (
     Abstention,
     AgentResult,
@@ -192,7 +190,6 @@ def test_run_success_writes_tokens(runtime, engine) -> None:
 
 
 def test_run_abstention(engine) -> None:
-    from sqlalchemy import create_engine
 
     _seed_lineage(engine)
     rt = AgentRuntime(

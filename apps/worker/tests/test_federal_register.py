@@ -5,17 +5,14 @@ OPEN_SIGNAL_DATABASE_URL (migration 0001 applied).
 
 import json
 import os
-import uuid
 from pathlib import Path
 
 import pytest
-
 from open_signal.sources.artifact_repo import ArtifactRepository
 from open_signal.sources.artifact_store import LocalArtifactStore
 from open_signal.sources.federal_register import (
     FIXTURE_DIR,
     FederalRegisterChain,
-    FederalRegisterClient,
 )
 
 TEST_SOURCE = "federal-register-test"
@@ -122,7 +119,6 @@ def test_discover_stores_documents_idempotent(chain: FederalRegisterChain, engin
 
 
 def test_latest_publication_date(chain: FederalRegisterChain, engine) -> None:
-    from sqlalchemy import text
 
     _cleanup(chain, engine)
     chain.fixture_dir = _copy_fixtures(Path(chain.fixture_dir).parent)

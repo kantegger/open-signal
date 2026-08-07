@@ -15,7 +15,6 @@ Candidates are written to research_signal_candidates (status=generated).
 from __future__ import annotations
 
 import json
-import re
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from typing import Any
@@ -107,7 +106,7 @@ class ResearchCandidateDetector:
         phase_rank = {"EARLY_PHASE1": 1, "PHASE1": 1, "PHASE2": 2, "PHASE3": 3, "PHASE4": 4}
         for sponsor, phases in sponsor_phases.items():
             ranks = [phase_rank.get(p, 0) for p in phases if p in phase_rank]
-            if len(set(r for r in ranks if r)) >= 2:  # spans >= 2 phases
+            if len({r for r in ranks if r}) >= 2:  # spans >= 2 phases
                 candidates.append(
                     {
                         "candidate_type": "stage_transition",

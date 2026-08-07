@@ -7,7 +7,6 @@ import os
 import uuid
 
 import pytest
-
 from open_signal.api.presenters import ClaimPagePresenter
 from open_signal.claims.ledger import ClaimsLedger
 
@@ -139,7 +138,6 @@ def test_api_endpoints(engine) -> None:
         pytest.skip("fastapi not installed")
 
     import apps.api.main as api
-    from sqlalchemy import create_engine
 
     api._engine = lambda: engine  # inject test engine
 

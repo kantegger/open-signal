@@ -6,7 +6,6 @@ import os
 import uuid
 
 import pytest
-
 from open_signal.claims.ledger import ClaimsLedger
 
 
@@ -180,18 +179,16 @@ def test_append_only_enforced(ledger, engine) -> None:
     from sqlalchemy import text
 
     created = ledger.create_claim(**_base_kwargs(engine))
-    with pytest.raises(Exception):
-        with engine.begin() as conn:
-            conn.execute(
-                text("DELETE FROM claim_events WHERE claim_id = :id"),
-                {"id": created["claim_id"]},
-            )
-    with pytest.raises(Exception):
-        with engine.begin() as conn:
-            conn.execute(
-                text("UPDATE claim_versions SET public_statement = 'hacked' WHERE claim_id = :id"),
-                {"id": created["claim_id"]},
-            )
+    with pytest.raises(Exception), engine.begin() as conn:
+        conn.execute(
+            text("DELETE FROM claim_events WHERE claim_id = :id"),
+            {"id": created["claim_id"]},
+        )
+    with pytest.raises(Exception), engine.begin() as conn:
+        conn.execute(
+            text("UPDATE claim_versions SET public_statement = 'hacked' WHERE claim_id = :id"),
+            {"id": created["claim_id"]},
+        )
     _cleanup(engine, created["claim_id"])
 
 

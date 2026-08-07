@@ -2,13 +2,11 @@
 via OPEN_SIGNAL_DATABASE_URL (migration 0001 applied).
 """
 
-import json
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
-
 from open_signal.research.candidates import ResearchCandidateDetector
 
 
@@ -64,7 +62,7 @@ def test_institution_entry_detected(detector, engine) -> None:
     # new entrant: burst in recent window
     works += [_work("2024", "New Lab", ["A"]) for _ in range(5)]
 
-    candidates = detector.detect_institution_entry(works, window_years=2, now=datetime(2025, 1, 1, tzinfo=timezone.utc))
+    candidates = detector.detect_institution_entry(works, window_years=2, now=datetime(2025, 1, 1, tzinfo=UTC))
     names = [c["derived_metrics"]["institution"] for c in candidates]
     assert "New Lab" in names
     assert "Old University" not in names
@@ -72,7 +70,7 @@ def test_institution_entry_detected(detector, engine) -> None:
 
 def test_institution_entry_needs_burst(detector, engine) -> None:
     works = [_work("2024", "Trickle", ["A"]) for _ in range(1)]
-    candidates = detector.detect_institution_entry(works, window_years=2, now=datetime(2025, 1, 1, tzinfo=timezone.utc))
+    candidates = detector.detect_institution_entry(works, window_years=2, now=datetime(2025, 1, 1, tzinfo=UTC))
     assert candidates == []
 
 
@@ -101,7 +99,7 @@ def test_cross_topic_relation_detected(detector, engine) -> None:
     # recent growth
     works += [_work("2024", "X", ["CAR T cell therapy", "CRISPR"]) for _ in range(3)]
     candidates = detector.detect_cross_topic_relation(
-        works, topic_concepts=topic_concepts, window_years=2, now=datetime(2025, 1, 1, tzinfo=timezone.utc)
+        works, topic_concepts=topic_concepts, window_years=2, now=datetime(2025, 1, 1, tzinfo=UTC)
     )
     assert len(candidates) == 1
     assert candidates[0]["derived_metrics"]["topics"] == ["oncology-immunotherapy", "synthetic-biology"]
@@ -120,7 +118,7 @@ def test_persist_and_no_claims(detector, engine) -> None:
     candidates = detector.detect_institution_entry(
         [_work("2024", "New Lab", ["A"]) for _ in range(5)],
         window_years=2,
-        now=datetime(2025, 1, 1, tzinfo=timezone.utc),
+        now=datetime(2025, 1, 1, tzinfo=UTC),
     )
     assert len(candidates) == 1
     stored = detector.persist(candidates)

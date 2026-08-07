@@ -5,10 +5,9 @@ OPEN_SIGNAL_DATABASE_URL (migration 0001 applied).
 import json
 import os
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
 
 import pytest
-
 from open_signal.resolution.resolver import Resolver
 
 
@@ -170,7 +169,7 @@ def test_rule_effective_by_date(resolver, engine) -> None:
     claim_id, contract_id = _seed_claim_and_contract(engine)
     result = resolver.resolve_rule_effective_by_date(
         rule_id="rule-1", claim_id=claim_id, resolution_contract_id=contract_id,
-        effective_at=datetime(2026, 8, 7, tzinfo=timezone.utc),
+        effective_at=datetime(2026, 8, 7, tzinfo=UTC),
     )
     assert result["outcome"] == "effective"
     _cleanup(engine)

@@ -1,11 +1,10 @@
 """Composer component runtime tests (OS-025)."""
 
 import pytest
-
 from open_signal.composer.components import (
+    FIRST_BATCH,
     ComponentRuntime,
     ComponentRuntimeError,
-    FIRST_BATCH,
 )
 from open_signal.sources.registry import Registry
 

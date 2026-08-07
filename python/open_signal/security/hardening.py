@@ -20,13 +20,13 @@ from sqlalchemy import text
 
 # ------------------------------------------------------- prompt injection
 INJECTION_PATTERNS = [
-    re.compile(r"ignore\s+(all\s+)?(previous|prior|above)\s+(instructions|prompts|messages)", re.I),
-    re.compile(r"disregard\s+(all\s+)?(previous|prior)\s+instructions", re.I),
-    re.compile(r"you\s+are\s+now\s+\w+", re.I),
-    re.compile(r"system\s+prompt", re.I),
-    re.compile(r"new\s+instructions", re.I),
-    re.compile(r"jailbreak", re.I),
-    re.compile(r"output\s+your\s+(system\s+)?prompt", re.I),
+    re.compile(r"ignore\s+(all\s+)?(previous|prior|above)\s+(instructions|prompts|messages)", re.IGNORECASE),
+    re.compile(r"disregard\s+(all\s+)?(previous|prior)\s+instructions", re.IGNORECASE),
+    re.compile(r"you\s+are\s+now\s+\w+", re.IGNORECASE),
+    re.compile(r"system\s+prompt", re.IGNORECASE),
+    re.compile(r"new\s+instructions", re.IGNORECASE),
+    re.compile(r"jailbreak", re.IGNORECASE),
+    re.compile(r"output\s+your\s+(system\s+)?prompt", re.IGNORECASE),
 ]
 
 INJECTION_FIXTURES = [

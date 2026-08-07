@@ -3,12 +3,9 @@ OPEN_SIGNAL_DATABASE_URL (migration 0008 applied).
 """
 
 import os
-import uuid
 
 import pytest
-
 from open_signal.security import hardening
-
 
 # ------------------------------------------------------ prompt injection
 

@@ -14,7 +14,7 @@ from typing import Any
 
 from sqlalchemy import text
 
-from open_signal.agents.runtime import Abstention, AgentRuntime
+from open_signal.agents.runtime import AgentRuntime
 
 RULES_OUTPUT_SCHEMA = {
     "type": "object",
@@ -95,18 +95,15 @@ class RulesCharterAgent:
             ),
         }
 
-        try:
-            result = self.runtime.run(
-                lineage_id=lineage_id,
-                desk_id=desk_id,
-                section_id=section_id,
-                capability_id=capability_id,
-                charter=self.runtime.load_charter("rules-desk-charter"),
-                context=context,
-                output_schema=RULES_OUTPUT_SCHEMA,
-            )
-        except Abstention:
-            raise
+        result = self.runtime.run(
+            lineage_id=lineage_id,
+            desk_id=desk_id,
+            section_id=section_id,
+            capability_id=capability_id,
+            charter=self.runtime.load_charter("rules-desk-charter"),
+            context=context,
+            output_schema=RULES_OUTPUT_SCHEMA,
+        )
 
         return self._persist(result, rule_meta, change_candidates, lineage_id)
 

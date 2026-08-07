@@ -3,11 +3,8 @@ OPEN_SIGNAL_DATABASE_URL (migration 0001 applied).
 """
 
 import os
-import uuid
-from datetime import datetime, timedelta, timezone
 
 import pytest
-
 from open_signal.budget import BudgetGuard
 
 

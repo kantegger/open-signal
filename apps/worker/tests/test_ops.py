@@ -3,11 +3,9 @@ OPEN_SIGNAL_DATABASE_URL (migrations 0001-0007 applied).
 """
 
 import os
-import uuid
 from datetime import date
 
 import pytest
-
 from open_signal.api.ops import OpsPresenter
 
 

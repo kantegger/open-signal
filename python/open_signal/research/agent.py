@@ -11,9 +11,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from sqlalchemy import text
-
 from open_signal.agents.runtime import Abstention, AgentRuntime
+from sqlalchemy import text
 
 RESEARCH_OUTPUT_SCHEMA = {
     "type": "object",

@@ -4,10 +4,8 @@ OPEN_SIGNAL_DATABASE_URL (migration 0001 applied).
 
 import json
 import os
-import uuid
 
 import pytest
-
 from open_signal.agents.runtime import Abstention, AgentRuntime, LlmUsage
 from open_signal.research.agent import ResearchDomainAgent
 

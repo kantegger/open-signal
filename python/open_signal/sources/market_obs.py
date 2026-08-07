@@ -10,8 +10,7 @@ rate limiting is handled via httpx retries.
 from __future__ import annotations
 
 import json
-import math
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any
 
 import httpx
@@ -74,7 +73,6 @@ class MarketObservationCollector:
 
     # ---------------------------------------------------------------- internal
     def _fetch_with_retry(self, market_id: str) -> dict[str, Any] | None:
-        from open_signal.sources.polymarket import GammaClient as _GC
 
         # GammaClient is thin; add a simple retry loop here for rate limits.
         attempt = 0
@@ -115,7 +113,7 @@ class MarketObservationCollector:
         last_trade = parse_probability(market.get("lastTradePrice"))
         spread = parse_probability(market.get("spread"))
         volume = parse_probability(market.get("volume"))
-        liquidity = parse_probability(market.get("liquidity"))
+        parse_probability(market.get("liquidity"))
 
         if probability is None:
             flags.append("missing_probability")

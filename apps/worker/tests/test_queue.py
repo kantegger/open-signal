@@ -8,8 +8,6 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 
 import pytest
-from sqlalchemy import text
-
 from open_signal.jobs.queue import (
     DEAD,
     QUEUED,
@@ -18,6 +16,7 @@ from open_signal.jobs.queue import (
     JobNotFound,
     JobQueue,
 )
+from sqlalchemy import text
 
 
 @pytest.fixture()
