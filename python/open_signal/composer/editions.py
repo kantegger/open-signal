@@ -90,18 +90,18 @@ class EditionComposer:
         ordered = sorted(deduped, key=lambda c: (c.get("priority", 10), c.get("component_id", "")))
         warnings: list[str] = []
         used: dict[str, list[dict[str, Any]]] = {k: [] for k in MAX_SLOT_ITEMS}
-        last_family: str | None = None
+        last_family: dict[str, str | None] = {}  # per-slot repetition tracking
         for c in ordered:
             slot_id = c.get("slot_id") or self.component_runtime.map_to_frontend(
                 c.get("component_id", "")
             ).get("default_slot")
             family = (c.get("component_id") or "").split(".")[0]
 
-            # repetition rule: same family twice in a row for a slot
-            if last_family == family:
-                warnings.append(f"repetition avoided: {family} consecutive")
+            # repetition rule: same family twice in a row *for the same slot*
+            if last_family.get(slot_id) == family:
+                warnings.append(f"repetition avoided: {family} consecutive in {slot_id}")
                 continue
-            last_family = family
+            last_family[slot_id] = family
 
             try:
                 validated = self.component_runtime.validate_render(c.get("component_id", ""), c)

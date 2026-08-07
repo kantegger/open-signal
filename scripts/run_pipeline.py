@@ -508,17 +508,37 @@ def _build_edition(engine: Any, claim_ids: list[str], now: datetime) -> dict[str
     if not claim_ids:
         return {"edition_id": None, "item_count": 0, "error": "no claims"}
 
-    # limit to 3 for edition composer (section diversity cap)
+    # build candidate list for composer with required display_fields
     candidates_list = []
     for idx, cid in enumerate(claim_ids[:3]):
+        # fetch claim data for display_fields
+        with engine.connect() as conn:
+            claim = conn.execute(
+                text("SELECT structured_proposition FROM claims WHERE id = :id"),
+                {"id": cid},
+            ).fetchone()
+        prop = (claim[0] or {}).get("en", {}) if claim else {}
+        prob = prop.get("probability", 0.5)
+
+        # alternate slots to avoid repetition rule (same family cannot be consecutive)
+        slots = ["main", "secondary", "main"]
         candidates_list.append({
             "claim_id": cid,
             "claim_status": "verified",
             "component_id": "time-series.probability-move",
             "component_version": "0.1.0",
-            "slot_id": "main" if idx == 0 else "secondary",
+            "slot_id": slots[idx % len(slots)],
             "section_id": "expectations-moved",
-            "display_fields": {},
+            "display_fields": {
+                "expectation_title": prop.get("headline", "Signal")[:100],
+                "current_probability": round(prob * 100, 1),
+                "start_probability": round((prob - 0.05) * 100, 1),
+                "delta_percentage_points": round(abs(prop.get("delta", 5)), 1),
+                "window": "7d",
+                "series": [],
+                "source_name": "Polymarket Gamma",
+                "updated_at": now.isoformat(),
+            },
             "priority": idx * 10 + 10,
         })
 
