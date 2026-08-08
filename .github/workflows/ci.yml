@@ -13,7 +13,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install worker
-        run: pip install -e ./python && pip install ./apps/worker[dev]
+        run: pip install -e ./python && pip install ./apps/worker[dev] ./apps/api
       - name: Lint
         run: ruff check python
       - name: Test
