@@ -100,6 +100,10 @@ def _cleanup(engine) -> None:
     from sqlalchemy import text
 
     with engine.begin() as conn:
+        # A prior integration cycle may leave immutable Render Plans pointing
+        # at evidence bundles. Remove publication snapshots first so this test
+        # is isolated from valid pre-existing test-branch data.
+        conn.execute(text("TRUNCATE daily_editions CASCADE"))
         conn.execute(text("TRUNCATE claims CASCADE"))
         conn.execute(text("DELETE FROM evidence_bundles"))
         conn.execute(text("DELETE FROM agent_tool_calls"))

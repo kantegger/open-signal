@@ -27,6 +27,8 @@ def test_load_counts(registry: Registry) -> None:
     assert len(registry.templates()) == 3
     assert len(registry.freshness_policies()) == 7
     assert registry.freshness_policy_version == "1.0.0"
+    assert len(registry.job_schedules()) == 10
+    assert registry.job_schedule_version == "1.0.0"
 
 
 def test_validation_passes(registry: Registry) -> None:
@@ -77,6 +79,24 @@ def test_freshness_policy_is_rolling_and_complete(registry: Registry) -> None:
     assert expectations.hard_age_hours == 72
     assert expectations.lead_tenure_hours == 24
     assert registry.freshness_policy("default") is not None
+
+
+def test_job_schedules_preserve_section_boundaries(registry: Registry) -> None:
+    schedules = registry.job_schedules()
+    sections = {
+        schedule.payload.get("section_id")
+        for schedule in schedules
+        if schedule.payload.get("section_id")
+    }
+    assert sections == {
+        "expectations-moved",
+        "rules-moved",
+        "research-frontier",
+    }
+    research_agent = registry.job_schedule("research-shadow-investigation")
+    assert research_agent is not None
+    assert research_agent.queue_name == "agent"
+    assert min(schedule.cadence_seconds for schedule in schedules) == 900
 
 
 # ---------------------------------------------------------------- rights

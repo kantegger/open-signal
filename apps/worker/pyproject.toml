@@ -16,6 +16,9 @@ dependencies = [
   "alembic>=1.13,<2",
 ]
 
+[project.scripts]
+open-signal-worker = "open_signal_worker.main:main"
+
 [project.optional-dependencies]
 dev = [
   "pytest>=8,<9",

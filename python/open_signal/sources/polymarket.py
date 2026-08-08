@@ -139,6 +139,28 @@ class PolymarketAdapter:
             offset = next_offset
         return {"markets": markets_total, "pages": pages}
 
+    def refresh(self, *, max_pages: int = 3) -> dict[str, int]:
+        """Re-read the leading active-market pages without advancing a cursor.
+
+        ``discover`` is useful for a finite historical crawl.  A rolling source
+        cannot keep resuming beyond the end of that crawl: it must revisit the
+        leading active records so changed prices produce a new content hash and
+        a new observation.  Storage remains idempotent.
+        """
+        offset = 0
+        markets_total = 0
+        pages = 0
+        for _ in range(max_pages):
+            page = self._load_page(offset)
+            if not page:
+                break
+            markets_total += self._store_raw_markets(page)
+            pages += 1
+            if len(page) < self.page_size:
+                break
+            offset += len(page)
+        return {"markets": markets_total, "pages": pages}
+
     # ------------------------------------------------------------------ storage
     def _load_page(self, offset: int) -> list[dict[str, Any]]:
         """Load one page from fixtures (offline mode) or the live API."""

@@ -231,6 +231,81 @@ class EditionWriter:
             generated_at=generated_at,
         )
 
+    def reconcile_freshness(
+        self,
+        *,
+        generated_at: datetime | None = None,
+    ) -> dict[str, Any]:
+        """Publish only when freshness or validity changes public meaning.
+
+        This method is safe to schedule hourly: it does not manufacture an
+        Edition when every current item would retain the same state and Slot.
+        """
+        generated_at = _utc(generated_at or datetime.now(timezone.utc))
+        current_id = self.current_edition_id()
+        if current_id is None:
+            return {"published": False, "reason": "no current edition"}
+        candidates = self._current_candidates()
+        transitions: list[dict[str, Any]] = []
+        for candidate in candidates:
+            decision = self.composer.freshness_evaluator.evaluate(
+                candidate,
+                now=generated_at,
+            )
+            previous_state = str(candidate.get("freshness_state") or "current")
+            if not decision.eligible or decision.state != previous_state:
+                transitions.append(
+                    {
+                        "claim_id": candidate.get("claim_id"),
+                        "from": previous_state,
+                        "to": decision.state,
+                        "reason": decision.reason,
+                    }
+                )
+            elif decision.demote_from_lead and candidate.get("slot_id") == "lead":
+                transitions.append(
+                    {
+                        "claim_id": candidate.get("claim_id"),
+                        "from": "lead",
+                        "to": "secondary",
+                        "reason": decision.reason,
+                    }
+                )
+
+        with self.engine.connect() as conn:
+            channel_policy = conn.execute(
+                text(
+                    "SELECT policy_version FROM publication_channels "
+                    "WHERE id = :channel"
+                ),
+                {"channel": PUBLICATION_CHANNEL},
+            ).scalar_one_or_none()
+        current_policy = self.composer.freshness_evaluator.policy_version
+        if channel_policy != current_policy:
+            transitions.append(
+                {
+                    "claim_id": None,
+                    "from": channel_policy,
+                    "to": current_policy,
+                    "reason": "freshness policy version changed",
+                }
+            )
+
+        if not transitions:
+            return {
+                "published": False,
+                "reason": "no material freshness transition",
+                "edition_id": current_id,
+            }
+        edition = self.build_rolling_edition(
+            [],
+            refreshed_section_ids=set(),
+            trigger_type="freshness_reconcile",
+            generated_at=generated_at,
+            section_maturity="beta",
+        )
+        return {"published": True, "transitions": transitions, **edition}
+
     def _insert_render_plan(
         self,
         conn: Any,

@@ -186,6 +186,22 @@ class FreshnessPolicyDefinition(BaseModel):
     priority: int = 100
 
 
+class JobScheduleDefinition(BaseModel):
+    """One machine-readable Scheduler occurrence contract (OS-049)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    job_type: str
+    queue_name: Literal["source", "analysis", "agent", "publication"]
+    cadence_seconds: int = Field(ge=60)
+    phase_offset_seconds: int = Field(default=0, ge=0)
+    priority: int = Field(default=100, ge=0)
+    maximum_attempts: int = Field(default=5, ge=1)
+    payload: dict[str, Any] = Field(default_factory=dict)
+    enabled: bool = True
+
+
 class Registry:
     """Loaded registries with read views and reference-integrity validation."""
 
@@ -198,6 +214,8 @@ class Registry:
         templates: list[ResolutionTemplateDefinition],
         freshness_policies: list[FreshnessPolicyDefinition],
         freshness_policy_version: str,
+        job_schedules: list[JobScheduleDefinition],
+        job_schedule_version: str,
     ) -> None:
         self._sections = {s.id: s for s in sections}
         self._capabilities = {c.id: c for c in capabilities}
@@ -206,6 +224,8 @@ class Registry:
         self._templates = {t.id: t for t in templates}
         self._freshness_policies = {p.id: p for p in freshness_policies}
         self.freshness_policy_version = freshness_policy_version
+        self._job_schedules = {schedule.id: schedule for schedule in job_schedules}
+        self.job_schedule_version = job_schedule_version
 
     # ------------------------------------------------------------- loading
     @classmethod
@@ -216,6 +236,11 @@ class Registry:
             "policies",
             FreshnessPolicyDefinition,
         )
+        schedule_version, job_schedules = _parse_versioned_file(
+            base / "job-schedule-registry.yaml",
+            "schedules",
+            JobScheduleDefinition,
+        )
         return cls(
             sections=_parse_file(base / "section-registry.yaml", "sections", SectionDefinition),
             capabilities=_parse_file(base / "capability-registry.yaml", "capabilities", CapabilityDefinition),
@@ -224,6 +249,8 @@ class Registry:
             templates=_parse_file(base / "resolution-template-registry.yaml", "templates", ResolutionTemplateDefinition),
             freshness_policies=freshness_policies,
             freshness_policy_version=freshness_version,
+            job_schedules=job_schedules,
+            job_schedule_version=schedule_version,
         )
 
     # ------------------------------------------------------------ read views
@@ -259,6 +286,12 @@ class Registry:
 
     def freshness_policy(self, policy_id: str) -> FreshnessPolicyDefinition | None:
         return self._freshness_policies.get(policy_id)
+
+    def job_schedules(self) -> list[JobScheduleDefinition]:
+        return list(self._job_schedules.values())
+
+    def job_schedule(self, schedule_id: str) -> JobScheduleDefinition | None:
+        return self._job_schedules.get(schedule_id)
 
     def capabilities_for_section(self, section_id: str) -> list[CapabilityDefinition]:
         return [c for c in self._capabilities.values() if c.section_id == section_id]
@@ -314,6 +347,17 @@ class Registry:
                 and policy.soft_age_hours > policy.hard_age_hours
             ):
                 errors.append(f"freshness policy {policy.id}: soft age exceeds hard age")
+
+        for schedule in self._job_schedules.values():
+            if schedule.phase_offset_seconds >= schedule.cadence_seconds:
+                errors.append(
+                    f"job schedule {schedule.id}: phase offset must be below cadence"
+                )
+            section_id = schedule.payload.get("section_id")
+            if section_id and section_id not in self._sections:
+                errors.append(
+                    f"job schedule {schedule.id}: unknown section {section_id}"
+                )
 
         return errors
 

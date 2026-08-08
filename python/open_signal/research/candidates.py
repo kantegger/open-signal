@@ -14,6 +14,7 @@ Candidates are written to research_signal_candidates (status=generated).
 
 from __future__ import annotations
 
+import hashlib
 import json
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
@@ -176,21 +177,40 @@ class ResearchCandidateDetector:
 
     # --------------------------------------------------------------- storage
     def persist(self, candidates: list[dict[str, Any]], section_id: str = "research-frontier") -> int:
+        del section_id  # retained for compatibility; table is Research-specific
         stored = 0
         with self.engine.begin() as conn:
             for c in candidates:
                 subject_ids = c.get("subject_ids") or []
+                fingerprint = hashlib.sha256(
+                    json.dumps(
+                        {
+                            "type": c["candidate_type"],
+                            "subjects": subject_ids,
+                            "start": c["observation_window_start"],
+                            "end": c["observation_window_end"],
+                            "baseline": c["baseline_definition"],
+                            "metrics": c["derived_metrics"],
+                            "version": CANDIDATE_VERSION,
+                        },
+                        ensure_ascii=False,
+                        sort_keys=True,
+                        default=str,
+                    ).encode()
+                ).hexdigest()
                 result = conn.execute(
                     text(
                         """
                         INSERT INTO research_signal_candidates
                           (candidate_type, subject_ids, observation_window_start,
                            observation_window_end, baseline_definition, derived_metrics,
-                           evidence_relation_ids, candidate_generator_version, status)
+                           evidence_relation_ids, candidate_generator_version, status,
+                           idempotency_key)
                         VALUES
                           (:type, CAST(:subjects AS uuid[]), CAST(:start AS timestamptz),
                            CAST(:end AS timestamptz), :baseline, CAST(:metrics AS jsonb),
-                           CAST(:evidence AS uuid[]), :ver, 'generated')
+                           CAST(:evidence AS uuid[]), :ver, 'generated', :key)
+                        ON CONFLICT DO NOTHING
                         """
                     ),
                     {
@@ -202,6 +222,7 @@ class ResearchCandidateDetector:
                         "metrics": json.dumps(c["derived_metrics"]),
                         "evidence": c.get("evidence_relation_ids") or [],
                         "ver": CANDIDATE_VERSION,
+                        "key": f"research:{fingerprint}",
                     },
                 )
                 stored += result.rowcount

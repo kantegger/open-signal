@@ -14,6 +14,8 @@ from typing import Any
 
 from sqlalchemy import text
 
+from open_signal.sources.registry import Registry
+
 ALLOWED_CLAIM_TYPES = {
     "derived_observation",
     "agent_observation",
@@ -57,7 +59,7 @@ class ClaimVerifier:
             claim = conn.execute(
                 text(
                     "SELECT claim_type, public_statement, structured_proposition, "
-                    "confidence, evidence_bundle_id, issued_at, status "
+                    "confidence, evidence_bundle_id, issued_at, status, section_id "
                     "FROM claims WHERE id = :id"
                 ),
                 {"id": claim_id},
@@ -71,7 +73,7 @@ class ClaimVerifier:
             "number": self.check_number(claim[2], claim[3]),
             "date": self.check_date(claim[5]),
             "rights": self.check_rights(claim_id, claim[4]),
-            "claim_type": self.check_claim_type(claim[0]),
+            "claim_type": self.check_claim_type(claim[0], claim[7]),
             "component_fields": self.check_component_fields(render_candidate),
             "prohibited_language": self.check_prohibited_language(claim[1]),
         }
@@ -149,8 +151,15 @@ class ClaimVerifier:
             return {"passed": False, "detail": "source rights deny display"}
         return {"passed": True, "detail": "rights ok (internal display)"}
 
-    def check_claim_type(self, claim_type: str) -> dict[str, Any]:
-        if claim_type in ALLOWED_CLAIM_TYPES:
+    def check_claim_type(
+        self, claim_type: str, section_id: str | None = None
+    ) -> dict[str, Any]:
+        registry_allowed: set[str] = set()
+        if section_id:
+            section = Registry.load().section(section_id)
+            if section is not None:
+                registry_allowed.update(section.allowed_claim_types)
+        if claim_type in ALLOWED_CLAIM_TYPES | registry_allowed:
             return {"passed": True, "detail": claim_type}
         return {"passed": False, "detail": f"disallowed claim type {claim_type!r}"}
 

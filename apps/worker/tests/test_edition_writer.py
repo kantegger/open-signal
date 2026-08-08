@@ -182,6 +182,28 @@ def test_hard_expiry_atomically_publishes_complete_empty_page(writer, engine) ->
     _cleanup(engine)
 
 
+def test_freshness_reconcile_is_noop_until_meaning_changes(writer, engine) -> None:
+    _cleanup(engine)
+    initial = writer.build_edition(
+        [_candidate("c1")],
+        generated_at=datetime(2026, 8, 7, 13, tzinfo=UTC),
+    )
+
+    unchanged = writer.reconcile_freshness(
+        generated_at=datetime(2026, 8, 7, 14, tzinfo=UTC)
+    )
+    assert unchanged["published"] is False
+    assert writer.current_edition_id() == initial["edition_id"]
+
+    retired = writer.reconcile_freshness(
+        generated_at=datetime(2026, 8, 10, 14, tzinfo=UTC)
+    )
+    assert retired["published"] is True
+    assert retired["item_count"] == 0
+    assert writer.current_edition_id() == retired["edition_id"]
+    _cleanup(engine)
+
+
 def test_claims_not_modified(writer, engine) -> None:
     from sqlalchemy import text
 

@@ -123,6 +123,7 @@ def test_persist_and_no_claims(detector, engine) -> None:
     assert len(candidates) == 1
     stored = detector.persist(candidates)
     assert stored == 1
+    assert detector.persist(candidates) == 0
 
     # candidates only: this stage must not create any claims
     with engine.connect() as conn:

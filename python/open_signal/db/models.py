@@ -375,7 +375,14 @@ research_signal_candidates = Table(
     Column("evidence_relation_ids", ARRAY(Uuid()), nullable=False, server_default="{}"),
     Column("candidate_generator_version", Text, nullable=False),
     Column("status", Text, nullable=False, server_default="generated"),
+    Column("idempotency_key", Text),
     Column("created_at", _tz, nullable=False, server_default=text("now()")),
+    Index(
+        "research_signal_candidates_idempotency_key_uidx",
+        "idempotency_key",
+        unique=True,
+        postgresql_where=text("idempotency_key IS NOT NULL"),
+    ),
 )
 
 # ---------------------------------------------------------------- C.8
@@ -493,6 +500,7 @@ claims = Table(
     Column("epistemic_status", Text, nullable=False),
     Column("evidence_bundle_id", Uuid(), ForeignKey("evidence_bundles.id"), nullable=False),
     Column("evidence_snapshot_hash", Text, nullable=False),
+    Column("idempotency_key", Text),
     Column("issued_at", _tz, nullable=False),
     Column("valid_from", _tz),
     Column("valid_until", _tz),
@@ -501,6 +509,12 @@ claims = Table(
     Column("current_version_id", Uuid()),
     Column("created_at", _tz, nullable=False, server_default=text("now()")),
     Column("updated_at", _tz, nullable=False, server_default=text("now()")),
+    Index(
+        "claims_idempotency_key_uidx",
+        "idempotency_key",
+        unique=True,
+        postgresql_where=text("idempotency_key IS NOT NULL"),
+    ),
 )
 
 claim_versions = Table(

@@ -108,7 +108,10 @@ class JobQueue:
     @staticmethod
     def _default_engine() -> Engine:
         url = os.environ["OPEN_SIGNAL_DATABASE_URL"]
-        return create_engine(url)
+        # Scheduled mode intentionally leaves the database untouched long
+        # enough for managed Postgres to suspend.  Pre-ping discards the stale
+        # pooled socket when the compute wakes again.
+        return create_engine(url, pool_pre_ping=True, pool_recycle=240)
 
     # ------------------------------------------------------------------ enqueue
     def enqueue(
@@ -126,7 +129,11 @@ class JobQueue:
 
         Returns the job id (existing one if the key already exists).
         """
+        if maximum_attempts < 1:
+            raise ValueError("maximum_attempts must be at least 1")
         run_after = run_after or datetime.now(timezone.utc)
+        if run_after.tzinfo is None:
+            raise ValueError("run_after must be timezone-aware")
         stmt = text(
             """
             INSERT INTO jobs
@@ -176,7 +183,7 @@ class JobQueue:
             id=str(row[0]),
             job_type=row[1],
             queue_name=row[2],
-            payload=row[3],
+            payload=_mapping(row[3]),
             attempts=row[4],
             maximum_attempts=row[5],
         )
@@ -243,7 +250,7 @@ class JobQueue:
                     {"id": job_id, "backoff": RETRY_BACKOFF},
                 )
             # Record the last error on the payload for observability.
-            updated_payload = dict(payload or {})
+            updated_payload = dict(_mapping(payload))
             updated_payload["_last_error"] = error_text
             updated_payload["_failed_at"] = datetime.now(timezone.utc).isoformat()
             conn.execute(
@@ -301,6 +308,15 @@ class JobQueue:
 
 
 Handler = Callable[[ClaimedJob], None]
+
+
+def _mapping(value: Any) -> Mapping[str, Any]:
+    if isinstance(value, Mapping):
+        return value
+    if isinstance(value, str):
+        parsed = json.loads(value)
+        return parsed if isinstance(parsed, Mapping) else {}
+    return {}
 
 
 def run_worker_poll(

@@ -23,7 +23,7 @@
 
 运行 `python scripts/release_check.py`（需 `OPEN_SIGNAL_DATABASE_URL`）：
 
-1. `alembic_version == 0009`（全部迁移）
+1. `alembic_version == 0010`（全部迁移）
 2. `DEEPSEEK_API_KEY` 已配置（LLM Agent）
 3. `OPEN_SIGNAL_OPS_TOKEN` 已配置且不少于 32 字符（ops 端点认证，fail-closed）
 4. 关键表有数据：`sources`、`daily_editions`、`claims`、`feature_flags`、`audit_events`
