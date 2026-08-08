@@ -1,5 +1,7 @@
 """Slot filler + edition composer tests (OS-026, OS-027)."""
 
+from datetime import UTC, datetime
+
 import pytest
 from open_signal.composer.editions import ComposeError, EditionComposer
 from open_signal.composer.slots import SlotFiller, SlotFillError
@@ -61,7 +63,9 @@ def test_claim_permission(filler) -> None:
     # derived_observation is allowed in secondary (allows_observation)
     assert filler.check_claim_permission("secondary", "derived_observation") is True
     # a disallowed claim type for a slot
-    assert filler.check_claim_permission("lead", "derived_observation") is False or True  # hero slot may accept
+    assert (
+        filler.check_claim_permission("lead", "derived_observation") is False or True
+    )  # hero slot may accept
 
 
 def test_fill_slot_capacity(filler) -> None:
@@ -85,6 +89,34 @@ def test_eligibility_only_verified(composer) -> None:
     bad = _pm_candidate("c1", claim_status="rejected")
     with pytest.raises(ComposeError, match="no eligible"):
         composer.compose([bad])
+
+
+def test_all_hard_expired_candidates_compile_complete_empty_plan(composer) -> None:
+    expired = _pm_candidate(
+        "c1",
+        display_fields={
+            **_pm_candidate("c1")["display_fields"],
+            "updated_at": "2026-01-01T00:00:00Z",
+        },
+    )
+    plan = composer.compose([expired], now=datetime(2026, 8, 8, tzinfo=UTC))
+    assert plan["items"] == []
+    assert set(plan["slots"]) == {
+        "lead",
+        "secondary",
+        "live_feed",
+        "digest",
+        "main",
+        "utility",
+        "archive",
+    }
+    assert any("hard age exceeded" in warning for warning in plan["warnings"])
+
+
+def test_withdrawal_event_retires_without_blocking_compile(composer) -> None:
+    plan = composer.compose([_pm_candidate("c1", claim_status="withdrawn")])
+    assert plan["items"] == []
+    assert any("semantic invalidator: withdrawn" in warning for warning in plan["warnings"])
 
 
 def test_deduplication(composer) -> None:

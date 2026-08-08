@@ -1,7 +1,7 @@
 """Artifact store tests (OS-006).
 
 Store unit tests are DB-free; repository integration tests require a real
-PostgreSQL via OPEN_SIGNAL_DATABASE_URL (migration 0001 applied).
+PostgreSQL via OPEN_SIGNAL_TEST_DATABASE_URL (migration 0001 applied).
 """
 
 import os
@@ -66,9 +66,9 @@ def test_signed_url_expired(store: LocalArtifactStore) -> None:
 
 @pytest.fixture()
 def repo(store: LocalArtifactStore):
-    url = os.environ.get("OPEN_SIGNAL_DATABASE_URL")
+    url = os.environ.get("OPEN_SIGNAL_TEST_DATABASE_URL")
     if not url:
-        pytest.skip("OPEN_SIGNAL_DATABASE_URL not set")
+        pytest.skip("OPEN_SIGNAL_TEST_DATABASE_URL not set")
     from sqlalchemy import create_engine
 
     engine = create_engine(url)

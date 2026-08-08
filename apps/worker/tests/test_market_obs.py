@@ -1,7 +1,7 @@
 """Market observation collector tests (OS-008).
 
 Bucket/idempotency tests are DB-free; integration tests require a real
-PostgreSQL via OPEN_SIGNAL_DATABASE_URL (migration 0001 applied).
+PostgreSQL via OPEN_SIGNAL_TEST_DATABASE_URL (migration 0001 applied).
 """
 
 import json
@@ -37,9 +37,9 @@ def test_parse_probability_helpers() -> None:
 
 @pytest.fixture()
 def engine():
-    url = os.environ.get("OPEN_SIGNAL_DATABASE_URL")
+    url = os.environ.get("OPEN_SIGNAL_TEST_DATABASE_URL")
     if not url:
-        pytest.skip("OPEN_SIGNAL_DATABASE_URL not set")
+        pytest.skip("OPEN_SIGNAL_TEST_DATABASE_URL not set")
     from sqlalchemy import create_engine
 
     return create_engine(url)

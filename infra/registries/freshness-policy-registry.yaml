@@ -1,0 +1,68 @@
+version: "1.0.0"
+
+# Lower priority values win. Slot-specific policies therefore override the
+# broader Section policies. Elapsed hours are measured from the most precise
+# available material timestamp; there is no calendar-day reset.
+policies:
+  - id: "archive"
+    section_ids: ["*"]
+    slot_types: ["archive"]
+    soft_age_hours: null
+    hard_age_hours: null
+    lead_tenure_hours: null
+    semantic_invalidators: ["withdrawn", "superseded", "retracted"]
+    priority: 10
+
+  - id: "live-feed"
+    section_ids: ["*"]
+    slot_types: ["live_feed"]
+    soft_age_hours: 6
+    hard_age_hours: 24
+    lead_tenure_hours: null
+    semantic_invalidators: ["withdrawn", "superseded", "expired", "retracted"]
+    priority: 20
+
+  - id: "utility"
+    section_ids: ["*"]
+    slot_types: ["utility"]
+    soft_age_hours: 12
+    hard_age_hours: 24
+    lead_tenure_hours: null
+    semantic_invalidators: ["withdrawn", "superseded", "expired", "resolved", "retracted"]
+    priority: 30
+
+  - id: "expectations"
+    section_ids: ["expectations-moved"]
+    slot_types: []
+    soft_age_hours: 24
+    hard_age_hours: 72
+    lead_tenure_hours: 24
+    semantic_invalidators: ["withdrawn", "superseded", "expired", "resolved", "retracted"]
+    priority: 40
+
+  - id: "rules"
+    section_ids: ["rules-moved"]
+    slot_types: []
+    soft_age_hours: 72
+    hard_age_hours: 336
+    lead_tenure_hours: 24
+    semantic_invalidators: ["withdrawn", "superseded", "expired", "retracted"]
+    priority: 40
+
+  - id: "research"
+    section_ids: ["research-frontier"]
+    slot_types: []
+    soft_age_hours: 168
+    hard_age_hours: 720
+    lead_tenure_hours: 24
+    semantic_invalidators: ["withdrawn", "superseded", "expired", "retracted"]
+    priority: 40
+
+  - id: "default"
+    section_ids: ["*"]
+    slot_types: ["*"]
+    soft_age_hours: 24
+    hard_age_hours: 72
+    lead_tenure_hours: 24
+    semantic_invalidators: ["withdrawn", "superseded", "expired", "retracted"]
+    priority: 1000

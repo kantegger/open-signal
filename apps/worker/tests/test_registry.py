@@ -1,7 +1,7 @@
 """Registry and rights tests (OS-005).
 
 Registry loading and validation are DB-free; desk sync requires a real
-PostgreSQL via OPEN_SIGNAL_DATABASE_URL (migration 0001 applied).
+PostgreSQL via OPEN_SIGNAL_TEST_DATABASE_URL (migration 0001 applied).
 """
 
 import os
@@ -25,6 +25,8 @@ def test_load_counts(registry: Registry) -> None:
     assert len(registry.slots()) == 7
     assert len(registry.components()) == 19
     assert len(registry.templates()) == 3
+    assert len(registry.freshness_policies()) == 7
+    assert registry.freshness_policy_version == "1.0.0"
 
 
 def test_validation_passes(registry: Registry) -> None:
@@ -66,6 +68,15 @@ def test_component_fallback_exists(registry: Registry) -> None:
     for comp in registry.components():
         if comp.fallback_component_id:
             assert registry.component(comp.fallback_component_id) is not None
+
+
+def test_freshness_policy_is_rolling_and_complete(registry: Registry) -> None:
+    expectations = registry.freshness_policy("expectations")
+    assert expectations is not None
+    assert expectations.soft_age_hours == 24
+    assert expectations.hard_age_hours == 72
+    assert expectations.lead_tenure_hours == 24
+    assert registry.freshness_policy("default") is not None
 
 
 # ---------------------------------------------------------------- rights
@@ -124,9 +135,9 @@ def _fulltext(ops):
 def engine():
     from sqlalchemy import create_engine
 
-    url = os.environ.get("OPEN_SIGNAL_DATABASE_URL")
+    url = os.environ.get("OPEN_SIGNAL_TEST_DATABASE_URL")
     if not url:
-        pytest.skip("OPEN_SIGNAL_DATABASE_URL not set")
+        pytest.skip("OPEN_SIGNAL_TEST_DATABASE_URL not set")
     return create_engine(url)
 
 

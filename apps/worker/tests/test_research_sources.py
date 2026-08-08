@@ -1,7 +1,7 @@
 """OpenAlex + ClinicalTrials research source tests (OS-020).
 
 Topic definitions and baseline queries are DB-free; discovery storage
-requires a real PostgreSQL via OPEN_SIGNAL_DATABASE_URL (migration 0001).
+requires a real PostgreSQL via OPEN_SIGNAL_TEST_DATABASE_URL (migration 0001).
 Fixtures were captured from the live APIs.
 """
 
@@ -14,9 +14,9 @@ from open_signal.sources.openalex import OpenAlexChain, OpenAlexClient
 
 @pytest.fixture()
 def engine():
-    url = os.environ.get("OPEN_SIGNAL_DATABASE_URL")
+    url = os.environ.get("OPEN_SIGNAL_TEST_DATABASE_URL")
     if not url:
-        pytest.skip("OPEN_SIGNAL_DATABASE_URL not set")
+        pytest.skip("OPEN_SIGNAL_TEST_DATABASE_URL not set")
     from sqlalchemy import create_engine
 
     return create_engine(url)

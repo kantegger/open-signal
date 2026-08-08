@@ -1,26 +1,31 @@
 """Public Beta release check tests (OS-040). Requires real PostgreSQL via
-OPEN_SIGNAL_DATABASE_URL (migrations applied).
+OPEN_SIGNAL_TEST_DATABASE_URL (migrations applied).
 """
 
 import os
+import subprocess
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT))
 
-import uuid
-
 import pytest
+from scripts.release_check import ops_token_meets_minimum_length, run, summary
 
-from scripts.release_check import run, summary
+
+def test_ops_token_minimum_length_check() -> None:
+    assert ops_token_meets_minimum_length("a" * 32) is True
+    assert ops_token_meets_minimum_length("a" * 31) is False
+    assert ops_token_meets_minimum_length("") is False
+    assert ops_token_meets_minimum_length(None) is False
 
 
 @pytest.fixture()
 def engine():
-    url = os.environ.get("OPEN_SIGNAL_DATABASE_URL")
+    url = os.environ.get("OPEN_SIGNAL_TEST_DATABASE_URL")
     if not url:
-        pytest.skip("OPEN_SIGNAL_DATABASE_URL not set")
+        pytest.skip("OPEN_SIGNAL_TEST_DATABASE_URL not set")
     from sqlalchemy import create_engine
 
     return create_engine(url)
@@ -46,16 +51,14 @@ def test_summary_counts(engine) -> None:
 
 def test_release_check_script_exits(engine) -> None:
     """The script returns exit code 0/1 and prints a summary line."""
-    import subprocess
-    import sys
-
     env = dict(os.environ)
-    env["OPEN_SIGNAL_DATABASE_URL"] = os.environ["OPEN_SIGNAL_DATABASE_URL"]
+    env["OPEN_SIGNAL_TEST_DATABASE_URL"] = os.environ["OPEN_SIGNAL_TEST_DATABASE_URL"]
     result = subprocess.run(
         [sys.executable, "scripts/release_check.py"],
         capture_output=True,
         text=True,
         env=env,
+        check=False,
     )
     assert "checks passed" in result.stdout
     assert result.returncode in (0, 1)

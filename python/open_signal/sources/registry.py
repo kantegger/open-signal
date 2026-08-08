@@ -1,6 +1,6 @@
 """Registry YAML loader and operations read view (spec §275.2, OS-005).
 
-Loads the five machine-readable registries from ``infra/registries`` and
+Loads the machine-readable registries from ``infra/registries`` and
 exposes read-only views plus reference-integrity validation. Production
 code reads these registries, never the natural-language spec (appendix A.0).
 """
@@ -167,6 +167,25 @@ class ResolutionTemplateDefinition(BaseModel):
     activated_at: str | None = None
 
 
+class FreshnessPolicyDefinition(BaseModel):
+    """freshness-policy-registry.yaml entry.
+
+    Policies are deliberately expressed in elapsed hours rather than calendar
+    days: the front page is rolling and has no global midnight reset.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    section_ids: list[str] = Field(default_factory=list)
+    slot_types: list[str] = Field(default_factory=list)
+    soft_age_hours: float | None = None
+    hard_age_hours: float | None = None
+    lead_tenure_hours: float | None = None
+    semantic_invalidators: list[str] = Field(default_factory=list)
+    priority: int = 100
+
+
 class Registry:
     """Loaded registries with read views and reference-integrity validation."""
 
@@ -177,23 +196,34 @@ class Registry:
         slots: list[SlotDefinition],
         components: list[ComponentDefinition],
         templates: list[ResolutionTemplateDefinition],
+        freshness_policies: list[FreshnessPolicyDefinition],
+        freshness_policy_version: str,
     ) -> None:
         self._sections = {s.id: s for s in sections}
         self._capabilities = {c.id: c for c in capabilities}
         self._slots = {s.id: s for s in slots}
         self._components = {c.id: c for c in components}
         self._templates = {t.id: t for t in templates}
+        self._freshness_policies = {p.id: p for p in freshness_policies}
+        self.freshness_policy_version = freshness_policy_version
 
     # ------------------------------------------------------------- loading
     @classmethod
     def load(cls, registries_dir: Path | str | None = None) -> Registry:
         base = Path(registries_dir) if registries_dir else DEFAULT_REGISTRIES_DIR
+        freshness_version, freshness_policies = _parse_versioned_file(
+            base / "freshness-policy-registry.yaml",
+            "policies",
+            FreshnessPolicyDefinition,
+        )
         return cls(
             sections=_parse_file(base / "section-registry.yaml", "sections", SectionDefinition),
             capabilities=_parse_file(base / "capability-registry.yaml", "capabilities", CapabilityDefinition),
             slots=_parse_file(base / "slot-registry.yaml", "slots", SlotDefinition),
             components=_parse_file(base / "component-registry.yaml", "components", ComponentDefinition),
             templates=_parse_file(base / "resolution-template-registry.yaml", "templates", ResolutionTemplateDefinition),
+            freshness_policies=freshness_policies,
+            freshness_policy_version=freshness_version,
         )
 
     # ------------------------------------------------------------ read views
@@ -223,6 +253,12 @@ class Registry:
 
     def templates(self) -> list[ResolutionTemplateDefinition]:
         return list(self._templates.values())
+
+    def freshness_policies(self) -> list[FreshnessPolicyDefinition]:
+        return sorted(self._freshness_policies.values(), key=lambda p: p.priority)
+
+    def freshness_policy(self, policy_id: str) -> FreshnessPolicyDefinition | None:
+        return self._freshness_policies.get(policy_id)
 
     def capabilities_for_section(self, section_id: str) -> list[CapabilityDefinition]:
         return [c for c in self._capabilities.values() if c.section_id == section_id]
@@ -263,6 +299,22 @@ class Registry:
             if comp.fallback_component_id and comp.fallback_component_id not in self._components:
                 errors.append(f"component {comp.id}: unknown fallback {comp.fallback_component_id}")
 
+        if "default" not in self._freshness_policies:
+            errors.append("freshness policies: missing default policy")
+        for policy in self._freshness_policies.values():
+            for section_id in policy.section_ids:
+                if section_id != "*" and section_id not in self._sections:
+                    errors.append(f"freshness policy {policy.id}: unknown section {section_id}")
+            for slot_type in policy.slot_types:
+                if slot_type != "*" and slot_type not in {s.type for s in self._slots.values()}:
+                    errors.append(f"freshness policy {policy.id}: unknown slot type {slot_type}")
+            if (
+                policy.soft_age_hours is not None
+                and policy.hard_age_hours is not None
+                and policy.soft_age_hours > policy.hard_age_hours
+            ):
+                errors.append(f"freshness policy {policy.id}: soft age exceeds hard age")
+
         return errors
 
     # ------------------------------------------------------------- desk sync
@@ -298,3 +350,9 @@ def _parse_file(path: Path, key: str, model: type) -> list:
     with path.open(encoding="utf-8") as f:
         data = yaml.safe_load(f)
     return [model.model_validate(item) for item in data[key]]
+
+
+def _parse_versioned_file(path: Path, key: str, model: type) -> tuple[str, list]:
+    with path.open(encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    return str(data["version"]), [model.model_validate(item) for item in data[key]]

@@ -50,7 +50,9 @@ class ClaimVerifier:
         self.engine = engine
 
     # ------------------------------------------------------------------ verify
-    def verify(self, claim_id: str, render_candidate: dict[str, Any] | None = None) -> VerificationResult:
+    def verify(
+        self, claim_id: str, render_candidate: dict[str, Any] | None = None
+    ) -> VerificationResult:
         with self.engine.connect() as conn:
             claim = conn.execute(
                 text(
@@ -76,7 +78,9 @@ class ClaimVerifier:
         return VerificationResult(claim_id, checks)
 
     # ------------------------------------------------------------------ gates
-    def check_source(self, claim_id: str, evidence_bundle_id: str | None) -> dict[str, Any]:
+    def check_source(
+        self, claim_id: str, evidence_bundle_id: str | None
+    ) -> dict[str, Any]:
         if evidence_bundle_id is None:
             return {"passed": False, "detail": "no evidence bundle"}
         with self.engine.connect() as conn:
@@ -88,19 +92,25 @@ class ClaimVerifier:
             return {"passed": False, "detail": "evidence bundle missing"}
         return {"passed": True, "detail": "evidence bundle present"}
 
-    def check_citation(self, confidence: Any, proposition: dict[str, Any] | None) -> dict[str, Any]:
-        prop = proposition or {}
-        if prop.get("subject_ids"):
-            return {"passed": True, "detail": f"{len(prop['subject_ids'])} subject(s) cited"}
+    def check_citation(
+        self, confidence: Any, proposition: dict[str, Any] | None
+    ) -> dict[str, Any]:
+        del confidence  # retained for compatibility with the original gate signature
+        prop = _claim_proposition(proposition)
+        subject_ids = prop.get("subject_ids") or prop.get("subjectIds")
+        if subject_ids:
+            return {"passed": True, "detail": f"{len(subject_ids)} subject(s) cited"}
         return {"passed": False, "detail": "no subject_ids in proposition"}
 
-    def check_number(self, proposition: dict[str, Any] | None, confidence: Any) -> dict[str, Any]:
+    def check_number(
+        self, proposition: dict[str, Any] | None, confidence: Any
+    ) -> dict[str, Any]:
         issues = []
         if confidence is not None:
             c = float(confidence)
             if not (0.0 <= c <= 1.0):
                 issues.append(f"confidence {c} out of [0,1]")
-        prop = proposition or {}
+        prop = _claim_proposition(proposition)
         if "value" in prop and prop["value"] is not None:
             v = prop["value"]
             if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
@@ -117,7 +127,9 @@ class ClaimVerifier:
             return {"passed": False, "detail": "issued_at in the future"}
         return {"passed": True, "detail": "date valid"}
 
-    def check_rights(self, claim_id: str, evidence_bundle_id: str | None) -> dict[str, Any]:
+    def check_rights(
+        self, claim_id: str, evidence_bundle_id: str | None
+    ) -> dict[str, Any]:
         # Evidence whose source explicitly denies display must not pass.
         # First version: check the evidence bundle coverage for a deny flag;
         # unknown rights default to internal-only (allowed for the ledger).
@@ -130,7 +142,10 @@ class ClaimVerifier:
             ).fetchone()
         if coverage is None:
             return {"passed": False, "detail": "evidence bundle missing"}
-        if isinstance(coverage[0], dict) and coverage[0].get("rights_deny_display") is True:
+        if (
+            isinstance(coverage[0], dict)
+            and coverage[0].get("rights_deny_display") is True
+        ):
             return {"passed": False, "detail": "source rights deny display"}
         return {"passed": True, "detail": "rights ok (internal display)"}
 
@@ -139,9 +154,14 @@ class ClaimVerifier:
             return {"passed": True, "detail": claim_type}
         return {"passed": False, "detail": f"disallowed claim type {claim_type!r}"}
 
-    def check_component_fields(self, render_candidate: dict[str, Any] | None) -> dict[str, Any]:
+    def check_component_fields(
+        self, render_candidate: dict[str, Any] | None
+    ) -> dict[str, Any]:
         if render_candidate is None:
-            return {"passed": True, "detail": "no render candidate (not composer-bound)"}
+            return {
+                "passed": True,
+                "detail": "no render candidate (not composer-bound)",
+            }
         required = ("component_id", "headline", "display_fields")
         missing = [k for k in required if k not in render_candidate]
         if missing:
@@ -155,7 +175,9 @@ class ClaimVerifier:
         return {"passed": True, "detail": "clean"}
 
     # ------------------------------------------------------------------ gate
-    def gate_for_composer(self, claim_id: str, render_candidate: dict[str, Any] | None = None) -> bool:
+    def gate_for_composer(
+        self, claim_id: str, render_candidate: dict[str, Any] | None = None
+    ) -> bool:
         """Composer gate: only verified claims may proceed."""
         result = self.verify(claim_id, render_candidate)
         new_status = "verified" if result.passed else "rejected"
@@ -165,3 +187,10 @@ class ClaimVerifier:
                 {"status": new_status, "id": claim_id},
             )
         return result.passed
+
+
+def _claim_proposition(proposition: dict[str, Any] | None) -> dict[str, Any]:
+    """Return the truth-bearing proposition beneath an optional locale envelope."""
+    prop = proposition or {}
+    english = prop.get("en")
+    return english if isinstance(english, dict) else prop

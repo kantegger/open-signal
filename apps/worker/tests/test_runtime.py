@@ -1,7 +1,7 @@
 """DeepSeek agent runtime tests (OS-017).
 
 Unit tests use a fake client (no network). Integration test hits the real
-DeepSeek API only when DEEPSEEK_API_KEY is set and OPEN_SIGNAL_DATABASE_URL
+DeepSeek API only when DEEPSEEK_API_KEY is set and OPEN_SIGNAL_TEST_DATABASE_URL
 is available (migration 0001 applied).
 """
 
@@ -47,9 +47,9 @@ class FakeClient:
 
 @pytest.fixture()
 def engine():
-    url = os.environ.get("OPEN_SIGNAL_DATABASE_URL")
+    url = os.environ.get("OPEN_SIGNAL_TEST_DATABASE_URL")
     if not url:
-        pytest.skip("OPEN_SIGNAL_DATABASE_URL not set")
+        pytest.skip("OPEN_SIGNAL_TEST_DATABASE_URL not set")
     from sqlalchemy import create_engine
 
     return create_engine(url)

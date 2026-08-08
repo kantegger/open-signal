@@ -1,5 +1,5 @@
 """Security hardening tests (OS-038). Audit tests require real PostgreSQL via
-OPEN_SIGNAL_DATABASE_URL (migration 0008 applied).
+OPEN_SIGNAL_TEST_DATABASE_URL (migration 0008 applied).
 """
 
 import os
@@ -84,16 +84,38 @@ def test_private_key_detected() -> None:
 # ------------------------------------------------------------- ops auth
 
 
-def test_ops_auth_requires_token(monkeypatch) -> None:
+def test_ops_auth_accepts_standard_bearer(monkeypatch) -> None:
     monkeypatch.setenv("OPEN_SIGNAL_OPS_TOKEN", "ops-secret")
     assert hardening.require_ops_token("Bearer ops-secret") is True
+    assert hardening.require_ops_token("bearer ops-secret") is True
     assert hardening.require_ops_token("Bearer wrong") is False
+    assert hardening.require_ops_token("Basic ops-secret") is False
+    assert hardening.require_ops_token("ops-secret") is False
     assert hardening.require_ops_token(None) is False
+
+
+def test_ops_auth_temporarily_accepts_legacy_header(monkeypatch) -> None:
+    monkeypatch.setenv("OPEN_SIGNAL_OPS_TOKEN", "ops-secret")
+    assert hardening.require_ops_token(None, x_ops_token="ops-secret") is True
+    assert hardening.require_ops_token(None, x_ops_token="Bearer ops-secret") is True
+    assert hardening.require_ops_token(None, x_ops_token="wrong") is False
+
+
+def test_ops_auth_rejects_conflicting_headers(monkeypatch) -> None:
+    monkeypatch.setenv("OPEN_SIGNAL_OPS_TOKEN", "ops-secret")
+    assert (
+        hardening.require_ops_token(
+            "Bearer ops-secret",
+            x_ops_token="different-secret",
+        )
+        is False
+    )
 
 
 def test_ops_auth_fails_closed_without_config(monkeypatch) -> None:
     monkeypatch.delenv("OPEN_SIGNAL_OPS_TOKEN", raising=False)
     assert hardening.require_ops_token("Bearer whatever") is False
+    assert hardening.require_ops_token(None, x_ops_token="whatever") is False
 
 
 # ------------------------------------------------------------------- audit
@@ -101,9 +123,9 @@ def test_ops_auth_fails_closed_without_config(monkeypatch) -> None:
 
 @pytest.fixture()
 def engine():
-    url = os.environ.get("OPEN_SIGNAL_DATABASE_URL")
+    url = os.environ.get("OPEN_SIGNAL_TEST_DATABASE_URL")
     if not url:
-        pytest.skip("OPEN_SIGNAL_DATABASE_URL not set")
+        pytest.skip("OPEN_SIGNAL_TEST_DATABASE_URL not set")
     from sqlalchemy import create_engine
 
     return create_engine(url)
@@ -112,14 +134,18 @@ def engine():
 def test_audit_write_and_read(engine) -> None:
     from sqlalchemy import text
 
-    with engine.begin() as conn:
-        conn.execute(text("DELETE FROM audit_events"))
-
     event_id = hardening.audit(
-        engine, action="ops.mode.set", actor="operator", target="deterministic_only", detail={"reason": "budget"}
+        engine,
+        action="ops.mode.set",
+        actor="operator",
+        target="deterministic_only",
+        detail={"reason": "budget"},
     )
     assert event_id is not None
     events = hardening.recent_audit(engine)
     assert any(e["action"] == "ops.mode.set" for e in events)
     with engine.begin() as conn:
-        conn.execute(text("DELETE FROM audit_events"))
+        conn.execute(
+            text("DELETE FROM audit_events WHERE id = CAST(:event_id AS uuid)"),
+            {"event_id": event_id},
+        )
