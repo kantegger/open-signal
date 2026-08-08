@@ -2,14 +2,15 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
   worker:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Install worker
@@ -22,8 +23,8 @@ jobs:
   web:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
       - name: Install
@@ -39,8 +40,8 @@ jobs:
   contracts:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Install worker
@@ -49,7 +50,7 @@ jobs:
         run: python scripts/gen_contracts.py
       - name: Round-trip check
         run: python scripts/check_contracts.py
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
       - name: Install contracts deps
@@ -80,8 +81,8 @@ jobs:
     env:
       OPEN_SIGNAL_TEST_DATABASE_URL: postgresql://open_signal:open_signal@localhost:5432/open_signal
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Install worker
