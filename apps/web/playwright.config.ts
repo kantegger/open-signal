@@ -21,17 +21,18 @@ export default defineConfig({
     {
       command: "node e2e/mock-api.mjs",
       port: 8001,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 30_000,
     },
     {
       command: "npm run dev -- --hostname 127.0.0.1",
       port: 3000,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 120_000,
       env: {
         OPEN_SIGNAL_API_URL: "http://127.0.0.1:8001",
-        NEXT_PUBLIC_OPEN_SIGNAL_API_URL: "http://127.0.0.1:8001",
+        OPEN_SIGNAL_PUBLICATION_BASE_URL: "",
+        OPEN_SIGNAL_REVALIDATE_TOKEN: "e2e-revalidation-token",
       },
     },
   ],

@@ -12,4 +12,4 @@ RUN pip install --no-cache-dir /app/python \
 
 ENV PYTHONPATH=/app/python
 
-CMD ["python", "-m", "open_signal_worker", "--mode", "scheduled"]
+CMD ["python", "-m", "open_signal_worker", "--mode", "once"]

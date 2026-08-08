@@ -11,6 +11,7 @@ from open_signal.orchestration.expectations import ExpectationsSectionService
 from open_signal.orchestration.research import ResearchSectionService
 from open_signal.orchestration.rules import RulesSectionService
 from open_signal.orchestration.sources import SourceDiscoveryService
+from open_signal.publication.delivery import from_environment
 
 
 class ProductionHandlers:
@@ -30,6 +31,7 @@ class ProductionHandlers:
         self.expectations = ExpectationsSectionService(engine)
         self.rules = RulesSectionService(engine)
         self.research = ResearchSectionService(engine)
+        self.delivery = from_environment(engine)
 
     def registry(self) -> dict[str, Any]:
         return {
@@ -40,6 +42,7 @@ class ProductionHandlers:
             "derived.generate_research_candidates": self.generate_research_candidates,
             "agent.investigate": self.investigate,
             "composer.generate_edition": self.reconcile_publication,
+            "publication.deliver_snapshot": self.deliver_publication,
         }
 
     def discover_source(self, job: ClaimedJob) -> dict[str, Any]:
@@ -74,6 +77,14 @@ class ProductionHandlers:
         if reason != "freshness_reconcile":
             raise ValueError(f"unsupported publication reason {reason!r}")
         return EditionWriter(self.engine).reconcile_freshness()
+
+    def deliver_publication(self, job: ClaimedJob) -> dict[str, Any]:
+        reason = str(job.payload.get("reason") or "")
+        if reason != "snapshot_delivery":
+            raise ValueError(f"unsupported delivery reason {reason!r}")
+        if self.delivery is None:
+            return {"status": "disabled"}
+        return self.delivery.deliver(locale=str(job.payload.get("locale") or "en"))
 
 
 def _require_section(job: ClaimedJob, expected: str) -> None:

@@ -24,6 +24,7 @@ services:
         condition: service_healthy
     environment:
       OPEN_SIGNAL_DATABASE_URL: postgresql://open_signal:open_signal@db:5432/open_signal
+    command: ["python", "-m", "open_signal_worker", "--mode", "scheduled"]
 
   web:
     build:

@@ -50,7 +50,7 @@ def _schedule(**overrides) -> JobScheduleDefinition:
         "id": "expectations-source",
         "job_type": "source.discover",
         "queue_name": "source",
-        "cadence_seconds": 900,
+        "cadence_seconds": 3600,
         "phase_offset_seconds": 0,
         "priority": 10,
         "maximum_attempts": 3,
@@ -63,7 +63,7 @@ def _schedule(**overrides) -> JobScheduleDefinition:
 def test_schedule_bucket_and_key_are_deterministic() -> None:
     queue = FakeQueue()
     schedule = _schedule()
-    scheduler = JobScheduler(queue, [schedule], version="1.0.0")
+    scheduler = JobScheduler(queue, [schedule], version="2.0.0")
     now = datetime(2026, 8, 8, 12, 7, tzinfo=UTC)
 
     first = scheduler.enqueue_due(now)
@@ -74,17 +74,50 @@ def test_schedule_bucket_and_key_are_deterministic() -> None:
     )
     assert first[0].idempotency_key == second[0].idempotency_key
     assert queue.enqueued[0]["payload"]["_scheduled_for"].endswith("12:00:00+00:00")
-    assert scheduler.next_due_at(now) == datetime(2026, 8, 8, 12, 15, tzinfo=UTC)
+    assert scheduler.next_due_at(now) == datetime(2026, 8, 8, 13, 0, tzinfo=UTC)
 
 
-def test_phase_boundary_leaves_neon_quiet_window() -> None:
+def test_hourly_boundary_leaves_neon_quiet_window() -> None:
     registry = Registry.load()
     schedules = registry.job_schedules()
-    # Immediately after the :16 observation phase that follows the :15 source
-    # refresh, the next launch boundary is :30: over thirteen quiet minutes.
-    now = datetime(2026, 8, 8, 12, 16, 1, tzinfo=UTC)
+    # One-shot execution just after the top of the hour leaves almost a full
+    # hour for both the Worker and Neon compute to remain inactive.
+    now = datetime(2026, 8, 8, 12, 0, 1, tzinfo=UTC)
     next_due = min(next_schedule_boundary(schedule, now) for schedule in schedules)
     assert (next_due - now).total_seconds() > 5 * 60
+
+
+def test_worker_drains_dependency_stages_in_order() -> None:
+    queue = FakeQueue()
+    queue.pending["source"] = [
+        ClaimedJob("source-1", "stage.source", "source", {}, 1, 3),
+        ClaimedJob("source-2", "stage.source", "source", {}, 1, 3),
+    ]
+    queue.pending["analysis"] = [
+        ClaimedJob("analysis-1", "stage.analysis", "analysis", {}, 1, 3)
+    ]
+    queue.pending["publication"] = [
+        ClaimedJob("publish-1", "stage.publish", "publication", {}, 1, 3)
+    ]
+    handled: list[str] = []
+
+    def handle(job):
+        handled.append(job.id)
+
+    worker = QueueWorker(
+        queue,
+        {
+            "stage.source": handle,
+            "stage.analysis": handle,
+            "stage.publish": handle,
+        },
+        heartbeat_interval=0,
+    )
+
+    result = worker.drain()
+
+    assert result.succeeded == 4
+    assert handled == ["source-1", "source-2", "analysis-1", "publish-1"]
 
 
 def test_worker_failure_does_not_block_next_job() -> None:

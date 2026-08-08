@@ -1,0 +1,267 @@
+"""Deliver an atomically composed Edition to immutable public object storage.
+
+Database publication and external delivery intentionally have separate failure
+boundaries. The composer moves the PostgreSQL channel pointer transactionally;
+this service then copies that complete snapshot to R2, advances the R2 current
+pointer last, and asks Vercel to invalidate only the affected cache tags.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+from dataclasses import dataclass
+from typing import Any
+
+import httpx
+
+from open_signal.api.editions import FrontPagePresenter
+from open_signal.api.presenters import ClaimPagePresenter
+from open_signal.sources.artifact_store import ArtifactStore, S3ArtifactStore
+
+DELIVERY_VERSION = "1.0.0"
+CONTENT_TYPE = "application/json; charset=utf-8"
+
+
+@dataclass(frozen=True)
+class PublicationKeys:
+    edition: str
+    manifest: str
+    current: str
+    receipt: str
+    claim_snapshots: tuple[str, ...]
+    claim_current: tuple[str, ...]
+
+
+class PublicationDelivery:
+    """Copy the current database snapshot to R2 and notify Vercel once."""
+
+    def __init__(
+        self,
+        engine: Any,
+        store: ArtifactStore,
+        *,
+        revalidate_url: str,
+        revalidate_token: str,
+        client: Any | None = None,
+        front_page: Any | None = None,
+        claim_page: Any | None = None,
+    ) -> None:
+        self.store = store
+        self.revalidate_url = revalidate_url
+        self.revalidate_token = revalidate_token
+        self.client = client or httpx.Client(timeout=20.0)
+        self.front_page = front_page or FrontPagePresenter(engine)
+        self.claim_page = claim_page or ClaimPagePresenter(engine)
+
+    def deliver(self, *, locale: str = "en") -> dict[str, Any]:
+        page = self.front_page.build(locale=locale)
+        if page is None:
+            return {"status": "empty", "locale": locale}
+
+        edition_id = str(page["snapshot"]["id"])
+        claim_ids = _claim_ids(page)
+        keys = _keys(edition_id, claim_ids, locale)
+
+        current = self._json_or_none(keys.current)
+        already_current = (
+            current is not None
+            and current.get("edition_id") == edition_id
+            and current.get("locale") == locale
+        )
+        if already_current and self.store.exists(keys.receipt):
+            return {
+                "status": "unchanged",
+                "edition_id": edition_id,
+                "locale": locale,
+                "claim_count": len(claim_ids),
+            }
+
+        claim_payloads: dict[str, dict[str, Any]] = {}
+        for claim_id in claim_ids:
+            payload = self.claim_page.build(claim_id, locale=locale)
+            if payload is None:
+                raise RuntimeError(
+                    f"edition {edition_id} references missing claim {claim_id}"
+                )
+            claim_payloads[claim_id] = payload
+
+        edition_bytes = _json_bytes(page)
+        claim_bytes = {
+            claim_id: _json_bytes(payload)
+            for claim_id, payload in claim_payloads.items()
+        }
+        manifest = {
+            "delivery_version": DELIVERY_VERSION,
+            "edition_id": edition_id,
+            "locale": locale,
+            "published_at": page["snapshot"].get("published_at"),
+            "front_page": {
+                "key": keys.edition,
+                "sha256": _sha256(edition_bytes),
+            },
+            "claims": [
+                {
+                    "id": claim_id,
+                    "key": snapshot_key,
+                    "current_key": current_key,
+                    "sha256": _sha256(claim_bytes[claim_id]),
+                }
+                for claim_id, snapshot_key, current_key in zip(
+                    claim_ids,
+                    keys.claim_snapshots,
+                    keys.claim_current,
+                    strict=True,
+                )
+            ],
+        }
+        manifest_bytes = _json_bytes(manifest)
+        pointer = {
+            "delivery_version": DELIVERY_VERSION,
+            "edition_id": edition_id,
+            "locale": locale,
+            "published_at": page["snapshot"].get("published_at"),
+            "manifest_key": keys.manifest,
+            "manifest_sha256": _sha256(manifest_bytes),
+            "front_page_key": keys.edition,
+            "front_page_sha256": _sha256(edition_bytes),
+        }
+
+        self._put_immutable(keys.edition, edition_bytes)
+        for claim_id, key in zip(claim_ids, keys.claim_snapshots, strict=True):
+            self._put_immutable(key, claim_bytes[claim_id])
+        self._put_immutable(keys.manifest, manifest_bytes)
+
+        # Claim pages are current projections over an append-only Ledger. Keep
+        # an immutable copy inside each Edition for replay, then refresh the
+        # public projection before exposing an Edition that links to it.
+        for claim_id, key in zip(claim_ids, keys.claim_current, strict=True):
+            self._put_mutable_if_changed(key, claim_bytes[claim_id])
+
+        # The page pointer moves only after every referenced object exists.
+        if not already_current:
+            self.store.put(keys.current, _json_bytes(pointer), content_type=CONTENT_TYPE)
+
+        response = self.client.post(
+            self.revalidate_url,
+            headers={"Authorization": f"Bearer {self.revalidate_token}"},
+            json={
+                "edition_id": edition_id,
+                "locale": locale,
+                "claim_ids": claim_ids,
+            },
+        )
+        response.raise_for_status()
+        receipt = {
+            "delivery_version": DELIVERY_VERSION,
+            "edition_id": edition_id,
+            "locale": locale,
+            "notified": True,
+        }
+        self._put_immutable(keys.receipt, _json_bytes(receipt))
+        return {
+            "status": "delivered",
+            "edition_id": edition_id,
+            "locale": locale,
+            "claim_count": len(claim_ids),
+            "manifest_sha256": pointer["manifest_sha256"],
+        }
+
+    def _put_immutable(self, key: str, data: bytes) -> None:
+        if self.store.exists(key):
+            if self.store.get(key) != data:
+                raise RuntimeError(f"immutable publication object changed: {key}")
+            return
+        self.store.put(key, data, content_type=CONTENT_TYPE)
+
+    def _put_mutable_if_changed(self, key: str, data: bytes) -> None:
+        if self.store.exists(key) and self.store.get(key) == data:
+            return
+        self.store.put(key, data, content_type=CONTENT_TYPE)
+
+    def _json_or_none(self, key: str) -> dict[str, Any] | None:
+        if not self.store.exists(key):
+            return None
+        try:
+            value = json.loads(self.store.get(key))
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise RuntimeError(f"invalid publication pointer: {key}") from exc
+        return value if isinstance(value, dict) else None
+
+
+def from_environment(engine: Any) -> PublicationDelivery | None:
+    """Build the R2 delivery adapter, or disable it when wholly unconfigured."""
+    values = {
+        "endpoint_url": os.environ.get("OPEN_SIGNAL_R2_ENDPOINT_URL"),
+        "access_key": os.environ.get("OPEN_SIGNAL_R2_ACCESS_KEY_ID"),
+        "secret_key": os.environ.get("OPEN_SIGNAL_R2_SECRET_ACCESS_KEY"),
+        "bucket": os.environ.get("OPEN_SIGNAL_R2_PUBLIC_BUCKET"),
+        "revalidate_url": os.environ.get("OPEN_SIGNAL_REVALIDATE_URL"),
+        "revalidate_token": os.environ.get("OPEN_SIGNAL_REVALIDATE_TOKEN"),
+    }
+    if not any(values.values()):
+        return None
+    missing = [name for name, value in values.items() if not value]
+    if missing:
+        raise RuntimeError(
+            "incomplete publication delivery configuration: " + ", ".join(missing)
+        )
+    store = S3ArtifactStore(
+        str(values["bucket"]),
+        endpoint_url=str(values["endpoint_url"]),
+        aws_access_key_id=str(values["access_key"]),
+        aws_secret_access_key=str(values["secret_key"]),
+        region_name="auto",
+    )
+    return PublicationDelivery(
+        engine,
+        store,
+        revalidate_url=str(values["revalidate_url"]),
+        revalidate_token=str(values["revalidate_token"]),
+    )
+
+
+def _claim_ids(page: dict[str, Any]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for slot in page.get("slots", []):
+        for item in slot.get("items", []):
+            for value in item.get("claim_ids", []):
+                claim_id = str(value)
+                if claim_id and claim_id not in seen:
+                    seen.add(claim_id)
+                    result.append(claim_id)
+    return result
+
+
+def _keys(edition_id: str, claim_ids: list[str], locale: str) -> PublicationKeys:
+    prefix = "public/publications"
+    return PublicationKeys(
+        edition=f"{prefix}/editions/{edition_id}/front-page.{locale}.json",
+        manifest=f"{prefix}/editions/{edition_id}/manifest.{locale}.json",
+        current=f"{prefix}/channels/front-page/{locale}.json",
+        receipt=f"{prefix}/deliveries/{edition_id}/vercel.{locale}.json",
+        claim_snapshots=tuple(
+            f"{prefix}/editions/{edition_id}/claims/{claim_id}.{locale}.json"
+            for claim_id in claim_ids
+        ),
+        claim_current=tuple(
+            f"{prefix}/claims/{claim_id}/{locale}.json"
+            for claim_id in claim_ids
+        ),
+    )
+
+
+def _json_bytes(value: Any) -> bytes:
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    ).encode("utf-8")
+
+
+def _sha256(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()

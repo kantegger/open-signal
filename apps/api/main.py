@@ -6,12 +6,12 @@ mutation endpoints. Run with: uvicorn apps.api.main:app
 
 from __future__ import annotations
 
-import os
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Response, Security
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from open_signal.api.database import get_engine
 from open_signal.api.editions import FrontPagePresenter
 from open_signal.api.ops import OpsPresenter
 from open_signal.api.presenters import ClaimPagePresenter
@@ -30,9 +30,7 @@ app.add_middleware(
 
 
 def _engine():
-    from sqlalchemy import create_engine
-
-    return create_engine(os.environ["OPEN_SIGNAL_DATABASE_URL"])
+    return get_engine()
 
 
 @app.get("/health")

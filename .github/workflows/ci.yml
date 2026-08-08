@@ -37,6 +37,20 @@ jobs:
         working-directory: apps/web
         run: npm run build
 
+  cloudflare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Install
+        working-directory: infra/cloudflare
+        run: npm ci
+      - name: Validate generated bindings and types
+        working-directory: infra/cloudflare
+        run: npm run check
+
   contracts:
     runs-on: ubuntu-latest
     steps:

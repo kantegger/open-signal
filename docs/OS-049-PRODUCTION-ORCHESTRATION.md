@@ -37,16 +37,18 @@ atomic rolling-page compile when meaning changed
 
 ## Scale-to-zero runtime mode
 
-The default process is schedule-driven, not empty-queue polling:
+The production process is schedule-driven, not empty-queue polling:
 
 1. enqueue every schedule due in the current deterministic bucket;
 2. drain `source`, `analysis`, `agent`, and `publication` queues;
-3. sleep locally until the earliest next schedule boundary;
-4. make no database query during that sleep.
+3. exit after the batch;
+4. let the platform invoke the next hourly occurrence.
 
-The shortest cadence is 15 minutes. After a normal batch finishes this leaves
-more than the five-minute database inactivity window required by the configured
-Neon computes. A continuous polling mode exists only as an explicit operational
+The shortest cadence is one hour. After a normal batch finishes this leaves a
+large quiet window for the Worker to scale to zero and for the configured Neon
+computes to suspend after five minutes. The platform occurrence timestamp is
+passed into the Worker so delayed and duplicate Cron delivery retains stable
+Job buckets. A continuous polling mode exists only as an explicit operational
 choice for a future always-on deployment.
 
 ## Launch schedules
@@ -56,13 +58,15 @@ The authoritative values live in
 
 | Work | Cadence | Public effect |
 |---|---:|---|
-| Polymarket source observations | 15 minutes | none until editorial batch |
-| Expectations editorial batch | 2 hours | verified Section refresh |
-| Federal Register source discovery | 2 hours | none until editorial batch |
+| Polymarket source + observations | hourly | none until editorial batch |
+| Expectations editorial batch | hourly | verified Section refresh |
+| Federal Register source discovery | 4 hours | none until editorial batch |
 | Rules editorial batch | 4 hours | verified Section refresh |
-| OpenAlex / ClinicalTrials discovery | daily | shadow inputs only |
+| ClinicalTrials discovery | 12 hours | shadow inputs only |
+| OpenAlex discovery | daily | shadow inputs only |
 | Research candidate + investigation | daily | shadow ledger only |
 | Freshness reconciliation | hourly | only on age/retirement transition |
+| R2 publication snapshot delivery | hourly | only advances after a complete snapshot |
 
 ## Queue and retry semantics
 
@@ -77,8 +81,11 @@ The authoritative values live in
 
 ## Deployment modes
 
-- `scheduled` (default): one scale-to-zero-friendly long-running process.
-- `once`: enqueue current schedule buckets, drain, and exit; suitable for a
-  platform Cron invocation.
+- `once` (production): enqueue the platform occurrence buckets, drain in
+  dependency order, and exit; suitable for an hourly platform Cron invocation.
+- `scheduled` (local/alternative): one database-silent long-running process.
 - `poll`: dedicated always-on queue consumer; deliberately opt-in and not the
   Public Beta default because it prevents database inactivity.
+
+The accepted hosted topology and secret boundaries are recorded in
+[`DEPLOYMENT.md`](./DEPLOYMENT.md).

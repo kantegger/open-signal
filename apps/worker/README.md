@@ -22,3 +22,9 @@ Runtime modes:
 
 Use `--role source|analysis|agent|publication` only when splitting the initial
 single process into role-specific workers.
+
+Production invokes `once` hourly. The platform passes the scheduled occurrence
+through `OPEN_SIGNAL_SCHEDULED_AT` so a delayed or duplicate invocation still
+uses the intended deterministic Job buckets. Longer desk cadences remain in the
+machine-readable schedule registry and are idempotently skipped between due
+boundaries.

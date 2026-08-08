@@ -1,16 +1,5 @@
 // Read-only API contracts for the rolling publication surface.
 
-const DEFAULT_API_BASE = "http://localhost:8000";
-
-function apiBase(): string {
-  if (typeof window === "undefined") {
-    return process.env.OPEN_SIGNAL_API_URL ??
-      process.env.NEXT_PUBLIC_OPEN_SIGNAL_API_URL ??
-      DEFAULT_API_BASE;
-  }
-  return process.env.NEXT_PUBLIC_OPEN_SIGNAL_API_URL ?? DEFAULT_API_BASE;
-}
-
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -238,7 +227,7 @@ export async function fetchCurrentFrontPage(
   const headers = new Headers();
   if (etag) headers.set("If-None-Match", etag);
   const response = await fetch(
-    `${apiBase()}/api/front-page/current?locale=${encodeURIComponent(locale)}`,
+    `/api/publication/current?locale=${encodeURIComponent(locale)}`,
     {
       cache: "no-store",
       headers,
@@ -264,7 +253,7 @@ export async function fetchClaim(
   locale = "en",
 ): Promise<ClaimPageData> {
   const response = await fetch(
-    `${apiBase()}/api/claims/${encodeURIComponent(claimId)}?locale=${encodeURIComponent(locale)}`,
+    `/api/claims/${encodeURIComponent(claimId)}?locale=${encodeURIComponent(locale)}`,
     { cache: "no-store", signal },
   );
   if (!response.ok) {

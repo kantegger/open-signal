@@ -8,6 +8,7 @@ import os
 import signal
 import socket
 import threading
+from datetime import UTC, datetime
 from pathlib import Path
 
 from open_signal.jobs.queue import JobQueue
@@ -53,12 +54,39 @@ def build_parser() -> argparse.ArgumentParser:
         help="override the repository fixtures directory",
     )
     parser.add_argument("--poll-interval", type=float, default=1.0)
+    parser.add_argument(
+        "--scheduled-at",
+        default=os.environ.get("OPEN_SIGNAL_SCHEDULED_AT"),
+        help=(
+            "UTC platform-Cron occurrence used for deterministic schedule buckets; "
+            "ISO-8601, normally supplied by OPEN_SIGNAL_SCHEDULED_AT"
+        ),
+    )
     parser.add_argument("--log-level", default="INFO")
     return parser
 
 
+def parse_scheduled_at(value: str | None) -> datetime | None:
+    """Parse a platform occurrence while rejecting ambiguous local time."""
+    if value is None or not value.strip():
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.strip())
+    except ValueError as exc:
+        raise ValueError("--scheduled-at must be an ISO-8601 timestamp") from exc
+    if parsed.tzinfo is None:
+        raise ValueError("--scheduled-at must include a UTC offset")
+    return parsed.astimezone(UTC)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    try:
+        scheduled_at = parse_scheduled_at(args.scheduled_at)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+    if scheduled_at is not None and args.mode != "once":
+        raise SystemExit("--scheduled-at is only valid with --mode once")
     logging.basicConfig(
         level=getattr(logging, str(args.log_level).upper(), logging.INFO),
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
@@ -115,7 +143,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     try:
         if args.mode == "once":
-            result = service.run_cycle()
+            result = service.run_cycle(scheduled_at)
             logging.getLogger(__name__).info(
                 "one-shot cycle complete: processed=%s succeeded=%s retried=%s dead=%s",
                 result.processed,

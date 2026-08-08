@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type APIRequestContext } from "@playwright/test";
 
 const families = [
   "signal-hero",
@@ -14,10 +14,12 @@ const families = [
 test.beforeEach(async ({ request }) => {
   await request.post("http://127.0.0.1:8001/__control/front-fail?count=0");
   await request.post("http://127.0.0.1:8001/__control/front-mode?value=full");
+  await revalidate(request, "e2e-full");
 });
 
 test("hard retirement recompiles a complete page without empty modules", async ({ page, request }) => {
   await request.post("http://127.0.0.1:8001/__control/front-mode?value=empty");
+  await revalidate(request, "e2e-empty");
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "Current front page" })).toBeVisible();
@@ -84,8 +86,17 @@ test("mobile order prioritizes the live feed and navigation remains usable", asy
 
 test("initial publication failure offers a working retry", async ({ page, request }) => {
   await request.post("http://127.0.0.1:8001/__control/front-fail?count=2");
+  await revalidate(request, "e2e-failure");
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "The current verified snapshot could not be loaded." })).toBeVisible();
   await page.getByRole("button", { name: "Retry", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Current front page" })).toBeVisible();
 });
+
+async function revalidate(request: APIRequestContext, editionId: string) {
+  const response = await request.post("http://127.0.0.1:3000/api/revalidate", {
+    headers: { Authorization: "Bearer e2e-revalidation-token" },
+    data: { edition_id: editionId, locale: "en", claim_ids: [] },
+  });
+  expect(response.ok()).toBeTruthy();
+}

@@ -27,8 +27,8 @@ def test_load_counts(registry: Registry) -> None:
     assert len(registry.templates()) == 3
     assert len(registry.freshness_policies()) == 7
     assert registry.freshness_policy_version == "1.0.0"
-    assert len(registry.job_schedules()) == 10
-    assert registry.job_schedule_version == "1.0.0"
+    assert len(registry.job_schedules()) == 11
+    assert registry.job_schedule_version == "2.0.0"
 
 
 def test_validation_passes(registry: Registry) -> None:
@@ -96,7 +96,12 @@ def test_job_schedules_preserve_section_boundaries(registry: Registry) -> None:
     research_agent = registry.job_schedule("research-shadow-investigation")
     assert research_agent is not None
     assert research_agent.queue_name == "agent"
-    assert min(schedule.cadence_seconds for schedule in schedules) == 900
+    delivery = registry.job_schedule("publication-snapshot-delivery")
+    assert delivery is not None
+    assert delivery.priority > registry.job_schedule(
+        "publication-freshness-reconcile"
+    ).priority
+    assert min(schedule.cadence_seconds for schedule in schedules) == 3600
 
 
 # ---------------------------------------------------------------- rights

@@ -10,7 +10,7 @@ import { PlanRenderer, SignalFeedRow, type OpenEvidence } from "./publication-co
 import { SiteShell } from "./site-shell";
 
 const EvidenceSheet = dynamic(() => import("./evidence-sheet"), { ssr: false });
-const POLL_INTERVAL_MS = 60_000;
+const POLL_INTERVAL_MS = 5 * 60_000;
 
 interface Selection {
   claimId: string;
@@ -90,10 +90,15 @@ export function FrontPage({ initialData }: { initialData: FrontPageData | null }
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") void refresh();
     }, POLL_INTERVAL_MS);
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       cancelled = true;
       loadingRef.current = false;
       window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [applyRefresh, applyRefreshError, initialData, refresh]);
 

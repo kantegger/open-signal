@@ -103,10 +103,14 @@ class S3ArtifactStore(ArtifactStore):
     def __init__(self, bucket: str, *, endpoint_url: str | None = None, **client_kwargs: Any) -> None:
         try:
             import boto3  # type: ignore[import-not-found]
+            from botocore.exceptions import (
+                ClientError,  # type: ignore[import-not-found]
+            )
         except ImportError as exc:  # pragma: no cover
             raise RuntimeError("S3ArtifactStore requires 'boto3' (install with pip install boto3)") from exc
         self.bucket = bucket
         self._client = boto3.client("s3", endpoint_url=endpoint_url, **client_kwargs)
+        self._client_error_type = ClientError
 
     def _key(self, key: str) -> str:
         # S3 keys may not contain the bucket prefix; use bucket as prefix.
@@ -124,8 +128,13 @@ class S3ArtifactStore(ArtifactStore):
         try:
             self._client.head_object(Bucket=self.bucket, Key=self._key(key))
             return True
-        except Exception:  # noqa: BLE001
-            return False
+        except self._client_error_type as exc:
+            response = exc.response
+            status = response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+            code = str(response.get("Error", {}).get("Code", ""))
+            if status == 404 or code in {"404", "NoSuchKey", "NotFound"}:
+                return False
+            raise
 
     def delete(self, key: str) -> None:
         self._client.delete_object(Bucket=self.bucket, Key=self._key(key))

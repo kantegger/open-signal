@@ -110,19 +110,20 @@ class QueueWorker:
                 logger.exception("job heartbeat failed", extra={"job_id": job_id})
 
     def drain(self, *, maximum_jobs: int = 1000) -> DrainResult:
-        """Drain all configured queues until a complete pass is empty."""
+        """Drain each configured stage completely before advancing.
+
+        Queue order is the batch dependency order: source data must be present
+        before analysis, analysis before Agents, and all editorial work before
+        publication. A later-stage failure remains isolated to its own Job.
+        """
         result = DrainResult()
-        while result.processed < maximum_jobs:
-            found = False
-            for queue_name in self.queue_names:
+        for queue_name in self.queue_names:
+            while result.processed < maximum_jobs:
                 job = self.queue.claim(queue_name)
                 if job is None:
-                    continue
-                found = True
-                self.execute(job, result)
-                if result.processed >= maximum_jobs:
                     break
-            if not found:
+                self.execute(job, result)
+            if result.processed >= maximum_jobs:
                 break
         return result
 

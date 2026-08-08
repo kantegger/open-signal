@@ -11,6 +11,7 @@ import pytest
 from open_signal.sources.artifact_repo import ArtifactRepository
 from open_signal.sources.artifact_store import (
     LocalArtifactStore,
+    S3ArtifactStore,
     sha256_hex,
 )
 
@@ -59,6 +60,44 @@ def test_signed_url_expired(store: LocalArtifactStore) -> None:
     store.put(key, b"old")
     url = store.sign_url(key, expires_in=-1)  # already expired
     assert not store.verify_signed_url(url)
+
+
+class _StorageError(Exception):
+    def __init__(self, status: int, code: str) -> None:
+        self.response = {
+            "ResponseMetadata": {"HTTPStatusCode": status},
+            "Error": {"Code": code},
+        }
+
+
+class _HeadClient:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    def head_object(self, **kwargs) -> None:
+        del kwargs
+        raise self.error
+
+
+def _s3_store_with_head_error(error: _StorageError) -> S3ArtifactStore:
+    store = object.__new__(S3ArtifactStore)
+    store.bucket = "test"
+    store._client = _HeadClient(error)
+    store._client_error_type = _StorageError
+    return store
+
+
+def test_s3_exists_treats_only_missing_objects_as_absent() -> None:
+    assert not _s3_store_with_head_error(_StorageError(404, "NotFound")).exists(
+        "public/missing"
+    )
+
+
+def test_s3_exists_propagates_authentication_failures() -> None:
+    with pytest.raises(_StorageError):
+        _s3_store_with_head_error(_StorageError(403, "AccessDenied")).exists(
+            "public/protected"
+        )
 
 
 # ------------------------------------------------------- repository (needs DB)

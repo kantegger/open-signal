@@ -2,8 +2,9 @@
 
 A live front page of public signals — an AI-native, zero-editor runtime that
 ingests public data, investigates changes with agents, verifies claims and
-composes a daily front page. Long-term accountability via an append-only
-Claim Ledger and public Track Record.
+recomposes a rolling front page when verified meaning changes. Long-term
+accountability comes from an append-only Claim Ledger and frozen Edition
+history.
 
 The authoritative product and system specification lives in
 [`spec.md`](./spec.md) (v0.1 draft). Machine-readable registries are extracted
@@ -47,6 +48,10 @@ npm run dev
 pip install -e ./apps/worker[dev]
 python -c "import open_signal; print(open_signal.__version__)"
 ```
+
+Production topology, configuration, deployment and rollback are documented in
+[`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md). Destructive database-test isolation
+is documented separately in [`docs/TESTING.md`](./docs/TESTING.md).
 
 ## Registries
 
@@ -202,7 +207,7 @@ Sections, Components, Slots or permissions from natural-language docs
   scorecard), deploy + rollback runbooks; scripts/release_check.py
   pre-flight with 12 checks; 3 tests)
 
-**All 40 OS milestones complete — 260/260 tests pass.**
+**All 40 OS milestones complete — 275/275 tests pass.**
 
 ## Database
 
