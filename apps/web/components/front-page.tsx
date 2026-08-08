@@ -26,46 +26,76 @@ export function FrontPage({ initialData }: { initialData: FrontPageData | null }
   const loadingRef = useRef(false);
   const selectionRef = useRef<Selection | null>(null);
   const pendingSnapshotRef = useRef<FrontPageData | null>(null);
+  const initialRequestRef = useRef<ReturnType<typeof fetchCurrentFrontPage> | null>(null);
 
   useEffect(() => {
     selectionRef.current = selection;
   }, [selection]);
 
-  const refresh = useCallback(async (manual = false, signal?: AbortSignal) => {
-    if (loadingRef.current) return;
-    loadingRef.current = true;
-    if (manual) setRetrying(true);
-    try {
-      const result = await fetchCurrentFrontPage(signal, etagRef.current);
-      if (result.etag) etagRef.current = result.etag;
-      if (result.data) {
-        if (selectionRef.current) {
-          pendingSnapshotRef.current = result.data;
-        } else {
-          startTransition(() => setData(result.data));
-        }
+  const applyRefresh = useCallback((result: Awaited<ReturnType<typeof fetchCurrentFrontPage>>) => {
+    if (result.etag) etagRef.current = result.etag;
+    if (result.data) {
+      if (selectionRef.current) {
+        pendingSnapshotRef.current = result.data;
+      } else {
+        startTransition(() => setData(result.data));
       }
-      setError(null);
-    } catch (reason) {
-      if (reason instanceof DOMException && reason.name === "AbortError") return;
-      setError(reason instanceof Error ? reason.message : "The publication service did not respond.");
-    } finally {
-      loadingRef.current = false;
-      if (manual) setRetrying(false);
     }
+    setError(null);
   }, []);
 
+  const applyRefreshError = useCallback((reason: unknown) => {
+    if (reason instanceof DOMException && reason.name === "AbortError") return;
+    setError(reason instanceof Error ? reason.message : "The publication service did not respond.");
+  }, []);
+
+  const refresh = useCallback(async (signal?: AbortSignal) => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    try {
+      const result = await fetchCurrentFrontPage(signal, etagRef.current);
+      applyRefresh(result);
+    } catch (reason) {
+      applyRefreshError(reason);
+    } finally {
+      loadingRef.current = false;
+    }
+  }, [applyRefresh, applyRefreshError]);
+
+  const retry = useCallback(async () => {
+    setRetrying(true);
+    try {
+      await refresh();
+    } finally {
+      setRetrying(false);
+    }
+  }, [refresh]);
+
   useEffect(() => {
-    const controller = new AbortController();
-    if (!initialData) void refresh(false, controller.signal);
+    let cancelled = false;
+    if (!initialData && !loadingRef.current) {
+      loadingRef.current = true;
+      initialRequestRef.current ??= fetchCurrentFrontPage(undefined, etagRef.current);
+      void initialRequestRef.current
+        .then((result) => {
+          if (!cancelled) applyRefresh(result);
+        })
+        .catch((reason: unknown) => {
+          if (!cancelled) applyRefreshError(reason);
+        })
+        .finally(() => {
+          if (!cancelled) loadingRef.current = false;
+        });
+    }
     const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") void refresh(false);
+      if (document.visibilityState === "visible") void refresh();
     }, POLL_INTERVAL_MS);
     return () => {
-      controller.abort();
+      cancelled = true;
+      loadingRef.current = false;
       window.clearInterval(timer);
     };
-  }, [initialData, refresh]);
+  }, [applyRefresh, applyRefreshError, initialData, refresh]);
 
   const openEvidence: OpenEvidence = useCallback((claimId, trigger) => {
     setSelection({ claimId, trigger });
@@ -83,7 +113,7 @@ export function FrontPage({ initialData }: { initialData: FrontPageData | null }
   }, []);
 
   if (!data && error) {
-    return <FrontPageError error={error} onRetry={() => void refresh(true)} retrying={retrying} />;
+    return <FrontPageError error={error} onRetry={() => void retry()} retrying={retrying} />;
   }
   if (!data) return <FrontPageSkeleton />;
 
@@ -92,7 +122,7 @@ export function FrontPage({ initialData }: { initialData: FrontPageData | null }
       {error ? (
         <div className="publication-warning" role="status">
           <span>The latest check failed. This is the last verified snapshot.</span>
-          <button disabled={retrying} onClick={() => void refresh(true)} type="button">
+          <button disabled={retrying} onClick={() => void retry()} type="button">
             <Icon name="refresh" size={15} /> {retrying ? "Checking…" : "Check again"}
           </button>
         </div>

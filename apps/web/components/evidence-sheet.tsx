@@ -19,26 +19,44 @@ export default function EvidenceSheet({
   const [retrying, setRetrying] = useState(false);
   const panelRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const claimRequestRef = useRef<{
+    claimId: string;
+    promise: ReturnType<typeof fetchClaim>;
+  } | null>(null);
 
-  const load = useCallback(async (signal?: AbortSignal, retry = false) => {
-    if (retry) setRetrying(true);
+  const retry = useCallback(async () => {
+    setRetrying(true);
     try {
-      const result = await fetchClaim(claimId, signal);
+      const result = await fetchClaim(claimId);
       setPage(result);
       setError(null);
     } catch (reason) {
-      if (reason instanceof DOMException && reason.name === "AbortError") return;
-      setError(reason instanceof Error ? reason.message : "Claim evidence did not respond.");
+      setError(claimError(reason));
     } finally {
-      if (retry) setRetrying(false);
+      setRetrying(false);
     }
   }, [claimId]);
 
   useEffect(() => {
-    const controller = new AbortController();
-    void load(controller.signal);
-    return () => controller.abort();
-  }, [load]);
+    let cancelled = false;
+    const request = claimRequestRef.current?.claimId === claimId
+      ? claimRequestRef.current.promise
+      : fetchClaim(claimId);
+    claimRequestRef.current = { claimId, promise: request };
+    void request
+      .then((result) => {
+        if (cancelled) return;
+        setPage(result);
+        setError(null);
+      })
+      .catch((reason: unknown) => {
+        if (cancelled) return;
+        setError(claimError(reason));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [claimId]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -104,7 +122,7 @@ export default function EvidenceSheet({
             <p className="eyebrow">Evidence temporarily unavailable</p>
             <h2>The public Claim record could not be loaded.</h2>
             <code>{error}</code>
-            <button disabled={retrying} onClick={() => void load(undefined, true)} type="button">
+            <button disabled={retrying} onClick={() => void retry()} type="button">
               <Icon name="refresh" size={17} /> {retrying ? "Checking…" : "Retry"}
             </button>
           </div>
@@ -305,4 +323,8 @@ function stringValue(value: unknown): string {
   if (typeof value === "string") return value;
   if (typeof value === "number" || typeof value === "boolean") return String(value);
   return "";
+}
+
+function claimError(reason: unknown): string {
+  return reason instanceof Error ? reason.message : "Claim evidence did not respond.";
 }
