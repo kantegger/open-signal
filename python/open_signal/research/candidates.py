@@ -4,8 +4,9 @@ Generates investigation candidates only — never "frontier" Claims directly:
 
 - institution entry: an institution's publication count in a topic spikes
   relative to its prior output (new entrant)
-- phase portfolio: a sponsor has registered trials across multiple phases for
-  a monitored topic (this does not by itself prove that one trial advanced)
+- phase portfolio: a sponsor, or a monitored topic across sponsors, has
+  registered trials across multiple phases (this does not by itself prove
+  that one trial advanced)
 - cross-topic relation increase: concept co-occurrence between two topics
   grows over time
 
@@ -22,7 +23,7 @@ from typing import Any
 
 from sqlalchemy import text
 
-CANDIDATE_VERSION = "os-021.1"
+CANDIDATE_VERSION = "os-021.2"
 INSTITUTION_ENTRY_MULTIPLIER = 3.0
 INSTITUTION_ENTRY_MIN_WORKS = 3
 REPRESENTATIVE_EVIDENCE_LIMIT = 3
@@ -126,10 +127,13 @@ class ResearchCandidateDetector:
         now: datetime | None = None,
         topic_labels: dict[str, str] | None = None,
     ) -> list[dict[str, Any]]:
-        """Sponsors with registered trials spanning multiple phases.
+        """Registered trial portfolios spanning multiple phases.
 
-        This is a portfolio-shape observation, not evidence that a particular
-        trial advanced. ``studies`` contains ClinicalTrials.gov v2 records.
+        Sponsor-level portfolios remain the most specific shape.  A topic-level
+        cross-sponsor portfolio is also emitted when at least two named studies
+        support it, which keeps sparse registries useful without implying that
+        a particular trial advanced. ``studies`` contains ClinicalTrials.gov
+        v2 records.
         """
         now = now or datetime.now(timezone.utc)
         topic_labels = topic_labels or {}
@@ -137,6 +141,9 @@ class ResearchCandidateDetector:
         sponsor_studies: dict[tuple[str | None, str], dict[str, dict[str, Any]]] = (
             defaultdict(dict)
         )
+        topic_phases: dict[str, set[str]] = defaultdict(set)
+        topic_studies: dict[str, dict[str, dict[str, Any]]] = defaultdict(dict)
+        topic_sponsors: dict[str, set[str]] = defaultdict(set)
         for s in studies:
             ps = s.get("protocolSection") or {}
             sponsor = (
@@ -154,6 +161,11 @@ class ResearchCandidateDetector:
                 sponsor_phases[key].update(str(phase) for phase in phases)
                 if evidence:
                     sponsor_studies[key][evidence["id"]] = evidence
+                if topic_id:
+                    topic_phases[topic_id].update(str(phase) for phase in phases)
+                    topic_sponsors[topic_id].add(str(sponsor).strip())
+                    if evidence:
+                        topic_studies[topic_id][evidence["id"]] = evidence
 
         candidates = []
         phase_rank = {
@@ -168,38 +180,51 @@ class ResearchCandidateDetector:
             key=lambda item: (item[0][0] or "", item[0][1]),
         ):
             ranks = [phase_rank.get(p, 0) for p in phases if p in phase_rank]
-            if len({r for r in ranks if r}) >= 2:  # spans >= 2 phases
-                ordered_phases = sorted(
-                    phases,
-                    key=lambda phase: (phase_rank.get(phase, 99), phase),
-                )
-                metrics: dict[str, Any] = {
-                    "sponsor": sponsor,
-                    "phases": ordered_phases,
-                    "phase_labels": [_phase_label(phase) for phase in ordered_phases],
-                    "representative_studies": list(
-                        sponsor_studies[(topic_id, sponsor)].values()
-                    )[:REPRESENTATIVE_EVIDENCE_LIMIT],
-                    "study_count": len(sponsor_studies[(topic_id, sponsor)]),
-                    "evidence_count": len(sponsor_studies[(topic_id, sponsor)]),
-                    "window_label": f"Registry portfolio as of {now:%b %Y}",
-                    "baseline_label": "Cross-sectional phase coverage",
-                }
-                if topic_id:
-                    metrics["topic_id"] = topic_id
-                    if topic_labels.get(topic_id):
-                        metrics["topic_label"] = topic_labels[topic_id]
+            evidence = list(sponsor_studies[(topic_id, sponsor)].values())
+            if len({r for r in ranks if r}) >= 2 and len(evidence) >= 2:
                 candidates.append(
-                    {
-                        "candidate_type": "stage_transition",
-                        "subject_ids": [],
-                        "observation_window_start": "2020-01-01",
-                        "observation_window_end": now.date().isoformat(),
-                        "baseline_definition": "registered sponsor portfolio phase distribution",
-                        "derived_metrics": metrics,
-                        "evidence_relation_ids": [],
-                        "status": "generated",
-                    }
+                    _stage_portfolio_candidate(
+                        topic_id=topic_id,
+                        topic_label=topic_labels.get(topic_id or ""),
+                        entity=sponsor,
+                        phases=phases,
+                        studies=evidence,
+                        now=now,
+                        phase_rank=phase_rank,
+                        portfolio_scope="sponsor",
+                        baseline_definition=(
+                            "registered sponsor portfolio phase distribution"
+                        ),
+                        sponsor=sponsor,
+                        sponsor_count=1,
+                    )
+                )
+
+        for topic_id, phases in sorted(topic_phases.items()):
+            ranks = [phase_rank.get(phase, 0) for phase in phases]
+            evidence = list(topic_studies[topic_id].values())
+            sponsors = topic_sponsors[topic_id]
+            if (
+                len({rank for rank in ranks if rank}) >= 2
+                and len(evidence) >= 2
+                and len(sponsors) >= 2
+            ):
+                candidates.append(
+                    _stage_portfolio_candidate(
+                        topic_id=topic_id,
+                        topic_label=topic_labels.get(topic_id),
+                        entity=_cross_sponsor_entity(sponsors),
+                        phases=phases,
+                        studies=evidence,
+                        now=now,
+                        phase_rank=phase_rank,
+                        portfolio_scope="topic",
+                        baseline_definition=(
+                            "registered topic portfolio phase distribution across sponsors"
+                        ),
+                        sponsor_count=len(sponsors),
+                        sponsors=sorted(sponsors),
+                    )
                 )
         return candidates
 
@@ -359,6 +384,44 @@ class ResearchCandidateDetector:
             for r in rows
         ]
 
+    def publication_candidates(self, limit: int = 500) -> list[dict[str, Any]]:
+        """Current-version rows considered by the public qualification gate."""
+
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                text(
+                    """
+                    SELECT id, candidate_type, derived_metrics, status, created_at,
+                           observation_window_start, observation_window_end,
+                           baseline_definition, evidence_relation_ids,
+                           candidate_generator_version
+                    FROM research_signal_candidates
+                    WHERE candidate_generator_version = :version
+                      AND status IN ('generated', 'shadow_investigation')
+                      AND created_at >= now() - interval '30 days'
+                    ORDER BY (status = 'shadow_investigation') DESC,
+                             created_at DESC, id
+                    LIMIT :limit
+                    """
+                ),
+                {"version": CANDIDATE_VERSION, "limit": limit},
+            ).fetchall()
+        return [
+            {
+                "id": str(row[0]),
+                "candidate_type": row[1],
+                "derived_metrics": row[2],
+                "status": row[3],
+                "created_at": row[4],
+                "observation_window_start": row[5],
+                "observation_window_end": row[6],
+                "baseline_definition": row[7],
+                "evidence_relation_ids": list(row[8] or []),
+                "candidate_generator_version": row[9],
+            }
+            for row in rows
+        ]
+
 
 def _pair_combinations(items: list[str]) -> list[tuple[str, str]]:
     return [
@@ -366,6 +429,58 @@ def _pair_combinations(items: list[str]) -> list[tuple[str, str]]:
         for i in range(len(items))
         for j in range(i + 1, len(items))
     ]
+
+
+def _stage_portfolio_candidate(
+    *,
+    topic_id: str | None,
+    topic_label: str | None,
+    entity: str,
+    phases: set[str],
+    studies: list[dict[str, Any]],
+    now: datetime,
+    phase_rank: dict[str, int],
+    portfolio_scope: str,
+    baseline_definition: str,
+    sponsor: str | None = None,
+    sponsor_count: int,
+    sponsors: list[str] | None = None,
+) -> dict[str, Any]:
+    ordered_phases = sorted(
+        phases,
+        key=lambda phase: (phase_rank.get(phase, 99), phase),
+    )
+    evidence = studies[:REPRESENTATIVE_EVIDENCE_LIMIT]
+    metrics: dict[str, Any] = {
+        "entity": entity,
+        "portfolio_scope": portfolio_scope,
+        "phases": ordered_phases,
+        "phase_labels": [_phase_label(phase) for phase in ordered_phases],
+        "representative_studies": evidence,
+        "study_count": len(studies),
+        "sponsor_count": sponsor_count,
+        "evidence_count": len(studies),
+        "window_label": f"Registry portfolio as of {now:%b %Y}",
+        "baseline_label": "Cross-sectional phase coverage",
+    }
+    if sponsor:
+        metrics["sponsor"] = sponsor
+    if sponsors:
+        metrics["sponsors"] = sponsors
+    if topic_id:
+        metrics["topic_id"] = topic_id
+    if topic_label:
+        metrics["topic_label"] = topic_label
+    return {
+        "candidate_type": "stage_transition",
+        "subject_ids": [],
+        "observation_window_start": "2020-01-01",
+        "observation_window_end": now.date().isoformat(),
+        "baseline_definition": baseline_definition,
+        "derived_metrics": metrics,
+        "evidence_relation_ids": [],
+        "status": "generated",
+    }
 
 
 def _monitoring_topic_ids(record: dict[str, Any]) -> list[str]:
@@ -399,15 +514,28 @@ def _study_evidence(study: dict[str, Any]) -> dict[str, Any] | None:
     if not identifier or not title:
         return None
     status = protocol.get("statusModule") or {}
+    sponsor = (
+        (protocol.get("sponsorCollaboratorsModule") or {})
+        .get("leadSponsor", {})
+        .get("name")
+    )
     return {
         "id": str(identifier),
         "title": str(title)[:240],
         "start_date": (status.get("startDateStruct") or {}).get("date"),
+        "sponsor": str(sponsor).strip() if sponsor else None,
         "phases": [
             _phase_label(str(phase))
             for phase in (protocol.get("designModule") or {}).get("phases") or []
         ],
     }
+
+
+def _cross_sponsor_entity(sponsors: set[str]) -> str:
+    ordered = sorted(sponsors)
+    if len(ordered) == 2:
+        return f"{ordered[0]} + {ordered[1]}"
+    return f"{ordered[0]} + {len(ordered) - 1} other sponsors"
 
 
 def _representative_evidence(values: list[dict[str, Any]]) -> list[dict[str, Any]]:

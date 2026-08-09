@@ -75,8 +75,9 @@ class JobScheduler:
         for schedule in self.schedules:
             bucket = schedule_bucket_start(schedule, now)
             bucket_key = int(bucket.timestamp())
+            revision_key = f":{schedule.revision}" if schedule.revision else ""
             idempotency_key = (
-                f"schedule:{self.version}:{schedule.id}:{bucket_key}"
+                f"schedule:{self.version}:{schedule.id}{revision_key}:{bucket_key}"
             )
             payload: dict[str, Any] = {
                 **schedule.payload,
@@ -84,6 +85,8 @@ class JobScheduler:
                 "_schedule_version": self.version,
                 "_scheduled_for": bucket.isoformat(),
             }
+            if schedule.revision:
+                payload["_schedule_revision"] = schedule.revision
             job_id = self.queue.enqueue(
                 schedule.job_type,
                 schedule.queue_name,

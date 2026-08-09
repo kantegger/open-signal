@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 
 from open_signal.research.publication import (
     build_public_research_item,
+    public_research_qualification_report,
     select_public_research_items,
 )
 
@@ -149,6 +150,48 @@ def test_trial_portfolio_does_not_claim_advancement() -> None:
     assert "span Phase 1 and Phase 2" in item["headline"]
     assert "advanced" not in item["headline"].lower()
     assert "transition" not in item["headline"].lower()
+
+
+def test_cross_sponsor_topic_portfolio_is_public_without_becoming_a_claim() -> None:
+    candidate = _portfolio(
+        "topic-portfolio",
+        "oncology-immunotherapy",
+        "Oncology immunotherapy",
+        "placeholder",
+    )
+    metrics = candidate["derived_metrics"]
+    del metrics["sponsor"]
+    metrics["entity"] = "Sponsor A + Sponsor B"
+    metrics["portfolio_scope"] = "topic"
+    metrics["sponsors"] = ["Sponsor A", "Sponsor B"]
+
+    item = build_public_research_item(candidate)
+
+    assert item is not None
+    assert item["entity"] == "Sponsor A + Sponsor B"
+    assert item["screening_stage"] == "detected"
+    assert "span Phase 1 and Phase 2" in item["headline"]
+
+
+def test_qualification_report_exposes_stable_rejection_reasons() -> None:
+    incomplete = _institution(
+        "missing-topic-label",
+        "generative-ai",
+        "Generative AI and foundation models",
+        "New Lab",
+    )
+    del incomplete["derived_metrics"]["topic_label"]
+
+    report = public_research_qualification_report(
+        [incomplete, _portfolio("complete", "synthetic-biology", "Synthetic biology", "Lab")]
+    )
+
+    assert report == {
+        "evaluated": 2,
+        "eligible": 1,
+        "rejected": 1,
+        "rejection_reasons": {"missing_topic_attribution": 1},
+    }
 
 
 def test_selection_deduplicates_and_preserves_type_and_topic_diversity() -> None:

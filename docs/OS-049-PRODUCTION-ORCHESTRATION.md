@@ -23,6 +23,9 @@ atomic rolling-page compile when meaning changed
 - The Scheduler only creates Jobs. It never performs source, Agent, Claim, or
   publication work directly.
 - Every scheduled occurrence has a deterministic time-bucket idempotency key.
+  A Section-owned schedule revision may be added to that key when a generator
+  contract changes, allowing one bounded replay without replaying unrelated
+  schedules in the same registry version.
 - Expectations, Rules, and Research are separate failure domains. A failed
   Research investigation cannot stop an Expectations refresh or retire a Rules
   item.
@@ -31,14 +34,18 @@ atomic rolling-page compile when meaning changed
   editorial Slot until the Registry maturity changes. Qualified deterministic
   candidate metrics may appear only in the explicitly non-Claim Research Watch
   layer of the snapshot-bound `publication_context`.
+- A Research refresh records qualification counts and stable rejection reasons.
+  Source input with zero public-qualified output emits an Ops audit event; the
+  public compiler still hides the empty layer rather than inventing content.
 - A Section refresh only recompiles the front page when it produced new verified
   meaning. Unchanged Sections retain their last verified output.
 - A compact Expectations observation refresh retains still-valid featured
   Expectations items while atomically recompiling the full Section. New items
   receive placement priority; carried items remain subject to normal freshness
   and capacity rules.
-- Freshness reconciliation publishes only when an item ages, is demoted, or is
-  retired. An hourly check must not manufacture hourly Edition snapshots.
+- Freshness reconciliation publishes only when an item ages, is demoted, is
+  retired, or the qualified public Research screening set changes. An hourly
+  check must not manufacture hourly Edition snapshots.
 - If any handler or compiler fails, the current Edition pointer does not move.
 
 ## Scale-to-zero runtime mode

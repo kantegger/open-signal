@@ -317,7 +317,9 @@ class EditionWriter:
                 text(
                     """
                     SELECT pc.policy_version,
-                           e.edition_payload #>> '{publication_context,version}'
+                           e.edition_payload #>> '{publication_context,version}',
+                           e.edition_payload #>>
+                             '{publication_context,research_fingerprint}'
                     FROM publication_channels pc
                     LEFT JOIN daily_editions e ON e.id = pc.current_edition_id
                     WHERE pc.id = :channel
@@ -325,8 +327,13 @@ class EditionWriter:
                 ),
                 {"channel": PUBLICATION_CHANNEL},
             ).fetchone()
+            current_research_fingerprint = self.context_builder.research_fingerprint(
+                conn,
+                captured_at=generated_at,
+            )
         channel_policy = channel_state[0] if channel_state else None
         context_version = channel_state[1] if channel_state else None
+        stored_research_fingerprint = channel_state[2] if channel_state else None
         current_policy = self.composer.freshness_evaluator.policy_version
         if channel_policy != current_policy:
             transitions.append(
@@ -344,6 +351,15 @@ class EditionWriter:
                     "from": context_version,
                     "to": CONTEXT_VERSION,
                     "reason": "publication context version changed",
+                }
+            )
+        if stored_research_fingerprint != current_research_fingerprint:
+            transitions.append(
+                {
+                    "claim_id": None,
+                    "from": stored_research_fingerprint,
+                    "to": current_research_fingerprint,
+                    "reason": "public research screening changed",
                 }
             )
 

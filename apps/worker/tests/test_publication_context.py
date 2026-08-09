@@ -95,7 +95,12 @@ def test_research_context_uses_public_gate_and_event_first_headline() -> None:
         ]
     )
 
-    items, eligible_total = PublicationContextBuilder()._research(
+    builder = PublicationContextBuilder()
+    items, eligible_total = builder._research(
+        connection,
+        captured_at=captured_at,
+    )
+    fingerprint = builder.research_fingerprint(
         connection,
         captured_at=captured_at,
     )
@@ -107,6 +112,7 @@ def test_research_context_uses_public_gate_and_event_first_headline() -> None:
     )
     assert items[0]["entity"] == "Microsoft Research Asia"
     assert "Microsoft Research Asia" not in items[0]["headline"]
+    assert len(fingerprint) == 64
 
 
 class _ResearchConnection:

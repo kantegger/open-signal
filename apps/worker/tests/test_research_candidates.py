@@ -121,6 +121,35 @@ def test_stage_transition_single_phase_not_candidate(detector, engine) -> None:
     assert candidates == []
 
 
+def test_single_multiphase_study_is_not_enough_public_evidence(detector, engine) -> None:
+    study = _study("SingleCo", "PHASE1")
+    study["protocolSection"]["designModule"]["phases"] = ["PHASE1", "PHASE2"]
+
+    candidates = detector.detect_stage_transition([study])
+
+    assert candidates == []
+
+
+def test_cross_sponsor_topic_portfolio_is_detected(detector, engine) -> None:
+    studies = [
+        _study("Sponsor A", "PHASE1"),
+        _study("Sponsor B", "PHASE2"),
+    ]
+
+    candidates = detector.detect_stage_transition(
+        studies,
+        topic_labels={"oncology-immunotherapy": "Oncology immunotherapy"},
+    )
+
+    assert len(candidates) == 1
+    metrics = candidates[0]["derived_metrics"]
+    assert metrics["portfolio_scope"] == "topic"
+    assert metrics["entity"] == "Sponsor A + Sponsor B"
+    assert metrics["sponsors"] == ["Sponsor A", "Sponsor B"]
+    assert metrics["sponsor_count"] == 2
+    assert len(metrics["representative_studies"]) == 2
+
+
 def test_cross_topic_relation_detected(detector, engine) -> None:
     topic_concepts = {
         "oncology-immunotherapy": ["CAR T cell therapy"],

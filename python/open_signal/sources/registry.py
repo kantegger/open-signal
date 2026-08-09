@@ -199,6 +199,7 @@ class JobScheduleDefinition(BaseModel):
     priority: int = Field(default=100, ge=0)
     maximum_attempts: int = Field(default=5, ge=1)
     payload: dict[str, Any] = Field(default_factory=dict)
+    revision: str | None = Field(default=None, min_length=1)
     enabled: bool = True
 
 
