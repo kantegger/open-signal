@@ -14,6 +14,7 @@ import type {
   SlotType,
 } from "../lib/api";
 import { fetchCurrentFrontPage } from "../lib/api";
+import { collectionDensity } from "../lib/collection-density";
 import { copy, formatDateTime, formatRelativeTime, humanize } from "../lib/i18n";
 import { editionPath, signalPath, topicPath } from "../lib/urls";
 import { DirectionalStatement } from "./directional-statement";
@@ -261,7 +262,11 @@ function Publication({
             {secondary.items.length ? (
               <section className="slot-region secondary-region" aria-labelledby="secondary-title">
                 <RegionHeader id="secondary-title" title={copy.en.secondarySignals} note={`${secondary.items.length} verified`} />
-                <div className="secondary-grid">
+                <div
+                  className="secondary-grid"
+                  data-count={secondary.items.length}
+                  data-density={collectionDensity(secondary.items.length, "grid")}
+                >
                   {secondary.items.map((item) => <PlanRenderer item={item} key={item.id} onEvidence={onEvidence} />)}
                 </div>
               </section>
@@ -300,19 +305,34 @@ function Publication({
             ) : null}
 
             {main.items.length ? (
-              <section className="slot-region main-region" aria-label="Analysis modules">
+              <section
+                className="slot-region main-region"
+                aria-label="Analysis modules"
+                data-count={main.items.length}
+                data-density={collectionDensity(main.items.length, "grid")}
+              >
                 {main.items.map((item) => <PlanRenderer item={item} key={item.id} onEvidence={onEvidence} />)}
               </section>
             ) : null}
 
             {utility.items.length ? (
-              <section className="slot-region utility-region" aria-label="Upcoming and resolved signal utilities">
+              <section
+                className="slot-region utility-region"
+                aria-label="Upcoming and resolved signal utilities"
+                data-count={utility.items.length}
+                data-density={collectionDensity(utility.items.length, "grid")}
+              >
                 {utility.items.map((item) => <PlanRenderer item={item} key={item.id} onEvidence={onEvidence} />)}
               </section>
             ) : null}
           </div>
 
-          <section className="slot-region archive-region" aria-labelledby="archive-title">
+          <section
+            className="slot-region archive-region"
+            aria-labelledby="archive-title"
+            data-count={archivePlans.items.length}
+            data-density={collectionDensity(archivePlans.items.length, "grid")}
+          >
             {archivePlans.items.map((item) => <PlanRenderer item={item} key={item.id} onEvidence={onEvidence} />)}
             <ArchiveTable archive={data.archive} currentSnapshotId={data.snapshot.id} isCurrent={data.snapshot.is_current} />
           </section>
@@ -345,7 +365,11 @@ function LiveFeed({
   return (
     <section className="slot-region live-feed-region" aria-labelledby="live-feed-title">
       <RegionHeader id="live-feed-title" title={copy.en.liveFeed} note={copy.en.recentFirst} />
-      <div className="feed-list">
+      <div
+        className="feed-list"
+        data-count={items.length}
+        data-density={collectionDensity(items.length, "list")}
+      >
         {items.map((item) => <SignalFeedRow item={item} key={item.id} onEvidence={onEvidence} />)}
       </div>
     </section>
@@ -458,7 +482,11 @@ function LiveSignalTape({
         title="↗ Live signal tape"
         note={`${verified.length} verified · ${observations.length} monitored Topics · deduplicated`}
       />
-      <div className="topic-monitor-list live-signal-list">
+      <div
+        className="topic-monitor-list live-signal-list"
+        data-count={verified.length + sourceOnly.length}
+        data-density={collectionDensity(verified.length + sourceOnly.length, "list")}
+      >
         {verified.map((item) => (
           <VerifiedTapeRow
             item={item}
@@ -714,7 +742,13 @@ function ClaimLedger({
         title="Verified judgment ledger"
         note={`${claims.length} active Claim records · no duplicate projections`}
       />
-      <div className="claim-ledger" role="table" aria-label="Verified judgment ledger">
+      <div
+        className="claim-ledger"
+        role="table"
+        aria-label="Verified judgment ledger"
+        data-count={claims.length}
+        data-density={collectionDensity(claims.length, "table")}
+      >
         <div className="claim-ledger-row claim-ledger-head" role="row">
           <span role="columnheader">Desk</span><span role="columnheader">Claim</span>
           <span role="columnheader">Move</span><span role="columnheader">Confidence</span>
@@ -730,6 +764,9 @@ function ClaimLedger({
             <span role="cell">
               <Link href={signalPath(claim.statement, claim.id)}><strong><DirectionalStatement text={claim.statement} /></strong></Link>
               <small>{claim.source_label}</small>
+              <small className="collection-detail collection-detail-sparse">
+                {humanize(claim.claim_type)} · {humanize(claim.status)}
+              </small>
             </span>
             <span className={directionClass(claim.direction)} role="cell">{claim.change ?? "—"}</span>
             <span role="cell">{humanize(claim.confidence_label ?? claim.epistemic_status)}</span>
@@ -753,12 +790,19 @@ function RuleWatch({ rules }: { rules: PublicationContext["rules"] }) {
   return (
     <section className="watch-panel rule-watch" aria-labelledby="rule-watch-title">
       <RegionHeader id="rule-watch-title" title="⚖ Rule watch" note="Normalized source facts" />
-      <div className="watch-list">
+      <div
+        className="watch-list"
+        data-count={rules.length}
+        data-density={collectionDensity(rules.length, "list")}
+      >
         {rules.map((rule) => (
           <article key={rule.id}>
             <div><span>{rule.authority ?? humanize(rule.rule_type)}</span><time>{formatRelativeTime(rule.transition_at ?? rule.updated_at)}</time></div>
             <strong>{rule.title}</strong>
             <p><b>{humanize(rule.previous_state ?? "recorded")}</b><span>→</span><b>{humanize(rule.current_state)}</b></p>
+            <p className="collection-detail collection-detail-sparse rule-watch-context">
+              {rule.jurisdiction ? `${rule.jurisdiction} · ` : ""}{rule.source_label}
+            </p>
           </article>
         ))}
       </div>
@@ -781,7 +825,11 @@ function ResearchWatch({
       aria-labelledby="research-watch-title"
     >
       <RegionHeader id="research-watch-title" title="🔬 Research screening" note={`${total} eligible public watches · not Claims`} />
-      <div className="watch-list research-watch-list">
+      <div
+        className="watch-list research-watch-list"
+        data-count={items.length}
+        data-density={collectionDensity(items.length, "grid")}
+      >
         {items.map((item) => (
           <article key={item.id}>
             <div>
@@ -789,6 +837,11 @@ function ResearchWatch({
               <time>{formatRelativeTime(item.detected_at)}</time>
             </div>
             <strong>{item.headline}</strong>
+            <p className="collection-detail collection-detail-sparse research-context">
+              <span>Screening context</span>
+              <b>{item.topic_label}</b>
+              <span>{item.evidence_count} public records from {item.source_label}; not yet a Claim.</span>
+            </p>
             <p className="research-entity"><b>{item.entity}</b><span>{item.baseline_label}</span></p>
             <p className={`research-evidence ${directionClass(item.direction)}`}>
               <b>{directionGlyph(item.direction)} {item.metric}</b>
@@ -814,7 +867,10 @@ function SourceCoverageBand({
         <h2 id="source-coverage-title">◌ Source coverage</h2>
         <p>Raw intake · context only, not published Claims</p>
       </header>
-      <div>
+      <div
+        data-count={coverage.length}
+        data-density={collectionDensity(coverage.length, "grid")}
+      >
         {coverage.map((source) => (
           <article key={source.source_slug}>
             <span>{sourceGlyph(source.source_slug)} {source.source_label}</span>
@@ -893,7 +949,13 @@ function DigestTable({
   onEvidence: OpenEvidence;
 }) {
   return (
-    <div className="digest-table" role="table" aria-label={ariaLabel}>
+    <div
+      className="digest-table"
+      role="table"
+      aria-label={ariaLabel}
+      data-count={items.length}
+      data-density={collectionDensity(items.length, "table")}
+    >
       <div className="digest-row digest-head" role="row">
         <span role="columnheader">Type</span><span role="columnheader">{headlineLabel}</span>
         <span role="columnheader">Source</span><span role="columnheader">Confidence</span>
@@ -910,6 +972,7 @@ function DigestTable({
             {item.trust.claim_id ? (
               <Link href={signalPath(item.headline, item.trust.claim_id)}><strong><DirectionalStatement text={item.headline} /></strong></Link>
             ) : <strong><DirectionalStatement text={item.headline} /></strong>}
+            {item.dek ? <small className="collection-detail collection-detail-sparse">{item.dek}</small> : null}
           </span>
           <span role="cell">{item.trust.source_label}</span>
           <span role="cell">{humanize(item.trust.confidence_label ?? item.trust.epistemic_status)}</span>
@@ -946,7 +1009,13 @@ function ArchiveTable({
         <p>Chronological, immutable publication record.</p>
       </div>
       {archive.length ? (
-        <div className="archive-table" role="table" aria-label="Edition archive">
+        <div
+          className="archive-table"
+          role="table"
+          aria-label="Edition archive"
+          data-count={archive.length}
+          data-density={collectionDensity(archive.length, "table")}
+        >
           <div className="archive-row archive-head" role="row">
             <span role="columnheader">Composed</span><span role="columnheader">Sections</span>
             <span role="columnheader">Claims</span><span role="columnheader">Trigger</span>
@@ -955,7 +1024,12 @@ function ArchiveTable({
           {archive.map((snapshot) => (
             <div className="archive-row" role="row" key={snapshot.id}>
               <time role="cell">{formatDateTime(snapshot.composed_at)}</time>
-              <span role="cell">{snapshot.sections.length}</span>
+              <span role="cell">
+                {snapshot.sections.length}
+                <small className="collection-detail collection-detail-sparse">
+                  {snapshot.sections.map(sectionName).join(" · ") || "No active Sections"}
+                </small>
+              </span>
               <span role="cell">{snapshot.claim_count}</span>
               <span role="cell">{humanize(snapshot.trigger_type)}</span>
               <span role="cell">{humanize(snapshot.status)}</span>

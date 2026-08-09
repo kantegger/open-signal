@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { JsonRecord, RenderPlanItem } from "../lib/api";
+import { collectionDensity } from "../lib/collection-density";
 import { formatDateTime, formatRelativeTime, humanize } from "../lib/i18n";
 import { signalPath, topicPath } from "../lib/urls";
 import { DirectionalStatement } from "./directional-statement";
@@ -54,6 +55,7 @@ export function SignalHero({ item, onEvidence }: ComponentProps) {
   const observation = string(fields.primary_observation ?? fields.observation ?? item.dek);
   const analysis = string(fields.analysis);
   const assessment = string(fields.assessment);
+  const briefCount = 1 + Number(Boolean(analysis)) + Number(Boolean(assessment));
 
   return (
     <article className={`signal-hero ${sectionClass(item.section_id)}`} data-component-family="signal-hero">
@@ -79,7 +81,11 @@ export function SignalHero({ item, onEvidence }: ComponentProps) {
         ) : null}
       </div>
 
-      <div className="hero-brief">
+      <div
+        className="hero-brief"
+        data-count={briefCount}
+        data-density={collectionDensity(briefCount, "grid")}
+      >
         <section>
           <p className="eyebrow">Observed</p>
           <p>{observation || "The verified observation is recorded in the Signal."}</p>
@@ -157,7 +163,11 @@ export function StateTransition({ item, onEvidence }: ComponentProps) {
   return (
     <article className={`publication-module state-module ${sectionClass(item.section_id)}`} data-component-family="state-transition">
       <ModuleHeading item={item} title="State transition" />
-      <ol className="state-timeline">
+      <ol
+        className="state-timeline"
+        data-count={stages.length}
+        data-density={collectionDensity(stages.length, "list")}
+      >
         {stages.map((stage, index) => (
           <li className={stage.current ? "is-current" : ""} key={`${stage.label}-${index}`}>
             <span className="state-marker" />
@@ -239,7 +249,11 @@ export function EvidenceRelationship({ item, onEvidence }: ComponentProps) {
     <article className={`publication-module evidence-relationship-module ${sectionClass(item.section_id)}`} data-component-family="evidence-relationship">
       <ModuleHeading item={item} title="Evidence timeline" />
       {events.length ? (
-        <ol className="evidence-timeline">
+        <ol
+          className="evidence-timeline"
+          data-count={events.length}
+          data-density={collectionDensity(events.length, "list")}
+        >
           {events.map((event, index) => (
             <li key={`${event.title}-${index}`}>
               <span className="timeline-dot" />

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ClaimPageData, JsonRecord } from "../lib/api";
+import { collectionDensity, collectionDetailBudget } from "../lib/collection-density";
 import { formatDateTime, humanize } from "../lib/i18n";
 import { topicPath } from "../lib/urls";
 import { DirectionalStatement } from "./directional-statement";
@@ -73,7 +74,11 @@ export function ClaimRecord({ page }: { page: ClaimPageData }) {
 
       <section className="claim-history-section">
         <header><p className="eyebrow">History</p><h2>Immutable public versions</h2></header>
-        <div className="claim-history-list">
+        <div
+          className="claim-history-list"
+          data-count={page.version_history.length}
+          data-density={collectionDensity(page.version_history.length, "list")}
+        >
           {page.version_history.map((version) => (
             <article key={version.version_number}>
               <strong>v{version.version_number}</strong>
@@ -101,8 +106,13 @@ export function ClaimRecord({ page }: { page: ClaimPageData }) {
 }
 
 function ClaimEvidenceList({ title, items }: { title: string; items: unknown[] }) {
+  const detailLimit = collectionDetailBudget(items.length, "list");
   return (
-    <div className="claim-evidence-list">
+    <div
+      className="claim-evidence-list"
+      data-count={items.length}
+      data-density={collectionDensity(items.length, "list")}
+    >
       <h3>{title}</h3>
       {items.length ? items.map((item, index) => {
         const record = objectValue(item);
@@ -110,7 +120,7 @@ function ClaimEvidenceList({ title, items }: { title: string; items: unknown[] }
         return (
           <article key={`${evidenceTitle(item)}-${index}`}>
             <span>{String(index + 1).padStart(2, "0")}</span>
-            <div><strong>{evidenceTitle(item)}</strong><p>{evidenceMeta(item)}</p></div>
+            <div><strong>{evidenceTitle(item)}</strong><p>{evidenceMeta(item, detailLimit)}</p></div>
             {href ? <a href={href} rel="noreferrer" target="_blank">Source ↗</a> : null}
           </article>
         );
@@ -142,11 +152,11 @@ function evidenceTitle(value: unknown): string {
   return stringValue(record.title ?? record.name ?? record.source ?? record.type ?? record.description) || renderUnknown(value) || "Evidence item";
 }
 
-function evidenceMeta(value: unknown): string {
+function evidenceMeta(value: unknown, limit = 4): string {
   const record = objectValue(value);
   const values = Object.entries(record)
     .filter(([key, item]) => !["title", "name", "source", "type", "description", "url", "source_url"].includes(key) && ["string", "number", "boolean"].includes(typeof item))
-    .slice(0, 4)
+    .slice(0, limit)
     .map(([key, item]) => `${humanize(key)}: ${String(item)}`);
   return values.join(" · ") || "Frozen in the evidence bundle";
 }

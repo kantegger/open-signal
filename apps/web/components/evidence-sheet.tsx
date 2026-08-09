@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ClaimPageData, JsonRecord } from "../lib/api";
 import { fetchClaim } from "../lib/api";
+import { collectionDensity, collectionDetailBudget } from "../lib/collection-density";
 import { formatDateTime, humanize } from "../lib/i18n";
 import { DirectionalStatement } from "./directional-statement";
 import { Icon } from "./icons";
@@ -200,7 +201,13 @@ function SheetRecord({ page }: { page: ClaimPageData }) {
       <section className="version-history">
         <p className="eyebrow">Version history</p>
         {page.version_history.length ? (
-          <div className="history-table" role="table" aria-label="Claim version history">
+          <div
+            className="history-table"
+            role="table"
+            aria-label="Claim version history"
+            data-count={page.version_history.length}
+            data-density={collectionDensity(page.version_history.length, "table")}
+          >
             {page.version_history.map((version) => (
               <div className="history-row" role="row" key={version.version_number}>
                 <strong role="cell">v{version.version_number}</strong>
@@ -229,8 +236,13 @@ function SheetRecord({ page }: { page: ClaimPageData }) {
 }
 
 function EvidenceList({ title, items, compact = false }: { title: string; items: unknown[]; compact?: boolean }) {
+  const detailLimit = collectionDetailBudget(items.length, "list");
   return (
-    <div className={`evidence-list${compact ? " is-compact" : ""}`}>
+    <div
+      className={`evidence-list${compact ? " is-compact" : ""}`}
+      data-count={items.length}
+      data-density={collectionDensity(items.length, "list")}
+    >
       <p className="eyebrow">{title}</p>
       {items.length ? (
         <ol>
@@ -242,7 +254,7 @@ function EvidenceList({ title, items, compact = false }: { title: string; items:
                 <span>{index + 1}</span>
                 <div>
                   <strong>{evidenceTitle(item)}</strong>
-                  <small>{evidenceMeta(item)}</small>
+                  <small>{evidenceMeta(item, detailLimit)}</small>
                 </div>
                 {href ? <a href={href} rel="noreferrer" target="_blank">Source</a> : null}
               </li>
@@ -296,12 +308,12 @@ function evidenceTitle(value: unknown): string {
   return stringValue(record.title ?? record.name ?? record.source ?? record.type ?? record.description) || renderUnknown(value) || "Evidence item";
 }
 
-function evidenceMeta(value: unknown): string {
+function evidenceMeta(value: unknown, limit = 3): string {
   const record = objectValue(value);
   const excluded = new Set(["title", "name", "source", "type", "description", "url", "source_url"]);
   const details = Object.entries(record)
     .filter(([key, item]) => !excluded.has(key) && ["string", "number", "boolean"].includes(typeof item))
-    .slice(0, 3)
+    .slice(0, limit)
     .map(([key, item]) => `${humanize(key)} ${String(item)}`);
   return details.join(" · ") || "Frozen in the evidence bundle";
 }

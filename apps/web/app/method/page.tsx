@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { JsonLd } from "../../components/json-ld";
 import { SiteShell } from "../../components/site-shell";
+import { collectionDensity } from "../../lib/collection-density";
 import { absoluteUrl } from "../../lib/site";
 
 export const metadata: Metadata = {
@@ -60,7 +61,7 @@ export default function MethodPage() {
               <p className="eyebrow">The epistemic stack</p>
               <h2 id="epistemic-layers-title">Three layers that must not collapse into one another</h2>
             </header>
-            <div>
+            <div data-count={layers.length} data-density={collectionDensity(layers.length, "grid")}>
               {layers.map((layer) => (
                 <article key={layer.number}>
                   <span>{layer.number}</span><h3>{layer.title}</h3><p>{layer.copy}</p>
@@ -71,7 +72,7 @@ export default function MethodPage() {
 
           <section className="method-flow" aria-labelledby="publication-flow-title">
             <header><p className="eyebrow">Publication lifecycle</p><h2 id="publication-flow-title">From source record to public surface</h2></header>
-            <ol>
+            <ol data-count={5} data-density={collectionDensity(5, "grid")}>
               <li><span>Source</span><p>Adapters preserve raw public records and source timestamps.</p></li>
               <li><span>Candidate</span><p>Detectors identify material changes without deciding what they mean.</p></li>
               <li><span>Claim</span><p>A Charter Agent or deterministic builder produces a bounded proposition and evidence bundle.</p></li>
@@ -82,7 +83,7 @@ export default function MethodPage() {
 
           <section className="method-principles" aria-labelledby="interface-contract-title">
             <header><p className="eyebrow">Interface contract</p><h2 id="interface-contract-title">Different actions have different destinations</h2></header>
-            <dl>
+            <dl data-count={4} data-density={collectionDensity(4, "grid")}>
               <div><dt>Signal title</dt><dd>Leaves the snapshot for the permanent, crawlable Signal record.</dd></div>
               <div><dt>Evidence</dt><dd>Opens a temporary Overlay for quick verification without losing reading context.</dd></div>
               <div><dt>Topic</dt><dd>Opens the long-lived canonical question, its source markets, rules, and related Signals.</dd></div>
