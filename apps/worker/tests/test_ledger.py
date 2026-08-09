@@ -1,5 +1,5 @@
 """Claims ledger tests (OS-023). Requires real PostgreSQL via
-OPEN_SIGNAL_DATABASE_URL (migration 0001 applied).
+OPEN_SIGNAL_TEST_DATABASE_URL (migration 0001 applied).
 """
 
 import os
@@ -11,9 +11,9 @@ from open_signal.claims.ledger import ClaimsLedger
 
 @pytest.fixture()
 def engine():
-    url = os.environ.get("OPEN_SIGNAL_DATABASE_URL")
+    url = os.environ.get("OPEN_SIGNAL_TEST_DATABASE_URL")
     if not url:
-        pytest.skip("OPEN_SIGNAL_DATABASE_URL not set")
+        pytest.skip("OPEN_SIGNAL_TEST_DATABASE_URL not set")
     from sqlalchemy import create_engine
 
     return create_engine(url)

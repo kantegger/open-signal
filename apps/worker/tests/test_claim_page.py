@@ -1,5 +1,5 @@
 """Claim page presenter + API tests (OS-030). Requires real PostgreSQL via
-OPEN_SIGNAL_DATABASE_URL (migration 0001 applied).
+OPEN_SIGNAL_TEST_DATABASE_URL (migration 0001 applied).
 """
 
 import json
@@ -13,9 +13,9 @@ from open_signal.claims.ledger import ClaimsLedger
 
 @pytest.fixture()
 def engine():
-    url = os.environ.get("OPEN_SIGNAL_DATABASE_URL")
+    url = os.environ.get("OPEN_SIGNAL_TEST_DATABASE_URL")
     if not url:
-        pytest.skip("OPEN_SIGNAL_DATABASE_URL not set")
+        pytest.skip("OPEN_SIGNAL_TEST_DATABASE_URL not set")
     from sqlalchemy import create_engine
 
     return create_engine(url)
@@ -100,6 +100,10 @@ def _cleanup(engine) -> None:
     from sqlalchemy import text
 
     with engine.begin() as conn:
+        # A prior integration cycle may leave immutable Render Plans pointing
+        # at evidence bundles. Remove publication snapshots first so this test
+        # is isolated from valid pre-existing test-branch data.
+        conn.execute(text("TRUNCATE daily_editions CASCADE"))
         conn.execute(text("TRUNCATE claims CASCADE"))
         conn.execute(text("DELETE FROM evidence_bundles"))
         conn.execute(text("DELETE FROM agent_tool_calls"))

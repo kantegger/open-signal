@@ -1,0 +1,129 @@
+version: "2.0.0"
+
+# Production is launched by one hourly platform Cron. Every occurrence is
+# still bucketed independently so slower desks run only on their own cadence.
+# The one-shot worker exits after the batch, leaving Neon idle between runs.
+schedules:
+  - id: "expectations-source-refresh"
+    job_type: "source.discover"
+    queue_name: "source"
+    cadence_seconds: 3600
+    phase_offset_seconds: 0
+    priority: 10
+    maximum_attempts: 3
+    payload:
+      source_slug: "polymarket-gamma"
+      section_id: "expectations-moved"
+      max_pages: 3
+
+  - id: "rules-source-refresh"
+    job_type: "source.discover"
+    queue_name: "source"
+    cadence_seconds: 14400
+    phase_offset_seconds: 0
+    priority: 20
+    maximum_attempts: 3
+    payload:
+      source_slug: "federal-register"
+      section_id: "rules-moved"
+      max_pages: 3
+      queries:
+        - "artificial intelligence"
+        - "cryptocurrency"
+
+  - id: "expectations-observation-refresh"
+    job_type: "canonical.normalize"
+    queue_name: "analysis"
+    cadence_seconds: 3600
+    phase_offset_seconds: 0
+    priority: 15
+    maximum_attempts: 3
+    payload:
+      section_id: "expectations-moved"
+
+  - id: "research-openalex-refresh"
+    job_type: "source.discover"
+    queue_name: "source"
+    cadence_seconds: 86400
+    phase_offset_seconds: 0
+    priority: 30
+    maximum_attempts: 3
+    payload:
+      source_slug: "openalex"
+      section_id: "research-frontier"
+      max_pages: 3
+
+  - id: "research-clinicaltrials-refresh"
+    job_type: "source.discover"
+    queue_name: "source"
+    cadence_seconds: 43200
+    phase_offset_seconds: 0
+    priority: 30
+    maximum_attempts: 3
+    payload:
+      source_slug: "clinicaltrials-gov"
+      section_id: "research-frontier"
+
+  - id: "expectations-editorial-refresh"
+    job_type: "derived.calculate_expectation"
+    queue_name: "analysis"
+    cadence_seconds: 3600
+    phase_offset_seconds: 0
+    priority: 40
+    maximum_attempts: 3
+    payload:
+      section_id: "expectations-moved"
+      maximum_claims: 3
+
+  - id: "rules-editorial-refresh"
+    job_type: "derived.detect_rule_transition"
+    queue_name: "analysis"
+    cadence_seconds: 14400
+    phase_offset_seconds: 0
+    priority: 40
+    maximum_attempts: 3
+    payload:
+      section_id: "rules-moved"
+      maximum_claims: 3
+
+  - id: "research-candidate-refresh"
+    job_type: "derived.generate_research_candidates"
+    queue_name: "analysis"
+    cadence_seconds: 86400
+    phase_offset_seconds: 0
+    priority: 50
+    maximum_attempts: 3
+    payload:
+      section_id: "research-frontier"
+
+  - id: "research-shadow-investigation"
+    job_type: "agent.investigate"
+    queue_name: "agent"
+    cadence_seconds: 86400
+    phase_offset_seconds: 0
+    priority: 60
+    maximum_attempts: 2
+    payload:
+      section_id: "research-frontier"
+      maximum_candidates: 5
+
+  - id: "publication-freshness-reconcile"
+    job_type: "composer.generate_edition"
+    queue_name: "publication"
+    cadence_seconds: 3600
+    phase_offset_seconds: 0
+    priority: 70
+    maximum_attempts: 3
+    payload:
+      reason: "freshness_reconcile"
+
+  - id: "publication-snapshot-delivery"
+    job_type: "publication.deliver_snapshot"
+    queue_name: "publication"
+    cadence_seconds: 3600
+    phase_offset_seconds: 0
+    priority: 80
+    maximum_attempts: 3
+    payload:
+      reason: "snapshot_delivery"
+      locale: "en"

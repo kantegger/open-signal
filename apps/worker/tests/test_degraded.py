@@ -1,5 +1,5 @@
 """Degraded mode tests (OS-037). Requires real PostgreSQL via
-OPEN_SIGNAL_DATABASE_URL (migrations 0001-0007 applied).
+OPEN_SIGNAL_TEST_DATABASE_URL (migrations 0001-0007 applied).
 """
 
 import os
@@ -10,9 +10,9 @@ from open_signal.ops.degraded import DegradedModeError, DegradedModeManager
 
 @pytest.fixture()
 def engine():
-    url = os.environ.get("OPEN_SIGNAL_DATABASE_URL")
+    url = os.environ.get("OPEN_SIGNAL_TEST_DATABASE_URL")
     if not url:
-        pytest.skip("OPEN_SIGNAL_DATABASE_URL not set")
+        pytest.skip("OPEN_SIGNAL_TEST_DATABASE_URL not set")
     from sqlalchemy import create_engine
 
     return create_engine(url)

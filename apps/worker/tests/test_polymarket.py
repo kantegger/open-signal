@@ -1,7 +1,7 @@
 """Polymarket adapter tests (OS-007).
 
 Market discovery/parsing use saved fixtures (offline); cursor persistence
-and raw record storage require a real PostgreSQL via OPEN_SIGNAL_DATABASE_URL
+and raw record storage require a real PostgreSQL via OPEN_SIGNAL_TEST_DATABASE_URL
 (migration 0002 applied).
 """
 
@@ -12,14 +12,14 @@ from pathlib import Path
 import pytest
 from open_signal.sources.polymarket import FIXTURE_DIR, PolymarketAdapter
 
-TEST_SOURCE = "polymarket-gamma"
+TEST_SOURCE = "polymarket-gamma-test"
 
 
 @pytest.fixture()
 def engine():
-    url = os.environ.get("OPEN_SIGNAL_DATABASE_URL")
+    url = os.environ.get("OPEN_SIGNAL_TEST_DATABASE_URL")
     if not url:
-        pytest.skip("OPEN_SIGNAL_DATABASE_URL not set")
+        pytest.skip("OPEN_SIGNAL_TEST_DATABASE_URL not set")
     from sqlalchemy import create_engine
 
     return create_engine(url)
@@ -81,8 +81,14 @@ def test_discover_stores_raw_records_and_cursor(
     from sqlalchemy import text
 
     with engine.begin() as conn:
-        conn.execute(text("DELETE FROM raw_source_records WHERE source_id = :s"), {"s": adapter.source_id})
-        conn.execute(text("DELETE FROM source_cursors WHERE source_id = :s"), {"s": adapter.source_id})
+        conn.execute(
+            text("DELETE FROM raw_source_records WHERE source_id = :s"),
+            {"s": adapter.source_id},
+        )
+        conn.execute(
+            text("DELETE FROM source_cursors WHERE source_id = :s"),
+            {"s": adapter.source_id},
+        )
 
     result = adapter.discover(max_pages=10)
     assert result["markets"] >= 8
@@ -107,8 +113,14 @@ def test_discover_idempotent(adapter: PolymarketAdapter, engine, fake_fixtures) 
     from sqlalchemy import text
 
     with engine.begin() as conn:
-        conn.execute(text("DELETE FROM raw_source_records WHERE source_id = :s"), {"s": adapter.source_id})
-        conn.execute(text("DELETE FROM source_cursors WHERE source_id = :s"), {"s": adapter.source_id})
+        conn.execute(
+            text("DELETE FROM raw_source_records WHERE source_id = :s"),
+            {"s": adapter.source_id},
+        )
+        conn.execute(
+            text("DELETE FROM source_cursors WHERE source_id = :s"),
+            {"s": adapter.source_id},
+        )
 
     first = adapter.discover(max_pages=2)
     # 重置 cursor，模拟对同一批数据重复同步（验证 ON CONFLICT 幂等）
@@ -131,8 +143,14 @@ def test_cursor_continues_where_it_left_off(
     from sqlalchemy import text
 
     with engine.begin() as conn:
-        conn.execute(text("DELETE FROM raw_source_records WHERE source_id = :s"), {"s": adapter.source_id})
-        conn.execute(text("DELETE FROM source_cursors WHERE source_id = :s"), {"s": adapter.source_id})
+        conn.execute(
+            text("DELETE FROM raw_source_records WHERE source_id = :s"),
+            {"s": adapter.source_id},
+        )
+        conn.execute(
+            text("DELETE FROM source_cursors WHERE source_id = :s"),
+            {"s": adapter.source_id},
+        )
 
     adapter.discover(max_pages=1)  # one page (8 markets)
     with engine.connect() as conn:

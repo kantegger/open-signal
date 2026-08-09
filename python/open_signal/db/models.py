@@ -375,7 +375,14 @@ research_signal_candidates = Table(
     Column("evidence_relation_ids", ARRAY(Uuid()), nullable=False, server_default="{}"),
     Column("candidate_generator_version", Text, nullable=False),
     Column("status", Text, nullable=False, server_default="generated"),
+    Column("idempotency_key", Text),
     Column("created_at", _tz, nullable=False, server_default=text("now()")),
+    Index(
+        "research_signal_candidates_idempotency_key_uidx",
+        "idempotency_key",
+        unique=True,
+        postgresql_where=text("idempotency_key IS NOT NULL"),
+    ),
 )
 
 # ---------------------------------------------------------------- C.8
@@ -493,6 +500,7 @@ claims = Table(
     Column("epistemic_status", Text, nullable=False),
     Column("evidence_bundle_id", Uuid(), ForeignKey("evidence_bundles.id"), nullable=False),
     Column("evidence_snapshot_hash", Text, nullable=False),
+    Column("idempotency_key", Text),
     Column("issued_at", _tz, nullable=False),
     Column("valid_from", _tz),
     Column("valid_until", _tz),
@@ -501,6 +509,12 @@ claims = Table(
     Column("current_version_id", Uuid()),
     Column("created_at", _tz, nullable=False, server_default=text("now()")),
     Column("updated_at", _tz, nullable=False, server_default=text("now()")),
+    Index(
+        "claims_idempotency_key_uidx",
+        "idempotency_key",
+        unique=True,
+        postgresql_where=text("idempotency_key IS NOT NULL"),
+    ),
 )
 
 claim_versions = Table(
@@ -669,6 +683,11 @@ daily_editions = Table(
     Column("generation_cost_usd", Numeric(12, 6), nullable=False, server_default="0"),
     Column("correction_count", Integer, nullable=False, server_default="0"),
     Column("edition_payload", JSONB, nullable=False),
+    Column("trigger_type", Text, nullable=False, server_default="scheduled"),
+    Column("supersedes_edition_id", Uuid()),
+    Column("freshness_summary", JSONB, nullable=False, server_default="{}"),
+    Column("published_at", _tz),
+    Column("policy_version", Text, nullable=False, server_default="0.1.0"),
     UniqueConstraint("edition_date", "generated_at"),
 )
 
@@ -692,6 +711,23 @@ render_plans = Table(
     Column("mobile_priority", Integer, nullable=False),
     Column("generated_by", Text, nullable=False),
     Column("approved_by_verification_run_id", Uuid(), ForeignKey("investigation_runs.id")),
+    Column("position", Integer, nullable=False, server_default="0"),
+    Column("data_as_of", _tz),
+    Column("assessed_at", _tz),
+    Column("materially_updated_at", _tz),
+    Column("freshness_state", Text, nullable=False, server_default="current"),
+    Column("expires_at", _tz),
+    Index("render_plans_edition_slot_position_uidx", "edition_id", "slot_id", "position", unique=True),
+)
+
+publication_channels = Table(
+    "publication_channels",
+    metadata,
+    Column("id", Text, primary_key=True),
+    Column("current_edition_id", Uuid(), ForeignKey("daily_editions.id"), nullable=False),
+    Column("previous_edition_id", Uuid(), ForeignKey("daily_editions.id")),
+    Column("policy_version", Text, nullable=False),
+    Column("updated_at", _tz, nullable=False, server_default=text("now()")),
 )
 
 jobs = Table(

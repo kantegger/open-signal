@@ -66,6 +66,17 @@ FIRST_BATCH: dict[str, dict[str, Any]] = {
     },
 }
 
+FAMILY_FRONTEND: dict[str, str] = {
+    "signal-hero": "SignalHero",
+    "time-series": "TimeSeries",
+    "state-transition": "StateTransition",
+    "document-change": "DocumentChange",
+    "signal-feed": "SignalFeed",
+    "evidence-relationship": "EvidenceRelationship",
+    "resolution-comparison": "ResolutionComparison",
+    "archive-snapshot": "ArchiveSnapshot",
+}
+
 SLOT_ALIASES = {
     "time-series.probability-move": "time-series",
     "state-transition.rule-stage": "state-transition",
@@ -107,9 +118,22 @@ class ComponentRuntime:
     # ---------------------------------------------------------------- mapping
     def map_to_frontend(self, component_id: str) -> dict[str, Any]:
         meta = FIRST_BATCH.get(component_id)
-        if meta is None:
-            raise ComponentRuntimeError(f"{component_id} not in first batch")
-        return {"component_id": component_id, **meta}
+        if meta is not None:
+            return {"component_id": component_id, **meta}
+        definition = self.registry.component(component_id)
+        if definition is None:
+            raise ComponentRuntimeError(f"unknown component {component_id!r}")
+        frontend_key = FAMILY_FRONTEND.get(definition.family_id)
+        if frontend_key is None:
+            raise ComponentRuntimeError(f"unsupported component family {definition.family_id!r}")
+        default_slot = definition.supported_slot_types[0] if definition.supported_slot_types else "main"
+        return {
+            "component_id": component_id,
+            "frontend_key": frontend_key,
+            "default_slot": default_slot,
+            "display_type": definition.family_id,
+            "title": component_id.rsplit(".", 1)[-1].replace("-", " ").title(),
+        }
 
     # --------------------------------------------------------------- validation
     def validate_render(self, component_id: str, render_candidate: dict[str, Any]) -> dict[str, Any]:
@@ -128,7 +152,7 @@ class ComponentRuntime:
             raise ComponentRuntimeError(f"{component_id}: missing required fields {missing}")
 
         slot_id = render_candidate.get("slot_id") or FIRST_BATCH.get(component_id, {}).get("default_slot")
-        family = SLOT_ALIASES.get(component_id, component_id.split(".")[0])
+        family = definition.family_id
         allowed_slots = {s.type for s in self.registry.slots() if family in s.allowed_component_family_ids}
         if allowed_slots and slot_id not in allowed_slots:
             raise ComponentRuntimeError(
@@ -164,9 +188,10 @@ class ComponentRuntime:
         slot_id: str | None = None,
     ) -> dict[str, Any]:
         """Validate + normalize one item for a render_plans row."""
-        candidate = self.validate_render(component_id, render_candidate)
+        requested = dict(render_candidate)
         if slot_id:
-            candidate["slot_id"] = slot_id
+            requested["slot_id"] = slot_id
+        candidate = self.validate_render(component_id, requested)
         candidate["claim_id"] = claim_id
         candidate["section_instance_id"] = section_instance_id
         return candidate

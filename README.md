@@ -2,8 +2,9 @@
 
 A live front page of public signals — an AI-native, zero-editor runtime that
 ingests public data, investigates changes with agents, verifies claims and
-composes a daily front page. Long-term accountability via an append-only
-Claim Ledger and public Track Record.
+recomposes a rolling front page when verified meaning changes. Long-term
+accountability comes from an append-only Claim Ledger and frozen Edition
+history.
 
 The authoritative product and system specification lives in
 [`spec.md`](./spec.md) (v0.1 draft). Machine-readable registries are extracted
@@ -47,6 +48,10 @@ npm run dev
 pip install -e ./apps/worker[dev]
 python -c "import open_signal; print(open_signal.__version__)"
 ```
+
+Production topology, configuration, deployment and rollback are documented in
+[`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md). Destructive database-test isolation
+is documented separately in [`docs/TESTING.md`](./docs/TESTING.md).
 
 ## Registries
 
@@ -182,9 +187,10 @@ Sections, Components, Slots or permissions from natural-language docs
   6 tests)
 - OS-038 Security Hardening — done (prompt-injection detection +
   fixtures, SSRF guard (https + host allowlist + internal-IP rejection),
-  size limits, secret scanning, ops auth (X-Ops-Token, fail closed),
+  size limits, secret scanning, ops auth (Authorization Bearer, fail closed;
+  temporary X-Ops-Token compatibility),
   audit_events (migration 0008); ops API endpoints now require the token;
-  15 tests)
+  23 tests)
 - OS-039 30-day Review Metrics — done (Hero Fill Rate, Publishable
   Edition Rate, Research Value Rate, Correction Rate, Cost per Edition,
   Section Diversity, Agent Abstention Rate, No-Go findings; 2 tests)
@@ -199,9 +205,9 @@ Sections, Components, Slots or permissions from natural-language docs
   scope (front page / 3 sections / archive / claim page / method / system
   status), explicit non-goals (accounts / payments / alerts / public API /
   scorecard), deploy + rollback runbooks; scripts/release_check.py
-  pre-flight with 11 checks; 3 tests)
+  pre-flight with 12 checks; 3 tests)
 
-**All 40 OS milestones complete — 236/236 tests pass.**
+**All 40 OS milestones complete — 275/275 tests pass.**
 
 ## Database
 
@@ -213,3 +219,19 @@ $env:OPEN_SIGNAL_DATABASE_URL = "postgresql://..."
 python -m alembic -c infra/migrations/alembic.ini upgrade head
 python scripts/smoke_db.py
 ```
+
+## Safe database tests
+
+Database-backed tests contain destructive cleanup and therefore require an
+explicit `OPEN_SIGNAL_TEST_DATABASE_URL`. Pytest validates the configured
+target before mapping it to application code; it will not fall back to
+`OPEN_SIGNAL_DATABASE_URL`.
+
+On Windows, run the guarded test entry point from any directory:
+
+```powershell
+& G:\NewSignal\scripts\test.ps1
+```
+
+The local configuration targets the isolated Neon `test` branch. CI uses its
+own ephemeral PostgreSQL service. See [`docs/TESTING.md`](./docs/TESTING.md).

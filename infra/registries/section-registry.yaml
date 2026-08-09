@@ -61,7 +61,7 @@ sections:
 
     minimum_evidence_level: "derived_verified"
     minimum_agent_maturity: "beta"
-    refresh_cadence: "15m-observation / 2h-editorial"
+    refresh_cadence: "hourly-source / hourly-observation / hourly-editorial"
     daily_cost_budget_usd: 3.0
 
     repetition_policy:
@@ -143,7 +143,7 @@ sections:
 
     minimum_evidence_level: "authoritative_primary"
     minimum_agent_maturity: "beta"
-    refresh_cadence: "2h-source / 4h-editorial"
+    refresh_cadence: "4h-source / 4h-editorial"
     daily_cost_budget_usd: 3.0
 
     repetition_policy:

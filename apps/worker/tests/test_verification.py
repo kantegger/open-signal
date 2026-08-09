@@ -1,5 +1,5 @@
 """Claim verification checks tests (OS-024). Requires real PostgreSQL via
-OPEN_SIGNAL_DATABASE_URL (migration 0001 applied).
+OPEN_SIGNAL_TEST_DATABASE_URL (migration 0001 applied).
 """
 
 import os
@@ -11,9 +11,9 @@ from open_signal.claims.verification import ClaimVerifier
 
 @pytest.fixture()
 def engine():
-    url = os.environ.get("OPEN_SIGNAL_DATABASE_URL")
+    url = os.environ.get("OPEN_SIGNAL_TEST_DATABASE_URL")
     if not url:
-        pytest.skip("OPEN_SIGNAL_DATABASE_URL not set")
+        pytest.skip("OPEN_SIGNAL_TEST_DATABASE_URL not set")
     from sqlalchemy import create_engine
 
     return create_engine(url)
@@ -63,7 +63,9 @@ def _seed_context(engine) -> tuple[str, str]:
         return str(eb[0]), str(run[0])
 
 
-def _create_claim(engine, *, statement: str, claim_type: str = "derived_observation", prop: dict | None = None) -> str:
+def _create_claim(
+    engine, *, statement: str, claim_type: str = "derived_observation", prop: dict | None = None
+) -> str:
     from sqlalchemy import text
 
     eb, run = _seed_context(engine)
@@ -82,7 +84,9 @@ def _create_claim(engine, *, statement: str, claim_type: str = "derived_observat
                 "run": run,
                 "type": claim_type,
                 "statement": statement,
-                "prop": __import__("json").dumps(prop or {"subject_ids": [str(uuid.uuid4())], "value": 0.2}),
+                "prop": __import__("json").dumps(
+                    prop or {"subject_ids": [str(uuid.uuid4())], "value": 0.2}
+                ),
                 "eb": eb,
                 "h": uuid.uuid4().hex,
             },
@@ -104,9 +108,35 @@ def test_clean_claim_passes_all(verifier, engine) -> None:
     result = verifier.verify(cid)
     assert result.passed is True, result.to_dict()
     assert set(result.checks.keys()) == {
-        "source", "citation", "number", "date", "rights",
-        "claim_type", "component_fields", "prohibited_language",
+        "source",
+        "citation",
+        "number",
+        "date",
+        "rights",
+        "claim_type",
+        "component_fields",
+        "prohibited_language",
     }
+    _cleanup(engine)
+
+
+def test_locale_envelope_passes_truth_gates(verifier, engine) -> None:
+    _cleanup(engine)
+    cid = _create_claim(
+        engine,
+        statement="Probability increased by 20 percentage points.",
+        prop={
+            "en": {
+                "subject_ids": [str(uuid.uuid4())],
+                "value": 0.2,
+                "headline": "Probability increased.",
+            }
+        },
+    )
+    result = verifier.verify(cid)
+    assert result.checks["citation"]["passed"] is True
+    assert result.checks["number"]["passed"] is True
+    assert result.passed is True
     _cleanup(engine)
 
 
@@ -148,7 +178,9 @@ def test_missing_subject_rejected(verifier, engine) -> None:
 
 def test_bad_number_rejected(verifier, engine) -> None:
     _cleanup(engine)
-    cid = _create_claim(engine, statement="观察。", prop={"subject_ids": ["x"], "value": "not-a-number"})
+    cid = _create_claim(
+        engine, statement="观察。", prop={"subject_ids": ["x"], "value": "not-a-number"}
+    )
     result = verifier.verify(cid)
     assert result.passed is False
     assert result.checks["number"]["passed"] is False
@@ -158,7 +190,9 @@ def test_bad_number_rejected(verifier, engine) -> None:
 def test_component_fields_gate(verifier, engine) -> None:
     _cleanup(engine)
     cid = _create_claim(engine, statement="正常观察。")
-    good = verifier.verify(cid, render_candidate={"component_id": "c1", "headline": "h", "display_fields": {}})
+    good = verifier.verify(
+        cid, render_candidate={"component_id": "c1", "headline": "h", "display_fields": {}}
+    )
     assert good.checks["component_fields"]["passed"] is True
     bad = verifier.verify(cid, render_candidate={"component_id": "c1"})
     assert bad.checks["component_fields"]["passed"] is False
@@ -176,8 +210,12 @@ def test_composer_gate_updates_status(verifier, engine) -> None:
     assert verifier.gate_for_composer(bad_cid) is False
 
     with engine.connect() as conn:
-        good_status = conn.execute(text("SELECT status FROM claims WHERE id = :id"), {"id": good_cid}).scalar_one()
-        bad_status = conn.execute(text("SELECT status FROM claims WHERE id = :id"), {"id": bad_cid}).scalar_one()
+        good_status = conn.execute(
+            text("SELECT status FROM claims WHERE id = :id"), {"id": good_cid}
+        ).scalar_one()
+        bad_status = conn.execute(
+            text("SELECT status FROM claims WHERE id = :id"), {"id": bad_cid}
+        ).scalar_one()
     assert good_status == "verified"
     assert bad_status == "rejected"
     _cleanup(engine)

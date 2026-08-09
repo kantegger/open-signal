@@ -1,5 +1,5 @@
 """Budget guard tests (OS-032). Requires real PostgreSQL via
-OPEN_SIGNAL_DATABASE_URL (migration 0001 applied).
+OPEN_SIGNAL_TEST_DATABASE_URL (migration 0001 applied).
 """
 
 import os
@@ -10,9 +10,9 @@ from open_signal.budget import BudgetGuard
 
 @pytest.fixture()
 def engine():
-    url = os.environ.get("OPEN_SIGNAL_DATABASE_URL")
+    url = os.environ.get("OPEN_SIGNAL_TEST_DATABASE_URL")
     if not url:
-        pytest.skip("OPEN_SIGNAL_DATABASE_URL not set")
+        pytest.skip("OPEN_SIGNAL_TEST_DATABASE_URL not set")
     from sqlalchemy import create_engine
 
     return create_engine(url)
@@ -59,20 +59,42 @@ def _run(engine, desk_id: str, cost: float, age_minutes: int = 10) -> None:
 
 
 def _cleanup(engine) -> None:
-    from sqlalchemy import text
+    from sqlalchemy import bindparam, text
 
     with engine.begin() as conn:
-        conn.execute(text("DELETE FROM agent_tool_calls"))
-        conn.execute(text("DELETE FROM investigation_runs"))
-        conn.execute(text("DELETE FROM agent_lineages"))
-        conn.execute(text("DELETE FROM agent_desks"))
+        test_desks = ("budget-desk", "other-desk", "fresh-desk")
+        conn.execute(
+            text(
+                "DELETE FROM agent_tool_calls WHERE run_id IN "
+                "(SELECT id FROM investigation_runs WHERE desk_id IN :desks)"
+            ).bindparams(bindparam("desks", expanding=True)),
+            {"desks": test_desks},
+        )
+        conn.execute(
+            text("DELETE FROM investigation_runs WHERE desk_id IN :desks").bindparams(
+                bindparam("desks", expanding=True)
+            ),
+            {"desks": test_desks},
+        )
+        conn.execute(
+            text("DELETE FROM agent_lineages WHERE desk_id IN :desks").bindparams(
+                bindparam("desks", expanding=True)
+            ),
+            {"desks": test_desks},
+        )
+        conn.execute(
+            text("DELETE FROM agent_desks WHERE id IN :desks").bindparams(
+                bindparam("desks", expanding=True)
+            ),
+            {"desks": test_desks},
+        )
 
 
 def test_normal_mode(engine) -> None:
     _cleanup(engine)
     guard = BudgetGuard(engine, desk_day_limit_usd=10.0, month_limit_usd=100.0)
     _run(engine, "budget-desk", 0.5)
-    allowed, reason, state = guard.allow_llm_run("budget-desk")
+    allowed, _reason, state = guard.allow_llm_run("budget-desk")
     assert allowed is True
     assert state.mode() == "normal"
     _cleanup(engine)
@@ -106,7 +128,7 @@ def test_monthly_global_hard_limit(engine) -> None:
     _cleanup(engine)
     guard = BudgetGuard(engine, desk_day_limit_usd=100.0, month_limit_usd=2.0)
     _run(engine, "budget-desk", 2.5)  # exceeds monthly global
-    allowed, reason, state = guard.allow_llm_run("budget-desk")
+    allowed, _reason, state = guard.allow_llm_run("budget-desk")
     assert allowed is False
     assert state.mode() == "deterministic_only"
     _cleanup(engine)

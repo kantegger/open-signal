@@ -57,7 +57,14 @@ def upgrade() -> None:
     # NOTE: 0001 creates only the 36 appendix-C tables; later revisions add
     # their own tables (source_cursors, calculation_records, section_instances,
     # feature_flags, audit_events).
-    _LATER_TABLES = frozenset({"source_cursors", "calculation_records", "section_instances", "feature_flags", "audit_events"})
+    _LATER_TABLES = frozenset({
+        "source_cursors",
+        "calculation_records",
+        "section_instances",
+        "feature_flags",
+        "audit_events",
+        "publication_channels",
+    })
     for table in models.metadata.sorted_tables:
         if table.name in _LATER_TABLES:
             continue

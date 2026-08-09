@@ -2,10 +2,29 @@
 
 Python ingestion, analysis, agents and composer (spec §117.2).
 
-The `open_signal` package lives at the repo root under `/python` and is
-installed through this project's `pyproject.toml` (hatch path `../python`).
+The `open_signal` core package lives at the repo root under `/python`; the
+deployable command lives in this package.
 
 ```powershell
+pip install -e ./python
 pip install -e ./apps/worker[dev]
-python -c "import open_signal; print(open_signal.__version__)"
+python -m open_signal_worker --mode once --offline
 ```
+
+Runtime modes:
+
+- `scheduled` (default): enqueue due buckets, drain all queues, then make no
+  database query until the next schedule boundary. This is the Neon
+  scale-to-zero-friendly production mode.
+- `once`: one schedule/drain cycle for platform Cron or a smoke test.
+- `poll`: dedicated always-on consumer. This is opt-in because polling an empty
+  PostgreSQL queue prevents compute suspension.
+
+Use `--role source|analysis|agent|publication` only when splitting the initial
+single process into role-specific workers.
+
+Production invokes `once` hourly. The platform passes the scheduled occurrence
+through `OPEN_SIGNAL_SCHEDULED_AT` so a delayed or duplicate invocation still
+uses the intended deterministic Job buckets. Longer desk cadences remain in the
+machine-readable schedule registry and are idempotently skipped between due
+boundaries.

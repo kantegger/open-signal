@@ -32,7 +32,7 @@ python -c "import open_signal; print(open_signal.__version__)"
 ```powershell
 # worker
 ruff check python
-pytest apps/worker
+.\scripts\test.ps1
 
 # web
 cd apps/web

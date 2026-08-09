@@ -1,5 +1,5 @@
 """Job queue tests (OS-004). Requires a real PostgreSQL via
-OPEN_SIGNAL_DATABASE_URL (migration 0001 applied).
+OPEN_SIGNAL_TEST_DATABASE_URL (migration 0001 applied).
 """
 
 import os
@@ -21,10 +21,10 @@ from sqlalchemy import text
 
 @pytest.fixture()
 def queue() -> JobQueue:
-    url = os.environ.get("OPEN_SIGNAL_DATABASE_URL")
+    url = os.environ.get("OPEN_SIGNAL_TEST_DATABASE_URL")
     if not url:
-        pytest.skip("OPEN_SIGNAL_DATABASE_URL not set")
-    os.environ.setdefault("OPEN_SIGNAL_DATABASE_URL", url)
+        pytest.skip("OPEN_SIGNAL_TEST_DATABASE_URL not set")
+    os.environ.setdefault("OPEN_SIGNAL_TEST_DATABASE_URL", url)
     return JobQueue(worker_id=f"test-{uuid.uuid4().hex[:8]}")
 
 

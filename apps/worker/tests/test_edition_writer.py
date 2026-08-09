@@ -1,20 +1,21 @@
 """Edition writer tests (OS-028, OS-029). Requires real PostgreSQL via
-OPEN_SIGNAL_DATABASE_URL (migration 0001 applied).
+OPEN_SIGNAL_TEST_DATABASE_URL (migration 0001 applied).
 """
 
 import os
 import uuid
-from datetime import date
+from datetime import UTC, date, datetime
 
 import pytest
+from open_signal.api.editions import FrontPagePresenter
 from open_signal.composer.edition_writer import EditionWriter
 
 
 @pytest.fixture()
 def engine():
-    url = os.environ.get("OPEN_SIGNAL_DATABASE_URL")
+    url = os.environ.get("OPEN_SIGNAL_TEST_DATABASE_URL")
     if not url:
-        pytest.skip("OPEN_SIGNAL_DATABASE_URL not set")
+        pytest.skip("OPEN_SIGNAL_TEST_DATABASE_URL not set")
     from sqlalchemy import create_engine
 
     return create_engine(url)
@@ -69,18 +70,38 @@ def _cleanup(engine) -> None:
 def test_build_edition_with_lead(writer, engine) -> None:
     _cleanup(engine)
     candidates = [
-        _candidate("c1", slot_id="lead", component_id="signal-hero.expectations",
-                   display_fields={"expectation_title": "Hero", "current_probability": 0.6,
-                                   "start_probability": 0.4, "delta_percentage_points": 20.0,
-                                   "window": "24h", "series": [], "source_name": "P",
-                                   "updated_at": "t", "headline": "Hero headline",
-                                   "primary_observation": "YES 概率上升 20pp"}),
+        _candidate(
+            "c1",
+            slot_id="lead",
+            component_id="signal-hero.expectations",
+            display_fields={
+                "expectation_title": "Hero",
+                "current_probability": 0.6,
+                "start_probability": 0.4,
+                "delta_percentage_points": 20.0,
+                "window": "24h",
+                "series": [],
+                "source_name": "P",
+                "updated_at": "t",
+                "headline": "Hero headline",
+                "primary_observation": "YES 概率上升 20pp",
+            },
+        ),
         _candidate("c2"),
-        _candidate("c3", section="rules-moved", slot_id="main",
-                   component_id="state-transition.rule-stage",
-                   display_fields={"rule_title": "Rule", "previous_state": "proposed",
-                                   "current_state": "final", "transition_date": "2026-08-01",
-                                   "authority": "CPSC", "source_url": "https://x"}),
+        _candidate(
+            "c3",
+            section="rules-moved",
+            slot_id="main",
+            component_id="state-transition.rule-stage",
+            display_fields={
+                "rule_title": "Rule",
+                "previous_state": "proposed",
+                "current_state": "final",
+                "transition_date": "2026-08-01",
+                "authority": "CPSC",
+                "source_url": "https://x",
+            },
+        ),
     ]
     result = writer.build_edition(candidates, edition_date=date(2026, 8, 7))
     assert result["edition_id"] is not None
@@ -102,6 +123,84 @@ def test_sparse_edition(writer, engine) -> None:
     )
     assert result["status"] == "sparse"
     assert writer.edition_json(result["edition_id"])["status"] == "sparse"
+    from sqlalchemy import text
+
+    with engine.connect() as conn:
+        audit = conn.execute(
+            text(
+                "SELECT action, detail FROM audit_events "
+                "WHERE target = :target ORDER BY created_at DESC LIMIT 1"
+            ),
+            {"target": result["edition_id"]},
+        ).fetchone()
+    assert audit is not None
+    assert audit[0] == "publication.snapshot.published"
+    assert audit[1]["item_count"] == 1
+    _cleanup(engine)
+
+
+def test_hard_expiry_atomically_publishes_complete_empty_page(writer, engine) -> None:
+    _cleanup(engine)
+    initial = writer.build_edition(
+        [_candidate("c1")],
+        edition_date=date(2026, 8, 7),
+        generated_at=datetime(2026, 8, 7, 13, tzinfo=UTC),
+    )
+
+    retired = writer.build_rolling_edition(
+        [],
+        refreshed_section_ids=set(),
+        trigger_type="hard_expiry",
+        generated_at=datetime(2026, 8, 10, 13, tzinfo=UTC),
+    )
+
+    assert retired["item_count"] == 0
+    assert retired["supersedes_edition_id"] == initial["edition_id"]
+    assert writer.current_edition_id() == retired["edition_id"]
+    from sqlalchemy import text
+
+    with engine.connect() as conn:
+        plan_count = conn.execute(
+            text("SELECT count(*) FROM render_plans WHERE edition_id = :id"),
+            {"id": retired["edition_id"]},
+        ).scalar_one()
+    assert plan_count == 0
+
+    page = FrontPagePresenter(engine).build()
+    assert page is not None
+    assert page["snapshot"]["id"] == retired["edition_id"]
+    assert [slot["type"] for slot in page["slots"]] == [
+        "lead",
+        "secondary",
+        "live_feed",
+        "digest",
+        "main",
+        "utility",
+        "archive",
+    ]
+    assert all(slot["items"] == [] for slot in page["slots"])
+    _cleanup(engine)
+
+
+def test_freshness_reconcile_is_noop_until_meaning_changes(writer, engine) -> None:
+    _cleanup(engine)
+    initial = writer.build_edition(
+        [_candidate("c1")],
+        generated_at=datetime(2026, 8, 7, 13, tzinfo=UTC),
+    )
+
+    unchanged = writer.reconcile_freshness(
+        generated_at=datetime(2026, 8, 7, 14, tzinfo=UTC)
+    )
+    assert unchanged["published"] is False
+    assert writer.current_edition_id() == initial["edition_id"]
+
+    retired = writer.reconcile_freshness(
+        generated_at=datetime(2026, 8, 10, 14, tzinfo=UTC)
+    )
+    assert retired["published"] is True
+    assert retired["item_count"] == 0
+    assert writer.current_edition_id() == retired["edition_id"]
     _cleanup(engine)
 
 
@@ -129,7 +228,9 @@ def test_render_plans_written(writer, engine) -> None:
     )
     with engine.connect() as conn:
         rows = conn.execute(
-            text("SELECT slot_id, component_id, claim_ids FROM render_plans WHERE edition_id = :id"),
+            text(
+                "SELECT slot_id, component_id, claim_ids FROM render_plans WHERE edition_id = :id"
+            ),
             {"id": result["edition_id"]},
         ).fetchall()
     assert len(rows) >= 1

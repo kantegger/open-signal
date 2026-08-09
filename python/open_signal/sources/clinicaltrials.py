@@ -105,7 +105,11 @@ class ClinicalTrialsChain:
                         "sid": self.source_id,
                         "ext": nct_id,
                         "payload": payload,
-                        "pub": (ps.get("statusModule") or {}).get("startDateStruct", {}).get("date"),
+                        "pub": _normalized_source_date(
+                            (ps.get("statusModule") or {})
+                            .get("startDateStruct", {})
+                            .get("date")
+                        ),
                         "hash": sha256_hex(payload.encode()),
                     },
                 )
@@ -133,3 +137,15 @@ class ClinicalTrialsChain:
 
 def _slug(query: str) -> str:
     return "".join(c if c.isalnum() else "-" for c in query.lower())[:60]
+
+
+def _normalized_source_date(value: Any) -> str | None:
+    """Normalize ClinicalTrials partial ISO dates for PostgreSQL."""
+    if not value:
+        return None
+    raw = str(value).strip()
+    if len(raw) == 4 and raw.isdigit():
+        return f"{raw}-01-01"
+    if len(raw) == 7 and raw[4] == "-":
+        return f"{raw}-01"
+    return raw

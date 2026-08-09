@@ -2,9 +2,14 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install the worker package (defines the open_signal package via hatch path)
-COPY apps/worker/pyproject.toml /app/worker/
 COPY python /app/python
-RUN pip install --no-cache-dir /app/worker
+COPY infra /app/infra
+COPY fixtures /app/fixtures
+COPY apps/worker /app/worker
 
-CMD ["python", "-c", "import open_signal; print('Open Signal worker', open_signal.__version__)"]
+RUN pip install --no-cache-dir /app/python \
+    && pip install --no-cache-dir /app/worker
+
+ENV PYTHONPATH=/app/python
+
+CMD ["python", "-m", "open_signal_worker", "--mode", "once"]

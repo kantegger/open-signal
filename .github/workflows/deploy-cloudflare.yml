@@ -1,0 +1,36 @@
+name: Deploy Cloudflare scheduler
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/deploy-cloudflare.yml"
+      - "apps/worker/**"
+      - "infra/cloudflare/**"
+      - "infra/registries/**"
+      - "python/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: open-signal-cloudflare-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Build and deploy Worker and Container
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: infra/cloudflare
+          command: deploy

@@ -91,14 +91,20 @@ class FederalRegisterChain:
         self.offline = offline
 
     # ----------------------------------------------------------------- discovery
-    def discover(self, *, max_pages: int = 5, per_page: int = 10) -> dict[str, int]:
+    def discover(
+        self,
+        *,
+        max_pages: int = 5,
+        per_page: int = 10,
+        query: str | None = None,
+    ) -> dict[str, int]:
         """Store document metadata rows idempotently. Returns counts."""
         from sqlalchemy import text
 
         stored = 0
         pages = 0
         for page in range(1, max_pages + 1):
-            data = self._load_page(page, per_page)
+            data = self._load_page(page, per_page, query=query)
             results = data.get("results") or []
             if not results:
                 break
@@ -181,14 +187,20 @@ class FederalRegisterChain:
         return row[0].isoformat() if row and row[0] else None
 
     # ----------------------------------------------------------------- fixtures
-    def _load_page(self, page: int, per_page: int) -> dict[str, Any]:
+    def _load_page(
+        self, page: int, per_page: int, *, query: str | None = None
+    ) -> dict[str, Any]:
         fixture = self.fixture_dir / f"documents_page_{page}.json"
         if fixture.exists():
             with fixture.open(encoding="utf-8") as f:
                 return json.load(f)
         if self.offline:
             return {"results": []}
-        return self.client.search_documents(page=page, per_page=per_page)
+        return self.client.search_documents(
+            page=page,
+            per_page=per_page,
+            query=query,
+        )
 
     def _load_document_html(self, html_url: str) -> bytes:
         fixture = self.fixture_dir / "document_sample.html"

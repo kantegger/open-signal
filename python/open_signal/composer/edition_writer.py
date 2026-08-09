@@ -1,14 +1,10 @@
-"""Edition writer (spec §60-71, OS-028 + OS-029).
+"""Immutable rolling-edition writer (spec §60–71, OS-028/029/048).
 
-Orchestrates deterministic candidates into a Daily Edition without ever
-mutating Claims:
-
-OS-028: Lead/Lead Set selection, page pacing, component choice, Sparse
-        Edition handling
-OS-029: render_plans + daily_editions rows, Edition JSON, CDN cache key,
-        archive snapshot, rollback, correction
-
-Claims are read-only here.
+The historical table name ``daily_editions`` is retained, but an edition is a
+snapshot generated whenever verified Section output or a retirement event
+changes the active publication pool.  Claims remain read-only.  A public
+snapshot becomes current only after every Render Plan row is written in the
+same transaction.
 """
 
 from __future__ import annotations
@@ -22,8 +18,11 @@ from sqlalchemy import text
 
 from open_signal.composer.editions import EditionComposer
 
-COMPOSER_VERSION = "os-028"
-SPARSE_THRESHOLD = 3  # fewer items -> sparse edition
+COMPOSER_VERSION = "os-048"
+PUBLICATION_CHANNEL = "front-page"
+SPARSE_THRESHOLD = 3
+PUBLIC_STATUSES = {"published", "sparse", "beta", "corrected"}
+SLOT_ORDER = ("lead", "secondary", "live_feed", "digest", "main", "utility", "archive")
 
 
 class EditionWriter:
@@ -38,113 +37,362 @@ class EditionWriter:
         *,
         edition_date: date | None = None,
         section_maturity: str = "production",
+        trigger_type: str = "scheduled",
+        generated_at: datetime | None = None,
     ) -> dict[str, Any]:
-        """Compose + persist a daily edition. Returns the edition summary."""
-        edition_date = edition_date or datetime.now(timezone.utc).date()
-        plan = self.composer.compose(candidates, section_maturity=section_maturity)
+        """Compile and atomically publish one immutable edition snapshot."""
+        generated_at = _utc(generated_at or datetime.now(timezone.utc))
+        edition_date = edition_date or generated_at.date()
+        plan = self.composer.compose(
+            candidates,
+            section_maturity=section_maturity,
+            now=generated_at,
+        )
 
         items = plan["items"]
         sparse = len(items) < SPARSE_THRESHOLD
-        included_claim_ids = sorted({i["claim_id"] for i in items if i.get("claim_id")})
-        section_ids = sorted({i.get("section_id") or "default" for i in items})
-        generated_at = datetime.now(timezone.utc)
-
-        edition_payload = {
-            "edition_date": edition_date.isoformat(),
-            "generated_at": generated_at.isoformat(),
-            "status": "sparse" if sparse else "published",
-            "composer_version": COMPOSER_VERSION,
-            "sections": section_ids,
-            "lead": _lead(items),
-            "lead_set": _lead_set(items),
-            "slots": _slots_summary(items),
-            "warnings": plan["warnings"],
-        }
+        status = "sparse" if sparse else "published"
+        included_claim_ids = sorted(
+            {
+                str(claim_id)
+                for item in items
+                for claim_id in _claim_ids(item)
+                if _uuid_or_none(claim_id) is not None
+            }
+        )
+        section_ids = sorted(
+            {
+                str(item.get("section_id"))
+                for item in items
+                if item.get("section_id") and item.get("section_id") != "default"
+            }
+        )
+        freshness_summary = _freshness_summary(items, plan["warnings"])
 
         with self.engine.begin() as conn:
+            current = conn.execute(
+                text(
+                    "SELECT current_edition_id FROM publication_channels "
+                    "WHERE id = :channel FOR UPDATE"
+                ),
+                {"channel": PUBLICATION_CHANNEL},
+            ).fetchone()
+            previous_id = str(current[0]) if current else None
+
+            edition_payload = {
+                "edition_date": edition_date.isoformat(),
+                "generated_at": generated_at.isoformat(),
+                "status": status,
+                "publication_mode": "rolling_snapshot",
+                "trigger_type": trigger_type,
+                "supersedes_edition_id": previous_id,
+                "composer_version": COMPOSER_VERSION,
+                "policy_version": self.composer.freshness_evaluator.policy_version,
+                "sections": section_ids,
+                "lead": _lead(items),
+                "lead_set": _lead_set(items),
+                "slots": _slots_summary(items),
+                "freshness": freshness_summary,
+                "warnings": plan["warnings"],
+            }
+
             edition_row = conn.execute(
                 text(
                     """
                     INSERT INTO daily_editions
                       (edition_date, generated_at, status, included_section_ids,
                        included_claim_ids, composer_version, component_versions,
-                       generation_cost_usd, correction_count, edition_payload)
+                       generation_cost_usd, correction_count, edition_payload,
+                       trigger_type, supersedes_edition_id, freshness_summary,
+                       published_at, policy_version)
                     VALUES
                       (:date, :generated, :status, :sections, :claims,
                        :version, CAST(:components AS jsonb), 0, 0,
-                       CAST(:payload AS jsonb))
+                       CAST(:payload AS jsonb), :trigger, :supersedes,
+                       CAST(:freshness AS jsonb), :published, :policy)
                     RETURNING id
                     """
                 ),
                 {
                     "date": edition_date,
                     "generated": generated_at,
-                    "status": "sparse" if sparse else "published",
+                    "status": status,
                     "sections": section_ids,
-                    "claims": [uuid.UUID(c) for c in included_claim_ids],
+                    "claims": [uuid.UUID(value) for value in included_claim_ids],
                     "version": COMPOSER_VERSION,
-                    "components": json.dumps(_component_versions(items)),
-                    "payload": json.dumps(edition_payload),
+                    "components": _dumps(_component_versions(items)),
+                    "payload": _dumps(edition_payload),
+                    "trigger": trigger_type,
+                    "supersedes": _uuid_or_none(previous_id),
+                    "freshness": _dumps(freshness_summary),
+                    "published": generated_at,
+                    "policy": self.composer.freshness_evaluator.policy_version,
                 },
             ).fetchone()
             edition_id = str(edition_row[0])
 
-            # render plans: one row per slot group
-            for slot_id, slot_items in (plan["slots"] or {}).items():
-                if not slot_items:
-                    continue
-                first = slot_items[0]
-                conn.execute(
-                    text(
-                        """
-                        INSERT INTO render_plans
-                          (edition_id, slot_id, section_instance_id, claim_ids,
-                           component_id, component_version, component_variant,
-                           headline, dek, display_fields, hidden_detail_fields,
-                           evidence_bundle_id, visual_priority, mobile_priority,
-                           generated_by, approved_by_verification_run_id)
-                        VALUES
-                          (:edition, :slot, NULL, :claims, :component, :version,
-                           'standard', :headline, NULL, CAST(:fields AS jsonb),
-                           CAST(:hidden AS jsonb), NULL, :vp, :mp, :generated, NULL)
-                        """
-                    ),
-                    {
-                        "edition": edition_id,
-                        "slot": slot_id,
-                        "claims": [uuid.UUID(first.get("claim_id"))] if first.get("claim_id") else [],
-                        "component": first.get("component_id") or "",
-                        "version": first.get("component_version") or "",
-                        "headline": (first.get("display_fields") or {}).get(
-                            "expectation_title",
-                            (first.get("display_fields") or {}).get("rule_title") or "Signal",
-                        ),
-                        "fields": json.dumps(first.get("display_fields") or {}),
-                        "hidden": json.dumps(first.get("hidden_detail_fields") or {}),
-                        "vp": first.get("visual_priority", 5),
-                        "mp": first.get("mobile_priority", 5),
-                        "generated": f"{COMPOSER_VERSION}/{COMPOSER_VERSION}",
-                    },
-                )
+            for slot_id in SLOT_ORDER:
+                for position, item in enumerate(plan["slots"].get(slot_id, [])):
+                    self._insert_render_plan(
+                        conn,
+                        edition_id=edition_id,
+                        slot_id=slot_id,
+                        position=position,
+                        item=item,
+                    )
+
+            _insert_audit_event(
+                conn,
+                action="publication.snapshot.published",
+                actor=f"composer/{COMPOSER_VERSION}",
+                target=edition_id,
+                detail={
+                    "channel": PUBLICATION_CHANNEL,
+                    "trigger_type": trigger_type,
+                    "supersedes_edition_id": previous_id,
+                    "status": status,
+                    "item_count": len(items),
+                    "claim_ids": included_claim_ids,
+                    "section_ids": section_ids,
+                    "policy_version": self.composer.freshness_evaluator.policy_version,
+                },
+            )
+
+            # This pointer change is the final statement in the transaction.
+            # Readers therefore see either the complete old snapshot or the
+            # complete new snapshot, never a partially written page.
+            conn.execute(
+                text(
+                    """
+                    INSERT INTO publication_channels
+                      (id, current_edition_id, previous_edition_id,
+                       policy_version, updated_at)
+                    VALUES (:channel, :current, :previous, :policy, :updated)
+                    ON CONFLICT (id) DO UPDATE SET
+                      previous_edition_id = publication_channels.current_edition_id,
+                      current_edition_id = EXCLUDED.current_edition_id,
+                      policy_version = EXCLUDED.policy_version,
+                      updated_at = EXCLUDED.updated_at
+                    """
+                ),
+                {
+                    "channel": PUBLICATION_CHANNEL,
+                    "current": uuid.UUID(edition_id),
+                    "previous": _uuid_or_none(previous_id),
+                    "policy": self.composer.freshness_evaluator.policy_version,
+                    "updated": generated_at,
+                },
+            )
 
         return {
             "edition_id": edition_id,
-            "status": "sparse" if sparse else "published",
+            "status": status,
             "item_count": len(items),
             "claim_ids": included_claim_ids,
             "sections": section_ids,
             "cache_key": self.cache_key(edition_id),
             "warnings": plan["warnings"],
+            "trigger_type": trigger_type,
+            "supersedes_edition_id": previous_id,
+            "policy_version": self.composer.freshness_evaluator.policy_version,
         }
 
-    # ------------------------------------------------------------------- read
+    def build_rolling_edition(
+        self,
+        candidates: list[dict[str, Any]],
+        *,
+        refreshed_section_ids: set[str] | None = None,
+        trigger_type: str = "section_refresh",
+        generated_at: datetime | None = None,
+        section_maturity: str = "production",
+    ) -> dict[str, Any]:
+        """Recompose the whole page from changed and still-active Sections.
+
+        A refreshed Section replaces its previous publication output as a unit.
+        Sections that did not refresh are carried forward and independently
+        re-evaluated for Claim validity and elapsed-age retirement.
+        """
+        refreshed = set(refreshed_section_ids or ())
+        if refreshed_section_ids is None:
+            refreshed = {
+                str(item["section_id"]) for item in candidates if item.get("section_id")
+            }
+        active = [
+            item
+            for item in self._current_candidates()
+            if item.get("section_id") not in refreshed
+        ]
+        merged = _dedupe_candidates([*active, *candidates])
+        return self.build_edition(
+            merged,
+            edition_date=(generated_at or datetime.now(timezone.utc)).date(),
+            section_maturity=section_maturity,
+            trigger_type=trigger_type,
+            generated_at=generated_at,
+        )
+
+    def reconcile_freshness(
+        self,
+        *,
+        generated_at: datetime | None = None,
+    ) -> dict[str, Any]:
+        """Publish only when freshness or validity changes public meaning.
+
+        This method is safe to schedule hourly: it does not manufacture an
+        Edition when every current item would retain the same state and Slot.
+        """
+        generated_at = _utc(generated_at or datetime.now(timezone.utc))
+        current_id = self.current_edition_id()
+        if current_id is None:
+            return {"published": False, "reason": "no current edition"}
+        candidates = self._current_candidates()
+        transitions: list[dict[str, Any]] = []
+        for candidate in candidates:
+            decision = self.composer.freshness_evaluator.evaluate(
+                candidate,
+                now=generated_at,
+            )
+            previous_state = str(candidate.get("freshness_state") or "current")
+            if not decision.eligible or decision.state != previous_state:
+                transitions.append(
+                    {
+                        "claim_id": candidate.get("claim_id"),
+                        "from": previous_state,
+                        "to": decision.state,
+                        "reason": decision.reason,
+                    }
+                )
+            elif decision.demote_from_lead and candidate.get("slot_id") == "lead":
+                transitions.append(
+                    {
+                        "claim_id": candidate.get("claim_id"),
+                        "from": "lead",
+                        "to": "secondary",
+                        "reason": decision.reason,
+                    }
+                )
+
+        with self.engine.connect() as conn:
+            channel_policy = conn.execute(
+                text(
+                    "SELECT policy_version FROM publication_channels "
+                    "WHERE id = :channel"
+                ),
+                {"channel": PUBLICATION_CHANNEL},
+            ).scalar_one_or_none()
+        current_policy = self.composer.freshness_evaluator.policy_version
+        if channel_policy != current_policy:
+            transitions.append(
+                {
+                    "claim_id": None,
+                    "from": channel_policy,
+                    "to": current_policy,
+                    "reason": "freshness policy version changed",
+                }
+            )
+
+        if not transitions:
+            return {
+                "published": False,
+                "reason": "no material freshness transition",
+                "edition_id": current_id,
+            }
+        edition = self.build_rolling_edition(
+            [],
+            refreshed_section_ids=set(),
+            trigger_type="freshness_reconcile",
+            generated_at=generated_at,
+            section_maturity="beta",
+        )
+        return {"published": True, "transitions": transitions, **edition}
+
+    def _insert_render_plan(
+        self,
+        conn: Any,
+        *,
+        edition_id: str,
+        slot_id: str,
+        position: int,
+        item: dict[str, Any],
+    ) -> None:
+        fields = _json_object(item.get("display_fields"))
+        hidden = _json_object(item.get("hidden_detail_fields"))
+        variant = str(item.get("component_variant") or _variant_for(slot_id))
+        if variant not in {"compact", "standard", "lead", "mobile"}:
+            variant = _variant_for(slot_id)
+        conn.execute(
+            text(
+                """
+                INSERT INTO render_plans
+                  (edition_id, slot_id, section_instance_id, claim_ids,
+                   component_id, component_version, component_variant,
+                   headline, dek, display_fields, hidden_detail_fields,
+                   evidence_bundle_id, visual_priority, mobile_priority,
+                   generated_by, approved_by_verification_run_id, position,
+                   data_as_of, assessed_at, materially_updated_at,
+                   freshness_state, expires_at)
+                VALUES
+                  (:edition, :slot, :section_instance, :claims, :component,
+                   :version, :variant, :headline, :dek, CAST(:fields AS jsonb),
+                   CAST(:hidden AS jsonb), :evidence, :vp, :mp, :generated,
+                   :approved, :position, :data_as_of, :assessed_at,
+                   :materially_updated_at, :freshness_state, :expires_at)
+                """
+            ),
+            {
+                "edition": uuid.UUID(edition_id),
+                "slot": slot_id,
+                "section_instance": _uuid_or_none(item.get("section_instance_id")),
+                "claims": [
+                    value
+                    for value in (
+                        _uuid_or_none(claim_id) for claim_id in _claim_ids(item)
+                    )
+                    if value is not None
+                ],
+                "component": item.get("component_id") or "signal-feed.compact-change",
+                "version": item.get("component_version") or "1.0.0",
+                "variant": variant,
+                "headline": _headline(item),
+                "dek": item.get("dek")
+                or fields.get("primary_observation")
+                or fields.get("observation"),
+                "fields": _dumps(fields),
+                "hidden": _dumps(hidden),
+                "evidence": _uuid_or_none(item.get("evidence_bundle_id")),
+                "vp": int(item.get("visual_priority", 5)),
+                "mp": int(item.get("mobile_priority", item.get("visual_priority", 5))),
+                "generated": item.get("generated_by")
+                or f"{COMPOSER_VERSION}/{COMPOSER_VERSION}",
+                "approved": _uuid_or_none(item.get("approved_by_verification_run_id")),
+                "position": position,
+                "data_as_of": _time(
+                    item.get("data_as_of")
+                    or fields.get("data_as_of")
+                    or fields.get("updated_at")
+                ),
+                "assessed_at": _time(item.get("assessed_at") or item.get("issued_at")),
+                "materially_updated_at": _time(
+                    item.get("materially_updated_at")
+                    or fields.get("materially_updated_at")
+                    or fields.get("updated_at")
+                    or item.get("issued_at")
+                ),
+                "freshness_state": item.get("freshness_state") or "current",
+                "expires_at": _time(item.get("expires_at")),
+            },
+        )
+
+    # ---------------------------------------------------------------- read
     def edition_json(self, edition_id: str) -> dict[str, Any] | None:
         with self.engine.connect() as conn:
             row = conn.execute(
                 text(
                     "SELECT edition_date, generated_at, status, included_section_ids, "
                     "included_claim_ids, composer_version, component_versions, "
-                    "generation_cost_usd, correction_count, edition_payload "
+                    "generation_cost_usd, correction_count, edition_payload, "
+                    "trigger_type, supersedes_edition_id, freshness_summary, "
+                    "published_at, policy_version "
                     "FROM daily_editions WHERE id = :id"
                 ),
                 {"id": edition_id},
@@ -157,132 +405,416 @@ class EditionWriter:
             "generated_at": row[1].isoformat(),
             "status": row[2],
             "included_sections": row[3],
-            "included_claims": [str(c) for c in row[4]],
+            "included_claims": [str(value) for value in row[4]],
             "composer_version": row[5],
-            "component_versions": row[6],
+            "component_versions": _json_object(row[6]),
             "generation_cost_usd": float(row[7] or 0),
             "correction_count": row[8],
-            "edition_payload": row[9],
+            "edition_payload": _json_object(row[9]),
+            "trigger_type": row[10],
+            "supersedes_edition_id": str(row[11]) if row[11] else None,
+            "freshness_summary": _json_object(row[12]),
+            "published_at": row[13].isoformat() if row[13] else None,
+            "policy_version": row[14],
         }
 
-    def cache_key(self, edition_id: str) -> str:
-        """CDN cache key: content-addressed by edition date + generated_at."""
+    def current_edition_id(self) -> str | None:
         with self.engine.connect() as conn:
             row = conn.execute(
-                text("SELECT edition_date, generated_at FROM daily_editions WHERE id = :id"),
+                text(
+                    "SELECT current_edition_id FROM publication_channels "
+                    "WHERE id = :channel"
+                ),
+                {"channel": PUBLICATION_CHANNEL},
+            ).fetchone()
+        return str(row[0]) if row else None
+
+    def cache_key(self, edition_id: str) -> str:
+        with self.engine.connect() as conn:
+            row = conn.execute(
+                text(
+                    "SELECT edition_date, generated_at FROM daily_editions WHERE id = :id"
+                ),
                 {"id": edition_id},
             ).fetchone()
         if row is None:
             raise KeyError(edition_id)
-        ts = int(row[1].timestamp())
-        return f"edition/{row[0].isoformat()}/{ts}/{edition_id}"
+        timestamp = int(row[1].timestamp())
+        return f"edition/{row[0].isoformat()}/{timestamp}/{edition_id}"
 
-    # ---------------------------------------------------------------- archive
+    def _current_candidates(self) -> list[dict[str, Any]]:
+        edition_id = self.current_edition_id()
+        return self._candidates_for_edition(edition_id) if edition_id else []
+
+    def _candidates_for_edition(self, edition_id: str) -> list[dict[str, Any]]:
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                text(
+                    """
+                    SELECT rp.slot_id, rp.section_instance_id, rp.claim_ids,
+                           rp.component_id, rp.component_version,
+                           rp.component_variant, rp.headline, rp.dek,
+                           rp.display_fields, rp.hidden_detail_fields,
+                           rp.evidence_bundle_id, rp.visual_priority,
+                           rp.mobile_priority, rp.generated_by,
+                           rp.approved_by_verification_run_id, rp.position,
+                           rp.data_as_of, rp.assessed_at,
+                           rp.materially_updated_at, rp.freshness_state,
+                           rp.expires_at, c.id, c.status, c.section_id,
+                           c.claim_type, c.issued_at, c.valid_until, c.updated_at
+                    FROM render_plans rp
+                    LEFT JOIN claims c ON c.id = rp.claim_ids[1]
+                    WHERE rp.edition_id = :edition
+                    ORDER BY rp.slot_id, rp.position
+                    """
+                ),
+                {"edition": edition_id},
+            ).fetchall()
+        candidates: list[dict[str, Any]] = []
+        for row in rows:
+            candidates.append(
+                {
+                    "slot_id": row[0],
+                    "section_instance_id": str(row[1]) if row[1] else None,
+                    "claim_ids": [str(value) for value in row[2]],
+                    "claim_id": str(row[21])
+                    if row[21]
+                    else (str(row[2][0]) if row[2] else None),
+                    "component_id": row[3],
+                    "component_version": row[4],
+                    "component_variant": row[5],
+                    "headline": row[6],
+                    "dek": row[7],
+                    "display_fields": _json_object(row[8]),
+                    "hidden_detail_fields": _json_object(row[9]),
+                    "evidence_bundle_id": str(row[10]) if row[10] else None,
+                    "visual_priority": row[11],
+                    "mobile_priority": row[12],
+                    "generated_by": row[13],
+                    "approved_by_verification_run_id": str(row[14])
+                    if row[14]
+                    else None,
+                    "position": row[15],
+                    "data_as_of": row[16].isoformat() if row[16] else None,
+                    "assessed_at": row[17].isoformat() if row[17] else None,
+                    "materially_updated_at": row[18].isoformat() if row[18] else None,
+                    "freshness_state": row[19],
+                    "expires_at": row[20].isoformat() if row[20] else None,
+                    "claim_status": row[22] or "published",
+                    "section_id": row[23] or "default",
+                    "claim_type": row[24] or "source_fact",
+                    "issued_at": row[25].isoformat() if row[25] else None,
+                    "valid_until": row[26].isoformat() if row[26] else None,
+                    "claim_updated_at": row[27].isoformat() if row[27] else None,
+                }
+            )
+        return candidates
+
+    # --------------------------------------------------------------- archive
     def snapshot(self, edition_id: str) -> dict[str, Any]:
-        """Archive snapshot = immutable edition JSON (claims are read-only)."""
         payload = self.edition_json(edition_id)
         if payload is None:
             raise KeyError(edition_id)
         return {"snapshot": payload, "immutable": True, "source": "daily_editions"}
 
-    # ------------------------------------------------------------ rollback
+    # --------------------------------------------------------- correction flow
     def rollback(self, edition_id: str, reason: str, actor: str = "editor") -> str:
-        """Create a new edition restoring an older snapshot's payload."""
-        payload = self.edition_json(edition_id)
-        if payload is None:
-            raise KeyError(edition_id)
-        old = payload["edition_payload"]
-        corrected = dict(old)
-        corrected["rollback_from"] = edition_id
-        corrected["correction_reason"] = reason
-
-        with self.engine.begin() as conn:
-            row = conn.execute(
-                text(
-                    """
-                    INSERT INTO daily_editions
-                      (edition_date, generated_at, status, included_section_ids,
-                       included_claim_ids, composer_version, component_versions,
-                       generation_cost_usd, correction_count, edition_payload)
-                    VALUES
-                      (:date, now(), 'corrected', :sections, :claims,
-                       :version, CAST(:components AS jsonb), 0, 1,
-                       CAST(:payload AS jsonb))
-                    RETURNING id
-                    """
-                ),
-                {
-                    "date": payload["edition_date"],
-                    "sections": payload["included_sections"],
-                    "claims": [uuid.UUID(c) for c in payload["included_claims"]],
-                    "version": payload["composer_version"],
-                    "components": json.dumps(payload["component_versions"]),
-                    "payload": json.dumps(corrected),
-                },
-            ).fetchone()
-        return str(row[0])
+        return self._publish_clone(
+            edition_id,
+            trigger_type="rollback",
+            reason=reason,
+            payload_patch={"rollback_from": edition_id},
+            actor=actor,
+        )
 
     def correction(self, edition_id: str, patch: dict[str, Any], reason: str) -> str:
-        """Publish a corrected edition (new row, correction_count incremented)."""
-        payload = self.edition_json(edition_id)
-        if payload is None:
+        return self._publish_clone(
+            edition_id,
+            trigger_type="correction",
+            reason=reason,
+            payload_patch={**patch, "corrected_from": edition_id},
+            actor="editor",
+        )
+
+    def _publish_clone(
+        self,
+        edition_id: str,
+        *,
+        trigger_type: str,
+        reason: str,
+        payload_patch: dict[str, Any],
+        actor: str,
+    ) -> str:
+        source = self.edition_json(edition_id)
+        if source is None:
             raise KeyError(edition_id)
-        corrected = dict(payload["edition_payload"])
-        corrected.update(patch)
-        corrected["corrected_from"] = edition_id
-        corrected["correction_reason"] = reason
+        generated_at = datetime.now(timezone.utc)
+        payload = {**source["edition_payload"], **payload_patch}
+        payload["correction_reason"] = reason
+        payload["generated_at"] = generated_at.isoformat()
+        payload["trigger_type"] = trigger_type
 
         with self.engine.begin() as conn:
+            current = conn.execute(
+                text(
+                    "SELECT current_edition_id FROM publication_channels "
+                    "WHERE id = :channel FOR UPDATE"
+                ),
+                {"channel": PUBLICATION_CHANNEL},
+            ).fetchone()
+            previous_id = str(current[0]) if current else None
             row = conn.execute(
                 text(
                     """
                     INSERT INTO daily_editions
                       (edition_date, generated_at, status, included_section_ids,
                        included_claim_ids, composer_version, component_versions,
-                       generation_cost_usd, correction_count, edition_payload)
+                       generation_cost_usd, correction_count, edition_payload,
+                       trigger_type, supersedes_edition_id, freshness_summary,
+                       published_at, policy_version)
                     VALUES
-                      (:date, now(), 'corrected', :sections, :claims,
-                       :version, CAST(:components AS jsonb), 0,
-                       :corrections, CAST(:payload AS jsonb))
+                      (:date, :generated, 'corrected', :sections, :claims,
+                       :version, CAST(:components AS jsonb), 0, :corrections,
+                       CAST(:payload AS jsonb), :trigger, :supersedes,
+                       CAST(:freshness AS jsonb), :published, :policy)
                     RETURNING id
                     """
                 ),
                 {
-                    "date": payload["edition_date"],
-                    "sections": payload["included_sections"],
-                    "claims": [uuid.UUID(c) for c in payload["included_claims"]],
-                    "version": payload["composer_version"],
-                    "components": json.dumps(payload["component_versions"]),
-                    "corrections": (payload["correction_count"] or 0) + 1,
-                    "payload": json.dumps(corrected),
+                    "date": date.fromisoformat(source["edition_date"]),
+                    "generated": generated_at,
+                    "sections": source["included_sections"],
+                    "claims": [uuid.UUID(value) for value in source["included_claims"]],
+                    "version": source["composer_version"],
+                    "components": _dumps(source["component_versions"]),
+                    "corrections": int(source["correction_count"] or 0) + 1,
+                    "payload": _dumps(payload),
+                    "trigger": trigger_type,
+                    "supersedes": _uuid_or_none(previous_id),
+                    "freshness": _dumps(source["freshness_summary"]),
+                    "published": generated_at,
+                    "policy": source["policy_version"],
                 },
             ).fetchone()
-        return str(row[0])
+            new_id = str(row[0])
+            conn.execute(
+                text(
+                    """
+                    INSERT INTO render_plans
+                      (edition_id, slot_id, section_instance_id, claim_ids,
+                       component_id, component_version, component_variant,
+                       headline, dek, display_fields, hidden_detail_fields,
+                       evidence_bundle_id, visual_priority, mobile_priority,
+                       generated_by, approved_by_verification_run_id, position,
+                       data_as_of, assessed_at, materially_updated_at,
+                       freshness_state, expires_at)
+                    SELECT :new_id, slot_id, section_instance_id, claim_ids,
+                           component_id, component_version, component_variant,
+                           headline, dek, display_fields, hidden_detail_fields,
+                           evidence_bundle_id, visual_priority, mobile_priority,
+                           generated_by, approved_by_verification_run_id, position,
+                           data_as_of, assessed_at, materially_updated_at,
+                           freshness_state, expires_at
+                    FROM render_plans WHERE edition_id = :source_id
+                    """
+                ),
+                {"new_id": uuid.UUID(new_id), "source_id": uuid.UUID(edition_id)},
+            )
+            _insert_audit_event(
+                conn,
+                action=f"publication.snapshot.{trigger_type}",
+                actor=actor,
+                target=new_id,
+                detail={
+                    "channel": PUBLICATION_CHANNEL,
+                    "source_edition_id": edition_id,
+                    "supersedes_edition_id": previous_id,
+                    "reason": reason,
+                    "policy_version": source["policy_version"],
+                },
+            )
+            conn.execute(
+                text(
+                    """
+                    INSERT INTO publication_channels
+                      (id, current_edition_id, previous_edition_id,
+                       policy_version, updated_at)
+                    VALUES (:channel, :current, :previous, :policy, :updated)
+                    ON CONFLICT (id) DO UPDATE SET
+                      previous_edition_id = publication_channels.current_edition_id,
+                      current_edition_id = EXCLUDED.current_edition_id,
+                      policy_version = EXCLUDED.policy_version,
+                      updated_at = EXCLUDED.updated_at
+                    """
+                ),
+                {
+                    "channel": PUBLICATION_CHANNEL,
+                    "current": uuid.UUID(new_id),
+                    "previous": _uuid_or_none(previous_id),
+                    "policy": source["policy_version"],
+                    "updated": generated_at,
+                },
+            )
+        return new_id
+
+
+def _insert_audit_event(
+    conn: Any,
+    *,
+    action: str,
+    actor: str,
+    target: str,
+    detail: dict[str, Any],
+) -> None:
+    conn.execute(
+        text(
+            "INSERT INTO audit_events (action, actor, target, detail) "
+            "VALUES (:action, :actor, :target, CAST(:detail AS jsonb))"
+        ),
+        {
+            "action": action,
+            "actor": actor,
+            "target": target,
+            "detail": _dumps(detail),
+        },
+    )
 
 
 def _lead(items: list[dict[str, Any]]) -> dict[str, Any] | None:
-    for i in items:
-        if i.get("slot_id") == "lead":
-            return {"component_id": i.get("component_id"), "headline": (i.get("display_fields") or {}).get("expectation_title")}
+    for item in items:
+        if item.get("slot_id") == "lead":
+            return {
+                "component_id": item.get("component_id"),
+                "headline": _headline(item),
+            }
     return None
 
 
 def _lead_set(items: list[dict[str, Any]]) -> list[str]:
-    return [(i.get("display_fields") or {}).get("expectation_title") or (i.get("display_fields") or {}).get("rule_title") or "" for i in items[:2]]
+    return [_headline(item) for item in items[:2]]
 
 
 def _slots_summary(items: list[dict[str, Any]]) -> dict[str, int]:
-    counts: dict[str, int] = {}
-    for i in items:
-        slot = i.get("slot_id") or "unassigned"
-        counts[slot] = counts.get(slot, 0) + 1
-    return counts
+    return {
+        slot: sum(1 for item in items if item.get("slot_id") == slot)
+        for slot in SLOT_ORDER
+    }
 
 
 def _component_versions(items: list[dict[str, Any]]) -> dict[str, str]:
-    versions: dict[str, str] = {}
-    for i in items:
-        cid = i.get("component_id")
-        if cid:
-            versions[cid] = i.get("component_version") or ""
-    return versions
+    return {
+        str(item["component_id"]): str(item.get("component_version") or "")
+        for item in items
+        if item.get("component_id")
+    }
+
+
+def _freshness_summary(
+    items: list[dict[str, Any]], warnings: list[str]
+) -> dict[str, Any]:
+    states: dict[str, int] = {"current": 0, "aging": 0}
+    sections: dict[str, dict[str, int]] = {}
+    for item in items:
+        state = str(item.get("freshness_state") or "current")
+        states[state] = states.get(state, 0) + 1
+        section = str(item.get("section_id") or "default")
+        bucket = sections.setdefault(section, {"current": 0, "aging": 0})
+        bucket[state] = bucket.get(state, 0) + 1
+    return {
+        "state": "aging" if states.get("aging") else "current",
+        "items": states,
+        "sections": sections,
+        "retired_during_compile": sum(
+            1 for warning in warnings if warning.startswith("retired ")
+        ),
+    }
+
+
+def _headline(item: dict[str, Any]) -> str:
+    fields = _json_object(item.get("display_fields"))
+    for key in (
+        "headline",
+        "expectation_title",
+        "rule_title",
+        "work_title",
+        "change_title",
+        "event_title",
+        "item_title",
+        "topic",
+        "primary_signal",
+        "original_claim",
+        "edition_date",
+    ):
+        if fields.get(key):
+            return str(fields[key])
+    return str(item.get("headline") or "Verified signal")
+
+
+def _variant_for(slot_id: str) -> str:
+    if slot_id == "lead":
+        return "lead"
+    if slot_id in {"live_feed", "digest", "utility"}:
+        return "compact"
+    return "standard"
+
+
+def _claim_ids(item: dict[str, Any]) -> list[Any]:
+    values = item.get("claim_ids")
+    if isinstance(values, list):
+        return values
+    return [item["claim_id"]] if item.get("claim_id") else []
+
+
+def _dedupe_candidates(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    deduped: dict[str, dict[str, Any]] = {}
+    for index, item in enumerate(candidates):
+        key = str(
+            item.get("claim_id")
+            or f"{item.get('section_id')}:{item.get('component_id')}:{item.get('headline')}:{index}"
+        )
+        deduped[key] = item
+    return list(deduped.values())
+
+
+def _json_object(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+            return parsed if isinstance(parsed, dict) else {}
+        except json.JSONDecodeError:
+            return {}
+    return {}
+
+
+def _dumps(value: Any) -> str:
+    return json.dumps(value, default=str, ensure_ascii=False)
+
+
+def _uuid_or_none(value: Any) -> uuid.UUID | None:
+    if isinstance(value, uuid.UUID):
+        return value
+    if not value:
+        return None
+    try:
+        return uuid.UUID(str(value))
+    except (ValueError, TypeError, AttributeError):
+        return None
+
+
+def _time(value: Any) -> datetime | None:
+    if isinstance(value, datetime):
+        return _utc(value)
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        return _utc(datetime.fromisoformat(value.strip().replace("Z", "+00:00")))
+    except ValueError:
+        return None
+
+
+def _utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)

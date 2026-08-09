@@ -4,7 +4,7 @@
 - SSRF protection (URL allowlist + no internal/link-local IPs)
 - file / result size limits
 - secret scanning (API keys, tokens, passwords in text)
-- operations authentication (X-Ops-Token for ops endpoints)
+- operations authentication (standard Bearer auth with legacy header compatibility)
 - audit events (sensitive actions logged to audit_events)
 """
 
@@ -123,17 +123,60 @@ def scan_secrets(text: str | None) -> list[str]:
 
 
 # ------------------------------------------------------ operations auth
-def require_ops_token(authorization: str | None, token_env: str = "OPEN_SIGNAL_OPS_TOKEN") -> bool:
-    """Ops endpoints require X-Ops-Token (or Authorization: Bearer)."""
+def _bearer_token(value: str | None) -> str | None:
+    """Extract one whitespace-free token from an RFC 7235 Bearer value."""
+    if not value:
+        return None
+    scheme, separator, credentials = value.strip().partition(" ")
+    token = credentials.strip()
+    if not separator or scheme.casefold() != "bearer" or not token:
+        return None
+    if any(character.isspace() for character in token):
+        return None
+    return token
+
+
+def _legacy_ops_token(value: str | None) -> str | None:
+    """Accept the former X-Ops-Token shape during the migration window."""
+    if not value:
+        return None
+    candidate = value.strip()
+    if candidate.casefold().startswith("bearer "):
+        return _bearer_token(candidate)
+    if not candidate or any(character.isspace() for character in candidate):
+        return None
+    return candidate
+
+
+def require_ops_token(
+    authorization: str | None,
+    token_env: str = "OPEN_SIGNAL_OPS_TOKEN",
+    *,
+    x_ops_token: str | None = None,
+) -> bool:
+    """Validate standard Bearer auth, with temporary X-Ops-Token compatibility."""
     expected = os.environ.get(token_env)
     if not expected:
         return False  # fail closed: no configured token -> no ops access
-    token = None
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization[len("Bearer "):]
-    if not token:
+
+    authorization_token = _bearer_token(authorization)
+    legacy_token = _legacy_ops_token(x_ops_token)
+    if authorization is not None and authorization_token is None:
         return False
+    if x_ops_token is not None and legacy_token is None:
+        return False
+
     import hmac
+
+    if (
+        authorization_token
+        and legacy_token
+        and not hmac.compare_digest(authorization_token, legacy_token)
+    ):
+        return False  # reject ambiguous credentials rather than choosing one
+    token = authorization_token or legacy_token
+    if token is None:
+        return False
 
     return hmac.compare_digest(token, expected)
 

@@ -15,6 +15,13 @@ from typing import Any
 from sqlalchemy import create_engine, text
 
 RESULT = dict[str, Any]
+MIGRATION_HEAD = "0010"
+MIN_OPS_TOKEN_LENGTH = 32
+
+
+def ops_token_meets_minimum_length(token: str | None) -> bool:
+    """Reject missing or obviously undersized server-side shared secrets."""
+    return bool(token and len(token) >= MIN_OPS_TOKEN_LENGTH)
 
 
 def run(engine: Any) -> list[RESULT]:
@@ -22,19 +29,43 @@ def run(engine: Any) -> list[RESULT]:
     now = datetime.now(timezone.utc)
 
     def add(name: str, ok: bool, detail: str) -> None:
-        checks.append({"check": name, "status": "PASS" if ok else "FAIL", "detail": detail})
+        checks.append(
+            {"check": name, "status": "PASS" if ok else "FAIL", "detail": detail}
+        )
 
     with engine.connect() as conn:
         # 1. schema version at head
-        version = conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-        add("migrations at head", version == "0008", f"alembic_version={version}")
+        version = conn.execute(
+            text("SELECT version_num FROM alembic_version")
+        ).scalar_one()
+        add(
+            "migrations at head",
+            version == MIGRATION_HEAD,
+            f"alembic_version={version}, expected={MIGRATION_HEAD}",
+        )
 
         # 2. required secrets configured
-        add("DEEPSEEK_API_KEY set", bool(os.environ.get("DEEPSEEK_API_KEY")), "LLM provider key")
-        add("OPEN_SIGNAL_OPS_TOKEN set", bool(os.environ.get("OPEN_SIGNAL_OPS_TOKEN")), "ops auth token")
+        add(
+            "DEEPSEEK_API_KEY set",
+            bool(os.environ.get("DEEPSEEK_API_KEY")),
+            "LLM provider key",
+        )
+        ops_token = os.environ.get("OPEN_SIGNAL_OPS_TOKEN")
+        add(
+            "OPEN_SIGNAL_OPS_TOKEN set",
+            ops_token_meets_minimum_length(ops_token),
+            f"server-side ops auth token ({MIN_OPS_TOKEN_LENGTH}+ characters)",
+        )
 
         # 3. operational tables present + populated
-        for table in ("sources", "daily_editions", "claims", "feature_flags", "audit_events"):
+        for table in (
+            "sources",
+            "daily_editions",
+            "publication_channels",
+            "claims",
+            "feature_flags",
+            "audit_events",
+        ):
             exists = conn.execute(
                 text(
                     "SELECT count(*) FROM information_schema.tables "
@@ -50,22 +81,24 @@ def run(engine: Any) -> list[RESULT]:
 
         # 4. recent edition activity
         recent = conn.execute(
-            text(
-                "SELECT count(*) FROM daily_editions WHERE generated_at >= :since"
-            ),
+            text("SELECT count(*) FROM daily_editions WHERE generated_at >= :since"),
             {"since": now - timedelta(days=7)},
         ).scalar_one()
         add("editions in last 7 days", recent > 0, f"{recent} editions")
 
         # 5. ops mode is normal
         mode = conn.execute(
-            text("SELECT enabled FROM feature_flags WHERE flag_name LIKE 'ops.mode.%' AND enabled = true")
+            text(
+                "SELECT enabled FROM feature_flags WHERE flag_name LIKE 'ops.mode.%' AND enabled = true"
+            )
         ).fetchone()
         add("ops mode normal", mode is None, "no degraded-mode flag set")
 
         # 6. degraded/retracted sources
         bad_sources = conn.execute(
-            text("SELECT count(*) FROM sources WHERE status IN ('retracted', 'degraded')")
+            text(
+                "SELECT count(*) FROM sources WHERE status IN ('retracted', 'degraded')"
+            )
         ).scalar_one()
         add("no retracted/degraded sources", bad_sources == 0, f"{bad_sources} flagged")
 

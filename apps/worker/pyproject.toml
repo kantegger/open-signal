@@ -14,7 +14,11 @@ dependencies = [
   "pyyaml>=6,<7",
   "sqlalchemy>=2.0,<3",
   "alembic>=1.13,<2",
+  "boto3>=1.35,<2",
 ]
+
+[project.scripts]
+open-signal-worker = "open_signal_worker.main:main"
 
 [project.optional-dependencies]
 dev = [

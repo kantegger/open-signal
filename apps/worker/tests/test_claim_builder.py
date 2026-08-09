@@ -1,5 +1,5 @@
 """Deterministic claim construction tests (OS-011). Requires real PostgreSQL
-via OPEN_SIGNAL_DATABASE_URL (migration 0005 applied).
+via OPEN_SIGNAL_TEST_DATABASE_URL (migration 0005 applied).
 """
 
 import os
@@ -20,9 +20,9 @@ from open_signal.sources.registry import Registry
 
 @pytest.fixture()
 def engine():
-    url = os.environ.get("OPEN_SIGNAL_DATABASE_URL")
+    url = os.environ.get("OPEN_SIGNAL_TEST_DATABASE_URL")
     if not url:
-        pytest.skip("OPEN_SIGNAL_DATABASE_URL not set")
+        pytest.skip("OPEN_SIGNAL_TEST_DATABASE_URL not set")
     from sqlalchemy import create_engine
 
     return create_engine(url)
@@ -130,6 +130,14 @@ def test_full_pipeline(builder, engine) -> None:
         calculation=output,
         now=now,
     )
+    duplicate = builder.build_from_candidate(
+        source_market_id=market_uuid,
+        canonical_expectation_id=ce_id,
+        calculation=output,
+        now=now,
+    )
+    assert duplicate["created"] is False
+    assert duplicate["claim_id"] == result["claim_id"]
 
     from sqlalchemy import text
 
@@ -159,7 +167,7 @@ def test_full_pipeline(builder, engine) -> None:
 
     rc = result["render_candidate"]
     assert rc["component_id"] == "time-series.probability-move"
-    assert rc["display_fields"]["deltaPercentagePoints"] == 20.0
+    assert rc["display_fields"]["delta_percentage_points"] == 20.0
     assert rc["slot_id"] == "secondary"
 
     _cleanup(engine, market_uuid)
