@@ -3,7 +3,7 @@ import { SiteShell } from "../../../components/site-shell";
 
 export default function ClaimNotFound() {
   return (
-    <SiteShell active="claim">
+    <SiteShell active="explore">
       <div className="claim-route-state">
         <p className="eyebrow">Claim not found</p>
         <h1>No public record exists for this Claim identifier.</h1>

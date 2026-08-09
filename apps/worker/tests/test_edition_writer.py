@@ -182,6 +182,99 @@ def test_hard_expiry_atomically_publishes_complete_empty_page(writer, engine) ->
     _cleanup(engine)
 
 
+def test_snapshot_captures_typed_publication_context(writer, engine) -> None:
+    _cleanup(engine)
+    result = writer.build_edition(
+        [_candidate("c1")],
+        generated_at=datetime.now(UTC),
+        section_maturity="beta",
+    )
+
+    stored = writer.edition_json(result["edition_id"])
+    context = stored["edition_payload"]["publication_context"]
+    assert context["snapshot_bound"] is True
+    assert context["version"] == "1.2.0"
+    assert set(context) >= {
+        "counts",
+        "claims",
+        "expectations",
+        "rules",
+        "research",
+        "coverage",
+    }
+
+    page = FrontPagePresenter(engine).build()
+    assert page is not None
+    assert page["publication_context"] == context
+    _cleanup(engine)
+
+
+def test_scanner_refresh_retains_current_featured_item(writer, engine) -> None:
+    _cleanup(engine)
+    old_lead = _candidate(
+        "c1",
+        slot_id="lead",
+        component_id="signal-hero.expectations",
+        display_fields={
+            "expectation_title": "Durable featured signal",
+            "current_probability": 0.72,
+            "start_probability": 0.61,
+            "delta_percentage_points": 11.0,
+            "window": "24h",
+            "series": [],
+            "source_name": "Polymarket",
+            "updated_at": "2026-08-07T12:00:00Z",
+            "headline": "Durable featured signal",
+            "primary_observation": "The featured move remains valid.",
+        },
+        headline="Durable featured signal",
+        priority=10,
+    )
+    initial = writer.build_edition(
+        [old_lead],
+        generated_at=datetime(2026, 8, 7, 13, tzinfo=UTC),
+        section_maturity="beta",
+    )
+    scanner = _candidate(
+        "c2",
+        slot_id="live_feed",
+        component_id="signal-feed.compact-change",
+        component_variant="compact",
+        display_fields={
+            "change_title": "A second market moved",
+            "change_value": "+1.2pp · 58%",
+            "claim_type": "derived_observation",
+            "source_name": "Polymarket",
+            "updated_at": "2026-08-07T13:30:00Z",
+        },
+        headline="A second market moved",
+        priority=100,
+    )
+
+    refreshed = writer.build_rolling_edition(
+        [scanner],
+        refreshed_section_ids={"expectations-moved"},
+        retain_refreshed_items=True,
+        generated_at=datetime(2026, 8, 7, 14, tzinfo=UTC),
+        section_maturity="beta",
+    )
+
+    assert refreshed["supersedes_edition_id"] == initial["edition_id"]
+    assert set(refreshed["claim_ids"]) == {CLAIM_UUIDS[0], CLAIM_UUIDS[1]}
+    from sqlalchemy import text
+
+    with engine.connect() as conn:
+        slots = conn.execute(
+            text(
+                "SELECT slot_id FROM render_plans WHERE edition_id = :edition "
+                "ORDER BY slot_id"
+            ),
+            {"edition": refreshed["edition_id"]},
+        ).scalars().all()
+    assert slots == ["lead", "live_feed"]
+    _cleanup(engine)
+
+
 def test_freshness_reconcile_is_noop_until_meaning_changes(writer, engine) -> None:
     _cleanup(engine)
     initial = writer.build_edition(
@@ -244,6 +337,64 @@ def test_archive_snapshot(writer, engine) -> None:
     snapshot = writer.snapshot(result["edition_id"])
     assert snapshot["immutable"] is True
     assert snapshot["snapshot"]["id"] == result["edition_id"]
+    _cleanup(engine)
+
+
+def test_freshness_reconcile_backfills_publication_context(writer, engine) -> None:
+    from sqlalchemy import text
+
+    _cleanup(engine)
+    initial = writer.build_edition(
+        [_candidate("c1")],
+        generated_at=datetime(2026, 8, 7, 13, tzinfo=UTC),
+    )
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "UPDATE daily_editions "
+                "SET edition_payload = edition_payload - 'publication_context' "
+                "WHERE id = :edition"
+            ),
+            {"edition": initial["edition_id"]},
+        )
+
+    refreshed = writer.reconcile_freshness(
+        generated_at=datetime(2026, 8, 7, 14, tzinfo=UTC)
+    )
+
+    assert refreshed["published"] is True
+    assert any(
+        transition["reason"] == "publication context version changed"
+        for transition in refreshed["transitions"]
+    )
+    payload = writer.edition_json(refreshed["edition_id"])
+    assert payload["edition_payload"]["publication_context"]["version"] == "1.2.0"
+    _cleanup(engine)
+
+
+def test_historical_front_page_marks_snapshot_non_current(writer, engine) -> None:
+    _cleanup(engine)
+    historical = writer.build_edition(
+        [_candidate("c1")],
+        generated_at=datetime(2026, 8, 7, 12, tzinfo=UTC),
+        section_maturity="beta",
+    )
+    current = writer.build_edition(
+        [_candidate("c2")],
+        generated_at=datetime(2026, 8, 7, 13, tzinfo=UTC),
+        section_maturity="beta",
+    )
+
+    historical_page = FrontPagePresenter(engine).build(
+        edition_id=historical["edition_id"]
+    )
+    current_page = FrontPagePresenter(engine).build()
+    assert historical_page is not None
+    assert historical_page["snapshot"]["id"] == historical["edition_id"]
+    assert historical_page["snapshot"]["is_current"] is False
+    assert current_page is not None
+    assert current_page["snapshot"]["id"] == current["edition_id"]
+    assert current_page["snapshot"]["is_current"] is True
     _cleanup(engine)
 
 

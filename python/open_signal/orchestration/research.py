@@ -29,34 +29,50 @@ class ResearchSectionService:
     ) -> dict[str, Any]:
         del payload
         source_ids = ensure_runtime_metadata(self.engine)
-        works = self._latest_payloads(source_ids["openalex"], "work")
-        studies = self._latest_payloads(
-            source_ids["clinicaltrials-gov"],
-            "study",
-        )
         topic_chain = OpenAlexChain(None)
         try:
+            topics = topic_chain.list_topics()
             topic_concepts = {
                 str(topic["id"]): [
                     str(value)
                     for value in (
-                        topic.get("entity_mappings", {}).get(
-                            "openalex_concepts", []
-                        )
+                        topic.get("entity_mappings", {}).get("openalex_concepts", [])
                     )
                 ]
-                for topic in topic_chain.list_topics()
+                for topic in topics
+            }
+            topic_labels = {
+                str(topic["id"]): str(
+                    topic.get("label_en") or topic.get("label") or topic["id"]
+                )
+                for topic in topics
             }
         finally:
             topic_chain.close()
+        works = self._latest_payloads(
+            source_ids["openalex"],
+            "work",
+            topic_concepts=topic_concepts,
+        )
+        studies = self._latest_payloads(
+            source_ids["clinicaltrials-gov"],
+            "study",
+        )
 
         detector = ResearchCandidateDetector(self.engine)
         candidates = [
-            *detector.detect_institution_entry(works),
-            *detector.detect_stage_transition(studies),
+            *detector.detect_institution_entry(
+                works,
+                topic_labels=topic_labels,
+            ),
+            *detector.detect_stage_transition(
+                studies,
+                topic_labels=topic_labels,
+            ),
             *detector.detect_cross_topic_relation(
                 works,
                 topic_concepts=topic_concepts,
+                topic_labels=topic_labels,
             ),
         ]
         stored = detector.persist(candidates)
@@ -146,23 +162,38 @@ class ResearchSectionService:
         }
 
     def _latest_payloads(
-        self, source_id: str, record_type: str
+        self,
+        source_id: str,
+        record_type: str,
+        *,
+        topic_concepts: Mapping[str, list[str]] | None = None,
     ) -> list[dict[str, Any]]:
         with self.engine.connect() as conn:
             rows = conn.execute(
                 text(
                     """
-                    SELECT DISTINCT ON (external_id) payload
+                    SELECT DISTINCT ON (external_id)
+                           payload, transport_metadata
                     FROM raw_source_records
                     WHERE source_id = :source
                       AND record_type = :record_type
                       AND status = 'active'
-                    ORDER BY external_id, ingested_at DESC
+                    ORDER BY external_id, last_seen_at DESC, ingested_at DESC
                     """
                 ),
                 {"source": source_id, "record_type": record_type},
             ).fetchall()
-        return [_object(row[0]) for row in rows]
+        payloads: list[dict[str, Any]] = []
+        for row in rows:
+            payload = dict(_object(row[0]))
+            topic_ids = _metadata_topic_ids(_object(row[1]))
+            if not topic_ids and record_type == "work" and topic_concepts:
+                topic_ids = _infer_openalex_topics(payload, topic_concepts)
+            payload["_open_signal"] = {
+                "monitoring_topic_ids": topic_ids,
+            }
+            payloads.append(payload)
+        return payloads
 
 
 def _object(value: Any) -> dict[str, Any]:
@@ -172,3 +203,29 @@ def _object(value: Any) -> dict[str, Any]:
         parsed = json.loads(value)
         return parsed if isinstance(parsed, dict) else {}
     return {}
+
+
+def _metadata_topic_ids(metadata: Mapping[str, Any]) -> list[str]:
+    topics = metadata.get("monitoring_topics")
+    if isinstance(topics, dict):
+        return sorted(str(topic_id) for topic_id, enabled in topics.items() if enabled)
+    if isinstance(topics, list):
+        return sorted({str(topic_id) for topic_id in topics if topic_id})
+    return []
+
+
+def _infer_openalex_topics(
+    payload: Mapping[str, Any],
+    topic_concepts: Mapping[str, list[str]],
+) -> list[str]:
+    observed = {
+        str(concept.get("display_name") or "").casefold()
+        for field in ("concepts", "topics")
+        for concept in payload.get(field) or []
+        if isinstance(concept, dict) and concept.get("display_name")
+    }
+    return sorted(
+        topic_id
+        for topic_id, concepts in topic_concepts.items()
+        if observed & {str(concept).casefold() for concept in concepts}
+    )

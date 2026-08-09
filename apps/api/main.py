@@ -7,6 +7,7 @@ mutation endpoints. Run with: uvicorn apps.api.main:app
 from __future__ import annotations
 
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Response, Security
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,6 +16,7 @@ from open_signal.api.database import get_engine
 from open_signal.api.editions import FrontPagePresenter
 from open_signal.api.ops import OpsPresenter
 from open_signal.api.presenters import ClaimPagePresenter
+from open_signal.api.topics import SeoIndexPresenter, TopicPagePresenter
 from open_signal.composer.edition_writer import EditionWriter
 from open_signal.security import hardening
 
@@ -80,6 +82,37 @@ def get_edition(edition_id: str) -> dict:
     if payload is None:
         raise HTTPException(status_code=404, detail="edition not found")
     return payload
+
+
+@app.get("/api/editions/{edition_id}/front-page")
+def get_edition_front_page(
+    edition_id: UUID,
+    response: Response,
+    locale: str = "en",
+) -> dict:
+    page = FrontPagePresenter(_engine()).build(
+        locale=locale,
+        edition_id=str(edition_id),
+    )
+    if page is None:
+        raise HTTPException(status_code=404, detail="edition not found")
+    response.headers["Cache-Control"] = "public, max-age=3600, immutable"
+    return page
+
+
+@app.get("/api/topics/{expectation_id}")
+def get_topic(expectation_id: UUID, response: Response) -> dict:
+    page = TopicPagePresenter(_engine()).build(str(expectation_id))
+    if page is None:
+        raise HTTPException(status_code=404, detail="topic not found")
+    response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=3600"
+    return page
+
+
+@app.get("/api/seo-index")
+def get_seo_index(response: Response, limit: int = 1000) -> dict:
+    response.headers["Cache-Control"] = "public, max-age=900, stale-while-revalidate=3600"
+    return SeoIndexPresenter(_engine()).build(limit=limit)
 
 
 # --------------------------------------------------------- operations console

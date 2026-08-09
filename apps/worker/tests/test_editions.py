@@ -131,6 +131,53 @@ def test_deduplication(composer) -> None:
     assert ids.count("c1") == 1
 
 
+def test_one_full_presentation_and_one_compact_index_echo(composer) -> None:
+    primary = _pm_candidate("c1", presentation_role="primary")
+    echo = {
+        **_pm_candidate("c1"),
+        "component_id": "signal-feed.compact-change",
+        "component_variant": "compact",
+        "slot_id": "digest",
+        "presentation_role": "index_echo",
+        "display_fields": {
+            "change_title": "Q",
+            "change_value": "+20pp",
+            "claim_type": "derived_observation",
+            "source_name": "Polymarket",
+            "updated_at": "2026-08-07T12:00:00Z",
+        },
+    }
+
+    plan = composer.compose([primary, echo], now=COMPOSE_NOW)
+
+    assert [item["claim_id"] for item in plan["items"]].count("c1") == 2
+    assert len(plan["slots"]["secondary"]) == 1
+    assert len(plan["slots"]["digest"]) == 1
+
+
+def test_homogeneous_live_feed_uses_declared_capacity(composer) -> None:
+    candidates = [
+        {
+            **_pm_candidate(f"feed-{index}"),
+            "component_id": "signal-feed.compact-change",
+            "component_variant": "compact",
+            "slot_id": "live_feed",
+            "display_fields": {
+                "change_title": f"Q {index}",
+                "change_value": f"+{index + 1}pp",
+                "claim_type": "derived_observation",
+                "source_name": "Polymarket",
+                "updated_at": "2026-08-07T12:00:00Z",
+            },
+        }
+        for index in range(4)
+    ]
+
+    plan = composer.compose(candidates, now=COMPOSE_NOW)
+
+    assert len(plan["slots"]["live_feed"]) == 4
+
+
 def test_section_diversity(composer) -> None:
     candidates = [
         _pm_candidate("c1", section_id="expectations-moved"),

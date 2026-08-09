@@ -30,8 +30,12 @@ class ExpectationsSectionService:
         self, payload: Mapping[str, Any] | None = None
     ) -> dict[str, Any]:
         """Normalize latest raw markets, sample them, and update canonicals."""
-        del payload
+        payload = payload or {}
         source_id = ensure_runtime_metadata(self.engine)["polymarket-gamma"]
+        monitor_window_hours = max(
+            1,
+            min(24, int(payload.get("monitor_window_hours") or 2)),
+        )
         with self.engine.connect() as conn:
             rows = conn.execute(
                 text(
@@ -42,10 +46,11 @@ class ExpectationsSectionService:
                     WHERE source_id = :source
                       AND record_type = 'market'
                       AND status = 'active'
+                      AND last_seen_at >= now() - make_interval(hours => :hours)
                     ORDER BY external_id, ingested_at DESC
                     """
                 ),
-                {"source": source_id},
+                {"source": source_id, "hours": monitor_window_hours},
             ).fetchall()
 
         normalized: list[tuple[str, dict[str, Any]]] = []
@@ -83,6 +88,7 @@ class ExpectationsSectionService:
                     source_markets.c.external_market_id,
                 ],
                 set_={
+                    "external_event_id": statement.excluded.external_event_id,
                     "question": statement.excluded.question,
                     "description": statement.excluded.description,
                     "outcome_labels": statement.excluded.outcome_labels,
@@ -104,11 +110,36 @@ class ExpectationsSectionService:
 
         collector = MarketObservationCollector(self.engine)
         observations = 0
+        history = {"markets": 0, "batches": 0, "observations": 0, "errors": 0}
         try:
             for market_id, market in normalized:
                 observations += collector._store_observation(
                     market,
                     external_id=market_id,
+                )
+            if _truthy(payload.get("history_backfill")):
+                history_limit = max(
+                    0,
+                    min(500, int(payload.get("history_market_limit") or 200)),
+                )
+                ranked = sorted(
+                    normalized,
+                    key=lambda item: _number(
+                        item[1].get("volume24hr")
+                        or item[1].get("volume24h")
+                        or item[1].get("volume")
+                    )
+                    or 0.0,
+                    reverse=True,
+                )
+                history_targets = []
+                for market_id, market in ranked[:history_limit]:
+                    tokens = _string_list(market.get("clobTokenIds"))
+                    if tokens:
+                        history_targets.append((market_id, tokens[0]))
+                history = collector.backfill_history(
+                    history_targets,
+                    days=max(1, min(14, int(payload.get("history_days") or 7))),
                 )
         finally:
             collector.close()
@@ -139,6 +170,7 @@ class ExpectationsSectionService:
             "raw_markets": len(rows),
             "active_markets": len(normalized),
             "observations_created": observations,
+            "history_backfill": history,
             "canonicals_updated": canonicalized,
         }
 
@@ -147,7 +179,21 @@ class ExpectationsSectionService:
     ) -> dict[str, Any]:
         """Detect material moves, verify new Claims, and refresh one Section."""
         payload = payload or {}
-        maximum_claims = max(1, min(3, int(payload.get("maximum_claims") or 3)))
+        maximum_featured = max(
+            1,
+            min(
+                3,
+                int(
+                    payload.get("maximum_featured_claims")
+                    or payload.get("maximum_claims")
+                    or 3
+                ),
+            ),
+        )
+        maximum_scanner = max(
+            0,
+            min(20, int(payload.get("maximum_scanner_claims") or 12)),
+        )
         now = datetime.now(timezone.utc)
         with self.engine.connect() as conn:
             rows = conn.execute(
@@ -165,27 +211,34 @@ class ExpectationsSectionService:
             ).fetchall()
 
         detector = CandidateDetector(self.engine, version="production-1.0.0")
-        detected: list[tuple[float, str, str, dict[str, Any]]] = []
+        detected: list[tuple[int, float, str, str, dict[str, Any]]] = []
         for market_id, canonical_id in rows:
             output = detector.compute_for_market(str(market_id), now=now)
             calculation_id = detector.record_calculation(str(market_id), output)
-            if not output["eligible"]:
+            if not output["scanner_eligible"]:
                 continue
             output["_calc_record_id"] = calculation_id
+            tier = str(output["publication_tier"])
             detected.append(
                 (
-                    abs(float(output.get("delta_24h") or 0.0)),
+                    0 if tier == "featured" else 1,
+                    float(output.get("signal_score") or 0.0),
                     str(market_id),
                     str(canonical_id),
                     output,
                 )
             )
-        detected.sort(key=lambda item: item[0], reverse=True)
+        detected.sort(key=lambda item: (item[0], -item[1]))
 
         builder = DeterministicClaimBuilder(self.engine)
-        built: list[dict[str, Any]] = []
+        built: list[tuple[str, dict[str, Any]]] = []
         duplicates = 0
-        for _, market_id, canonical_id, calculation in detected:
+        built_by_tier = {"featured": 0, "scanner": 0}
+        for tier_rank, _, market_id, canonical_id, calculation in detected:
+            tier = "featured" if tier_rank == 0 else "scanner"
+            limit = maximum_featured if tier == "featured" else maximum_scanner
+            if built_by_tier[tier] >= limit:
+                continue
             result = builder.build_from_candidate(
                 source_market_id=market_id,
                 canonical_expectation_id=canonical_id,
@@ -195,23 +248,35 @@ class ExpectationsSectionService:
             if not result["created"]:
                 duplicates += 1
                 continue
-            built.append(result)
-            if len(built) >= maximum_claims:
+            built.append((tier, result))
+            built_by_tier[tier] += 1
+            if (
+                built_by_tier["featured"] >= maximum_featured
+                and built_by_tier["scanner"] >= maximum_scanner
+            ):
                 break
 
         verifier = ClaimVerifier(self.engine)
         candidates: list[dict[str, Any]] = []
-        for index, result in enumerate(built):
-            candidate = self._publication_candidate(result, index)
+        verified_claim_ids: set[str] = set()
+        tier_indices = {"featured": 0, "scanner": 0}
+        for tier, result in built:
+            index = tier_indices[tier]
+            tier_indices[tier] += 1
+            candidate = self._publication_candidate(result, tier=tier, index=index)
             if verifier.gate_for_composer(result["claim_id"], candidate):
                 candidate["claim_status"] = "verified"
                 candidates.append(candidate)
+                verified_claim_ids.add(str(result["claim_id"]))
+                if tier == "featured":
+                    candidates.append(self._index_echo(candidate))
 
         edition: dict[str, Any] | None = None
         if candidates:
             edition = EditionWriter(self.engine).build_rolling_edition(
                 candidates,
                 refreshed_section_ids={SECTION_ID},
+                retain_refreshed_items=True,
                 trigger_type="section_refresh",
                 generated_at=now,
                 section_maturity="beta",
@@ -221,38 +286,92 @@ class ExpectationsSectionService:
             "section_id": SECTION_ID,
             "markets_evaluated": len(rows),
             "eligible_candidates": len(detected),
+            "featured_candidates": sum(1 for item in detected if item[0] == 0),
+            "scanner_candidates": sum(1 for item in detected if item[0] == 1),
             "claims_created": len(built),
             "duplicate_claims_skipped": duplicates,
-            "claims_verified": len(candidates),
+            "claims_verified": len(verified_claim_ids),
+            "render_candidates": len(candidates),
             "edition": edition,
         }
 
     @staticmethod
     def _publication_candidate(
-        result: Mapping[str, Any], index: int
+        result: Mapping[str, Any], *, tier: str, index: int
     ) -> dict[str, Any]:
         candidate = dict(result["render_candidate"])
         fields = dict(candidate["display_fields"])
-        slots = ("lead", "secondary", "main")
-        if index == 0:
-            candidate["component_id"] = "signal-hero.expectations"
-            candidate["component_variant"] = "lead"
-            fields["headline"] = candidate["headline"]
-            fields["primary_observation"] = fields["observation"]
+        if tier == "featured":
+            slots = ("lead", "secondary", "main", "main")
+            if index == 0:
+                candidate["component_id"] = "signal-hero.expectations"
+                candidate["component_variant"] = "lead"
+                fields["headline"] = candidate["headline"]
+                fields["primary_observation"] = fields["observation"]
+            slot_id = slots[index]
+            priority = 10 + index * 10
+        else:
+            candidate["component_id"] = "signal-feed.compact-change"
+            candidate["component_variant"] = "compact"
+            slot_id = "live_feed"
+            priority = 100 + index
+            fields = ExpectationsSectionService._compact_fields(candidate, fields)
         candidate.update(
             {
-                "slot_id": slots[index],
+                "slot_id": slot_id,
                 "claim_id": result["claim_id"],
                 "claim_ids": [result["claim_id"]],
                 "claim_type": "derived_observation",
                 "section_id": SECTION_ID,
                 "section_instance_id": result["section_instance_id"],
                 "capability_id": "expectation.probability-change",
-                "priority": 10 + index * 10,
+                "priority": priority,
+                "presentation_role": "primary",
                 "display_fields": fields,
             }
         )
         return candidate
+
+    @staticmethod
+    def _compact_fields(
+        candidate: Mapping[str, Any], fields: Mapping[str, Any]
+    ) -> dict[str, Any]:
+        compact = dict(fields)
+        delta = float(compact.get("delta_percentage_points") or 0.0)
+        current = compact.get("current_probability")
+        current_label = (
+            f" · {float(current) * 100:.0f}%" if current is not None else ""
+        )
+        compact.update(
+            {
+                "change_title": str(candidate.get("headline") or "Expectation moved"),
+                "change_value": f"{delta:+.1f}pp{current_label}",
+                "claim_type": "derived_observation",
+                "source_name": compact.get("source_name") or "Polymarket Gamma",
+                "updated_at": compact.get("updated_at"),
+                "trend": "up" if delta > 0 else "down" if delta < 0 else "neutral",
+            }
+        )
+        return compact
+
+    @staticmethod
+    def _index_echo(candidate: Mapping[str, Any]) -> dict[str, Any]:
+        echo = dict(candidate)
+        fields = ExpectationsSectionService._compact_fields(
+            candidate,
+            dict(candidate.get("display_fields") or {}),
+        )
+        echo.update(
+            {
+                "component_id": "signal-feed.compact-change",
+                "component_variant": "compact",
+                "slot_id": "digest",
+                "priority": int(candidate.get("priority") or 10) + 200,
+                "presentation_role": "index_echo",
+                "display_fields": fields,
+            }
+        )
+        return echo
 
 
 def _object(value: Any) -> dict[str, Any]:
@@ -301,3 +420,9 @@ def _event_type(market: Mapping[str, Any]) -> str:
     if isinstance(tags, list) and tags and isinstance(tags[0], dict):
         return str(tags[0].get("slug") or tags[0].get("label") or "general")
     return "general"
+
+
+def _truthy(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on"}

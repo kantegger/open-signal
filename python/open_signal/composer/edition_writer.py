@@ -17,6 +17,10 @@ from typing import Any
 from sqlalchemy import text
 
 from open_signal.composer.editions import EditionComposer
+from open_signal.composer.publication_context import (
+    CONTEXT_VERSION,
+    PublicationContextBuilder,
+)
 
 COMPOSER_VERSION = "os-048"
 PUBLICATION_CHANNEL = "front-page"
@@ -26,9 +30,15 @@ SLOT_ORDER = ("lead", "secondary", "live_feed", "digest", "main", "utility", "ar
 
 
 class EditionWriter:
-    def __init__(self, engine: Any, composer: EditionComposer | None = None) -> None:
+    def __init__(
+        self,
+        engine: Any,
+        composer: EditionComposer | None = None,
+        context_builder: PublicationContextBuilder | None = None,
+    ) -> None:
         self.engine = engine
         self.composer = composer or EditionComposer()
+        self.context_builder = context_builder or PublicationContextBuilder()
 
     # ---------------------------------------------------------------- build
     def build_edition(
@@ -70,6 +80,10 @@ class EditionWriter:
         freshness_summary = _freshness_summary(items, plan["warnings"])
 
         with self.engine.begin() as conn:
+            publication_context = self.context_builder.capture(
+                conn,
+                captured_at=generated_at,
+            )
             current = conn.execute(
                 text(
                     "SELECT current_edition_id FROM publication_channels "
@@ -94,6 +108,7 @@ class EditionWriter:
                 "slots": _slots_summary(items),
                 "freshness": freshness_summary,
                 "warnings": plan["warnings"],
+                "publication_context": publication_context,
             }
 
             edition_row = conn.execute(
@@ -202,14 +217,18 @@ class EditionWriter:
         candidates: list[dict[str, Any]],
         *,
         refreshed_section_ids: set[str] | None = None,
+        retain_refreshed_items: bool = False,
         trigger_type: str = "section_refresh",
         generated_at: datetime | None = None,
         section_maturity: str = "production",
     ) -> dict[str, Any]:
         """Recompose the whole page from changed and still-active Sections.
 
-        A refreshed Section replaces its previous publication output as a unit.
-        Sections that did not refresh are carried forward and independently
+        A refreshed Section normally replaces its previous publication output
+        as a unit. Scanner-style Sections may request ``retain_refreshed_items``
+        to compile their still-valid featured and feed items together with new
+        observations. New candidates retain priority over carried items.
+        Unrefreshed Sections are always carried forward and independently
         re-evaluated for Claim validity and elapsed-age retirement.
         """
         refreshed = set(refreshed_section_ids or ())
@@ -217,11 +236,17 @@ class EditionWriter:
             refreshed = {
                 str(item["section_id"]) for item in candidates if item.get("section_id")
             }
-        active = [
-            item
-            for item in self._current_candidates()
-            if item.get("section_id") not in refreshed
-        ]
+        active: list[dict[str, Any]] = []
+        for item in self._current_candidates():
+            if item.get("section_id") not in refreshed:
+                active.append(item)
+                continue
+            if retain_refreshed_items:
+                carried = dict(item)
+                carried["priority"] = 1000 + int(
+                    item.get("visual_priority") or item.get("position") or 0
+                )
+                active.append(carried)
         merged = _dedupe_candidates([*active, *candidates])
         return self.build_edition(
             merged,
@@ -273,13 +298,20 @@ class EditionWriter:
                 )
 
         with self.engine.connect() as conn:
-            channel_policy = conn.execute(
+            channel_state = conn.execute(
                 text(
-                    "SELECT policy_version FROM publication_channels "
-                    "WHERE id = :channel"
+                    """
+                    SELECT pc.policy_version,
+                           e.edition_payload #>> '{publication_context,version}'
+                    FROM publication_channels pc
+                    LEFT JOIN daily_editions e ON e.id = pc.current_edition_id
+                    WHERE pc.id = :channel
+                    """
                 ),
                 {"channel": PUBLICATION_CHANNEL},
-            ).scalar_one_or_none()
+            ).fetchone()
+        channel_policy = channel_state[0] if channel_state else None
+        context_version = channel_state[1] if channel_state else None
         current_policy = self.composer.freshness_evaluator.policy_version
         if channel_policy != current_policy:
             transitions.append(
@@ -288,6 +320,15 @@ class EditionWriter:
                     "from": channel_policy,
                     "to": current_policy,
                     "reason": "freshness policy version changed",
+                }
+            )
+        if context_version != CONTEXT_VERSION:
+            transitions.append(
+                {
+                    "claim_id": None,
+                    "from": context_version,
+                    "to": CONTEXT_VERSION,
+                    "reason": "publication context version changed",
                 }
             )
 
@@ -475,6 +516,9 @@ class EditionWriter:
             candidates.append(
                 {
                     "slot_id": row[0],
+                    "presentation_role": (
+                        "index_echo" if row[0] == "digest" else "primary"
+                    ),
                     "section_instance_id": str(row[1]) if row[1] else None,
                     "claim_ids": [str(value) for value in row[2]],
                     "claim_id": str(row[21])
@@ -768,9 +812,14 @@ def _claim_ids(item: dict[str, Any]) -> list[Any]:
 def _dedupe_candidates(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
     deduped: dict[str, dict[str, Any]] = {}
     for index, item in enumerate(candidates):
-        key = str(
-            item.get("claim_id")
-            or f"{item.get('section_id')}:{item.get('component_id')}:{item.get('headline')}:{index}"
+        claim_id = item.get("claim_id")
+        role = item.get("presentation_role") or (
+            "index_echo" if item.get("slot_id") == "digest" else "primary"
+        )
+        key = (
+            f"{claim_id}:{role}"
+            if claim_id
+            else f"{item.get('section_id')}:{item.get('component_id')}:{item.get('headline')}:{index}"
         )
         deduped[key] = item
     return list(deduped.values())

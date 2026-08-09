@@ -36,7 +36,9 @@ class ClinicalTrialsClient:
 
     def health_check(self) -> bool:
         try:
-            return self._client.get("/studies", params={"pageSize": 1}).status_code == 200
+            return (
+                self._client.get("/studies", params={"pageSize": 1}).status_code == 200
+            )
         except httpx.HTTPError:
             return False
 
@@ -60,7 +62,9 @@ class ClinicalTrialsChain:
         self.source_id = source_id
         self.fixture_dir = Path(fixture_dir) if fixture_dir else FIXTURE_DIR
         self.offline = offline
-        with (Path(topics_path) if topics_path else TOPICS_PATH).open(encoding="utf-8") as f:
+        with (Path(topics_path) if topics_path else TOPICS_PATH).open(
+            encoding="utf-8"
+        ) as f:
             self.topics = yaml.safe_load(f)
 
     def baseline_query(self, topic_id: str) -> str | None:
@@ -93,12 +97,30 @@ class ClinicalTrialsChain:
                         INSERT INTO raw_source_records
                           (source_id, external_id, record_type, mime_type,
                            payload, source_created_at, content_hash,
-                           adapter_version, status)
+                           transport_metadata, adapter_version, status)
                         VALUES
                           (:sid, :ext, 'study', 'application/json',
                            CAST(:payload AS jsonb), CAST(:pub AS timestamptz),
-                           :hash, 'clinicaltrials-v1', 'active')
-                        ON CONFLICT (source_id, external_id, content_hash) DO NOTHING
+                           :hash, CAST(:metadata AS jsonb),
+                           'clinicaltrials-v2', 'active')
+                        ON CONFLICT (source_id, external_id, content_hash)
+                        DO UPDATE SET
+                          transport_metadata = jsonb_set(
+                            COALESCE(raw_source_records.transport_metadata, '{}'::jsonb)
+                              || EXCLUDED.transport_metadata,
+                            '{monitoring_topics}',
+                            COALESCE(
+                              raw_source_records.transport_metadata -> 'monitoring_topics',
+                              '{}'::jsonb
+                            ) || COALESCE(
+                              EXCLUDED.transport_metadata -> 'monitoring_topics',
+                              '{}'::jsonb
+                            ),
+                            true
+                          ),
+                          last_seen_at = now(),
+                          adapter_version = EXCLUDED.adapter_version
+                        RETURNING (xmax = 0) AS inserted
                         """
                     ),
                     {
@@ -111,9 +133,13 @@ class ClinicalTrialsChain:
                             .get("date")
                         ),
                         "hash": sha256_hex(payload.encode()),
+                        "metadata": json.dumps(
+                            {"monitoring_topics": {topic_id: True}},
+                            sort_keys=True,
+                        ),
                     },
                 )
-                stored += result.rowcount
+                stored += int(bool(result.scalar_one()))
         return {"studies": stored, "skipped": 0}
 
     def _load(self, query: str) -> dict[str, Any]:
@@ -128,7 +154,9 @@ class ClinicalTrialsChain:
     def save_fixture(self, query: str, data: dict[str, Any]) -> Path:
         self.fixture_dir.mkdir(parents=True, exist_ok=True)
         path = self.fixture_dir / f"{_slug(query)}.json"
-        path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        path.write_text(
+            json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
         return path
 
     def close(self) -> None:

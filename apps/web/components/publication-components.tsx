@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import type { JsonRecord, RenderPlanItem } from "../lib/api";
 import { formatDateTime, formatRelativeTime, humanize } from "../lib/i18n";
+import { signalPath, topicPath } from "../lib/urls";
 import { Icon } from "./icons";
 
 export type OpenEvidence = (claimId: string, trigger: HTMLElement) => void;
@@ -46,6 +48,8 @@ export function SignalHero({ item, onEvidence }: ComponentProps) {
     current !== null && start !== null ? current - start : null
   );
   const series = seriesPoints(fields.series);
+  const quality = seriesQuality(fields.series_quality);
+  const chartSeries = quality?.coverageStatus === "complete" ? chartableSeries(series) : null;
   const observation = string(fields.primary_observation ?? fields.observation ?? item.dek);
   const analysis = string(fields.analysis);
   const assessment = string(fields.assessment);
@@ -53,8 +57,11 @@ export function SignalHero({ item, onEvidence }: ComponentProps) {
   return (
     <article className={`signal-hero ${sectionClass(item.section_id)}`} data-component-family="signal-hero">
       <div className="hero-primary">
-        <p className="eyebrow">Lead signal</p>
-        <h1>{item.headline}</h1>
+        <div className="hero-kicker">
+          <p className="eyebrow">Lead signal · {sectionName(item.section_id)}</p>
+          {item.topic ? <Link href={topicPath(item.topic.title, item.topic.id)}>Track topic →</Link> : null}
+        </div>
+        <h1>{signalLink(item, item.headline)}</h1>
         {current !== null ? (
           <div className="hero-change" aria-label={changeLabel(start, current, delta)}>
             {start !== null ? <span>{formatPercent(start)}</span> : null}
@@ -64,62 +71,23 @@ export function SignalHero({ item, onEvidence }: ComponentProps) {
           </div>
         ) : null}
 
-        {series.length >= 2 ? (
-          <ProbabilityChart points={series} title={`${item.headline} probability series`} />
+        {chartSeries && quality ? (
+          <ProbabilityChart points={chartSeries} quality={quality} title={`${item.headline} probability series`} />
         ) : current !== null ? (
-          <ProbabilityScale current={current} start={start} />
+          <ProbabilityDirection delta={delta} seriesStatus={quality?.coverageStatus ?? "unverified"} />
         ) : null}
       </div>
 
-      <div className="hero-layers">
-        <HeroLayer
-          item={item}
-          label="Observed"
-          onEvidence={onEvidence}
-          text={observation || "The verified observation is recorded in the Claim."}
-        />
-        <HeroLayer
-          item={item}
-          label="Analysis"
-          onEvidence={onEvidence}
-          text={analysis || "No additional analytical inference was published."}
-        />
-        <HeroLayer
-          item={item}
-          label="Open Signal assessment"
-          onEvidence={onEvidence}
-          text={assessment || "The Claim is presented without an additional editorial assessment."}
-        />
+      <div className="hero-brief">
+        <section>
+          <p className="eyebrow">Observed</p>
+          <p>{observation || "The verified observation is recorded in the Signal."}</p>
+        </section>
+        {analysis ? <section><p className="eyebrow">Analysis</p><p>{analysis}</p></section> : null}
+        {assessment ? <section><p className="eyebrow">Assessment</p><p>{assessment}</p></section> : null}
+        <TrustLine item={item} onEvidence={onEvidence} prominent />
       </div>
     </article>
-  );
-}
-
-function HeroLayer({ item, label, text, onEvidence }: ComponentProps & { label: string; text: string }) {
-  const isObservation = label === "Observed";
-  return (
-    <section className="hero-layer">
-      <p className="eyebrow">{label}</p>
-      <p className="hero-layer-copy">{text}</p>
-      <dl className="hero-layer-meta">
-        {isObservation ? <><dt>Source</dt><dd>{item.trust.source_label}</dd></> : null}
-        <dt>Confidence</dt><dd>{confidence(item)}</dd>
-        {isObservation ? <><dt>Evidence</dt><dd>{item.trust.evidence_count}</dd></> : null}
-        <dt>{isObservation ? "Data as of" : "Assessed"}</dt>
-        <dd>{formatRelativeTime(isObservation ? item.times.data_as_of : item.times.assessed_at)}</dd>
-      </dl>
-      {item.trust.claim_id ? (
-        <button
-          aria-label={isObservation ? "View full evidence" : `Open ${label} evidence`}
-          className="layer-evidence"
-          onClick={(event) => onEvidence(item.trust.claim_id!, event.currentTarget)}
-          type="button"
-        >
-          <span>{isObservation ? "View full evidence" : "Open evidence"}</span>
-          <Icon name="arrow" size={18} />
-        </button>
-      ) : null}
-    </section>
   );
 }
 
@@ -133,7 +101,7 @@ function SecondarySignal({ item, onEvidence }: ComponentProps) {
   return (
     <article className={`publication-module secondary-signal ${sectionClass(item.section_id)}`} data-component-family={item.component_family}>
       <p className="eyebrow">Secondary signal · {sectionName(item.section_id)}</p>
-      <h2>{item.headline}</h2>
+      <h2>{signalLink(item, item.headline)}</h2>
       {current !== null ? (
         <p className="secondary-change">
           {start !== null ? <><span>{formatPercent(start)}</span><span>→</span></> : null}
@@ -159,6 +127,8 @@ export function TimeSeries({ item, onEvidence }: ComponentProps) {
     current !== null && start !== null ? current - start : null
   );
   const series = seriesPoints(fields.series);
+  const quality = seriesQuality(fields.series_quality);
+  const chartSeries = quality?.coverageStatus === "complete" ? chartableSeries(series) : null;
   return (
     <article className={`publication-module time-series-module ${sectionClass(item.section_id)}`} data-component-family="time-series">
       <ModuleHeading item={item} title="Probability move" />
@@ -168,10 +138,10 @@ export function TimeSeries({ item, onEvidence }: ComponentProps) {
         {current !== null ? <strong>{formatPercent(current)}</strong> : null}
         {delta !== null ? <small>{signed(delta)} percentage points</small> : null}
       </div>
-      {series.length >= 2 ? (
-        <ProbabilityChart points={series} title={`${item.headline} time series`} compact />
+      {chartSeries && quality ? (
+        <ProbabilityChart points={chartSeries} quality={quality} title={`${item.headline} time series`} compact />
       ) : current !== null ? (
-        <ProbabilityScale current={current} start={start} />
+        <ProbabilityDirection delta={delta} seriesStatus={quality?.coverageStatus ?? "unverified"} />
       ) : (
         <p className="module-copy">{string(fields.observation ?? fields.analysis ?? item.dek) || "Verified change; no chart series was published."}</p>
       )}
@@ -230,21 +200,24 @@ export function SignalFeedRow({ item, onEvidence }: ComponentProps) {
   const changed = string(fields.change_value ?? fields.current_state);
   return (
     <article className={`feed-row ${sectionClass(item.section_id)}`} data-component-family="signal-feed">
-      <time dateTime={item.times.data_as_of ?? undefined}>{shortTime(item.times.data_as_of ?? item.times.assessed_at)}</time>
+      <time dateTime={item.times.data_as_of ?? undefined}>{formatRelativeTime(item.times.data_as_of ?? item.times.assessed_at)}</time>
       <div className="feed-copy">
         <span className="section-name">{sectionName(item.section_id)}</span>
-        <button
-          className="feed-headline"
-          disabled={!item.trust.claim_id}
-          onClick={(event) => item.trust.claim_id && onEvidence(item.trust.claim_id, event.currentTarget)}
-          type="button"
-        >
-          {item.headline}
-        </button>
+        {item.trust.claim_id ? (
+          <Link className="feed-headline" href={signalPath(item.headline, item.trust.claim_id)}>{item.headline}</Link>
+        ) : <span className="feed-headline">{item.headline}</span>}
       </div>
       <span className={`feed-state trend-${trend || "neutral"}`}>
         {trend === "up" ? "↑ up" : trend === "down" ? "↓ down" : changed || "verified"}
       </span>
+      {item.trust.claim_id ? (
+        <button
+          aria-label={`Open evidence for ${item.headline}`}
+          className="feed-evidence"
+          onClick={(event) => onEvidence(item.trust.claim_id!, event.currentTarget)}
+          type="button"
+        ><Icon name="evidence" size={14} /></button>
+      ) : null}
     </article>
   );
 }
@@ -333,6 +306,8 @@ export function TrustLine({ item, onEvidence, prominent = false }: ComponentProp
       <span><b>Evidence</b> {item.trust.evidence_count}</span>
       <span title={formatDateTime(item.times.data_as_of)}><b>Data as of</b> {formatRelativeTime(item.times.data_as_of)}</span>
       {item.freshness_state === "aging" ? <span className="aging-label">Aging · still valid</span> : null}
+      {item.topic ? <Link className="record-link" href={topicPath(item.topic.title, item.topic.id)}>Topic</Link> : null}
+      {claimId ? <Link className="record-link" href={signalPath(item.headline, claimId)}>Signal record</Link> : null}
       {claimId ? (
         <button
           className="evidence-button"
@@ -352,18 +327,25 @@ function ModuleHeading({ item, title }: { item: RenderPlanItem; title: string })
   return (
     <header className="module-heading">
       <p className="eyebrow">{title}</p>
-      <h2>{item.headline}</h2>
+      <h2>{signalLink(item, item.headline)}</h2>
       {item.dek ? <p>{item.dek}</p> : null}
     </header>
   );
 }
 
+function signalLink(item: RenderPlanItem, label: string) {
+  const claimId = item.trust.claim_id;
+  return claimId ? <Link href={signalPath(label, claimId)}>{label}</Link> : label;
+}
+
 function ProbabilityChart({
   points,
+  quality,
   title,
   compact = false,
 }: {
-  points: ChartPoint[];
+  points: TemporalChartPoint[];
+  quality: ChartQuality;
   title: string;
   compact?: boolean;
 }) {
@@ -375,15 +357,24 @@ function ProbabilityChart({
   const bottom = 34;
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
-  const coordinates = points.map((point, index) => ({
+  const firstTimestamp = points[0].timestamp;
+  const lastTimestamp = points.at(-1)!.timestamp;
+  const temporalRange = lastTimestamp - firstTimestamp;
+  const coordinates = points.map((point) => ({
     ...point,
-    x: left + (index / Math.max(points.length - 1, 1)) * plotWidth,
+    x: left + ((point.timestamp - firstTimestamp) / temporalRange) * plotWidth,
     y: top + (1 - Math.max(0, Math.min(100, point.value)) / 100) * plotHeight,
   }));
   const path = coordinates.map((point, index) => `${index ? "L" : "M"}${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(" ");
   const first = coordinates[0];
-  const last = coordinates.at(-1);
-  const labels = [points[0], points[Math.floor((points.length - 1) / 2)], points.at(-1)].filter(Boolean) as ChartPoint[];
+  const last = coordinates.at(-1)!;
+  const midpoint = firstTimestamp + temporalRange / 2;
+  const middle = coordinates.reduce((nearest, point) => (
+    Math.abs(point.timestamp - midpoint) < Math.abs(nearest.timestamp - midpoint) ? point : nearest
+  ));
+  const labels = [first, middle, last].filter(
+    (point, index, selected) => selected.findIndex((candidate) => candidate.timestamp === point.timestamp) === index
+  );
 
   return (
     <figure className="probability-chart">
@@ -400,26 +391,47 @@ function ProbabilityChart({
         <line className="chart-axis-line" x1={left} x2={left} y1={top} y2={height - bottom} />
         <line className="chart-axis-line" x1={left} x2={width - right} y1={height - bottom} y2={height - bottom} />
         <path className="chart-line" d={path} />
+        {coordinates.map((point, index) => (
+          <circle className="chart-sample" cx={point.x} cy={point.y} key={`${point.label}-${index}`} r="1.6" />
+        ))}
         {first ? <circle className="chart-point chart-point-start" cx={first.x} cy={first.y} r="4" /> : null}
         {last ? <circle className="chart-point" cx={last.x} cy={last.y} r="5" /> : null}
         {labels.map((point, index) => (
-          <text className="chart-date" key={`${point.label}-${index}`} textAnchor={index === 0 ? "start" : index === labels.length - 1 ? "end" : "middle"} x={left + (index / Math.max(labels.length - 1, 1)) * plotWidth} y={height - 10}>
+          <text className="chart-date" key={`${point.label}-${index}`} textAnchor={index === 0 ? "start" : index === labels.length - 1 ? "end" : "middle"} x={point.x} y={height - 10}>
             {point.label}
           </text>
         ))}
       </svg>
+      <figcaption>{`${quality.windowHours / 24}d · ${quality.observationCount} source observations · no interpolation`}</figcaption>
     </figure>
   );
 }
 
-function ProbabilityScale({ current, start }: { current: number; start: number | null }) {
+function ProbabilityDirection({
+  delta,
+  seriesStatus,
+}: {
+  delta: number | null;
+  seriesStatus: string;
+}) {
+  const glyph = delta === null ? "—" : Math.abs(delta) < 0.05 ? "→" : delta > 0 ? "↗" : "↘";
+  const directionClass = delta === null || Math.abs(delta) < 0.05
+    ? "trend-neutral"
+    : delta > 0 ? "trend-up" : "trend-down";
+  const label = delta === null
+    ? "No historical baseline is available; no curve is shown."
+    : `${signed(delta)} percentage points over 24 hours. Full seven-day series unavailable; no curve is shown.`;
   return (
-    <div className="probability-scale" aria-label={`Current probability ${formatPercent(current)}`}>
-      <div className="scale-track">
-        {start !== null ? <span className="scale-start" style={{ insetInlineStart: `${clamp(start)}%` }} /> : null}
-        <span className="scale-current" style={{ insetInlineStart: `${clamp(current)}%` }} />
-      </div>
-      <div className="scale-labels"><span>0%</span><span>50%</span><span>100%</span></div>
+    <div
+      aria-label={label}
+      className={`probability-direction ${directionClass}`}
+      data-series-status={seriesStatus}
+    >
+      <span aria-hidden="true">{glyph}</span>
+      <p>
+        <strong>{delta === null ? "Current point only" : `${signed(delta)}pp · 24h`}</strong>
+        <small>Direction only · complete 7d history unavailable</small>
+      </p>
     </div>
   );
 }
@@ -429,7 +441,9 @@ interface ComponentProps {
   onEvidence: OpenEvidence;
 }
 
-interface ChartPoint { label: string; value: number }
+interface ChartPoint { label: string; value: number; timestamp: number | null }
+interface TemporalChartPoint extends ChartPoint { timestamp: number }
+interface ChartQuality { coverageStatus: string; observationCount: number; windowHours: number }
 interface Stage { label: string; date?: string; detail?: string; current: boolean }
 interface TimelineEvent { date?: string; title: string; source?: string }
 
@@ -439,16 +453,44 @@ function seriesPoints(value: unknown): ChartPoint[] {
   for (const [index, raw] of value.entries()) {
     if (Array.isArray(raw)) {
       const numeric = probability(raw[1]);
-      if (numeric !== null) points.push({ label: shortDate(raw[0]) || String(index + 1), value: numeric });
+      if (numeric !== null) points.push({
+        label: shortDate(raw[0]) || String(index + 1),
+        timestamp: parseTimestamp(raw[0]),
+        value: numeric,
+      });
       continue;
     }
     if (raw && typeof raw === "object") {
       const record = raw as JsonRecord;
       const numeric = probability(record.value ?? record.probability ?? record.y ?? record.current_probability);
-      if (numeric !== null) points.push({ label: shortDate(record.timestamp ?? record.date ?? record.x) || String(index + 1), value: numeric });
+      const rawTimestamp = record.timestamp ?? record.date ?? record.x;
+      if (numeric !== null) points.push({
+        label: shortDate(rawTimestamp) || String(index + 1),
+        timestamp: parseTimestamp(rawTimestamp),
+        value: numeric,
+      });
     }
   }
   return points;
+}
+
+function seriesQuality(value: unknown): ChartQuality | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as JsonRecord;
+  const coverageStatus = string(record.coverage_status);
+  const observationCount = number(record.observation_count);
+  const windowHours = number(record.requested_window_hours);
+  if (!coverageStatus || observationCount === null || windowHours === null) return null;
+  return { coverageStatus, observationCount, windowHours };
+}
+
+function chartableSeries(points: ChartPoint[]): TemporalChartPoint[] | null {
+  if (points.length < 2 || points.some((point) => point.timestamp === null)) return null;
+  const temporal = points as TemporalChartPoint[];
+  if (temporal.some((point, index) => index > 0 && point.timestamp <= temporal[index - 1].timestamp)) return null;
+  const values = points.map((point) => point.value);
+  const distinct = new Set(values.map((value) => value.toFixed(2))).size;
+  return distinct >= 3 && Math.max(...values) - Math.min(...values) >= 0.5 ? temporal : null;
 }
 
 function transitionStages(fields: JsonRecord): Stage[] {
@@ -497,6 +539,12 @@ function number(value: unknown): number | null {
   return null;
 }
 
+function parseTimestamp(value: unknown): number | null {
+  if (typeof value !== "string" && typeof value !== "number" && !(value instanceof Date)) return null;
+  const parsed = value instanceof Date ? value.getTime() : new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function string(value: unknown): string {
   if (typeof value === "string") return value;
   if (typeof value === "number" || typeof value === "boolean") return String(value);
@@ -509,10 +557,6 @@ function formatPercent(value: number): string {
 
 function signed(value: number): string {
   return `${value > 0 ? "+" : ""}${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}`;
-}
-
-function clamp(value: number): number {
-  return Math.max(0, Math.min(100, value));
 }
 
 function changeLabel(start: number | null, current: number, delta: number | null): string {
@@ -546,11 +590,4 @@ function shortDate(value: unknown): string {
   const date = new Date(raw);
   if (Number.isNaN(date.getTime())) return raw;
   return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(date);
-}
-
-function shortTime(value: string | null | undefined): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(date);
 }

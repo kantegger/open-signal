@@ -2,8 +2,8 @@
 
 Composes a render plan from verified claims enforcing:
 - eligibility: only status=verified claims (failed ones never reach here)
-- deduplication: a claim appears at most once per edition
-- section diversity: cap per section
+- deduplication: one full presentation plus at most one compact index echo
+- section diversity: cap full editorial surfaces per section
 - repetition: no consecutive repeats of the same component family
 - slot compatibility: via SlotFiller (maturity + claim-type permission)
 - fallback: unavailable component falls back per registry fallback rules
@@ -133,19 +133,27 @@ class EditionComposer:
         if not eligible:
             raise ComposeError("no eligible (verified) candidates")
 
-        # 2. deduplication — one claim per edition
-        seen_claims: set[str] = set()
+        # 2. deduplication — one primary presentation and, optionally, one
+        # compact index echo.  The echo makes a featured Claim discoverable in
+        # a scan surface without manufacturing a second Claim.
+        seen_claims: set[tuple[str, str]] = set()
         deduped = []
-        for c in eligible:
-            cid = c.get("claim_id")
-            if cid in seen_claims:
+        for index, c in enumerate(eligible):
+            cid = str(c.get("claim_id") or f"anonymous:{index}")
+            role = _presentation_role(c)
+            key = (cid, role)
+            if key in seen_claims:
                 continue
-            seen_claims.add(cid)
+            seen_claims.add(key)
             deduped.append(c)
 
-        # 3. section diversity — cap per section
+        # 3. section diversity — cap only full editorial surfaces.  Compact
+        # feeds and indices are intentionally list-shaped and may repeat a
+        # Section while preserving the editorial cap above them.
         section_counts: dict[str, int] = {}
         for c in deduped:
+            if c.get("slot_id") not in {"lead", "secondary", "main"}:
+                continue
             section = c.get("section_id") or "default"
             section_counts[section] = section_counts.get(section, 0) + 1
             if section_counts[section] > self.section_cap:
@@ -175,8 +183,13 @@ class EditionComposer:
                 warnings.append(f"slot capacity reached: {slot_id}")
                 continue
 
-            # repetition rule: same family twice in a row *for the same slot*
-            if last_family.get(slot_id) == family:
+            # Repetition is an editorial-layout rule.  Feed/table slots are
+            # intentionally homogeneous and would otherwise collapse to one
+            # row despite declaring multi-item capacity.
+            if (
+                slot_id in {"lead", "secondary", "main"}
+                and last_family.get(slot_id) == family
+            ):
                 warnings.append(
                     f"repetition avoided: {family} consecutive in {slot_id}"
                 )
@@ -214,3 +227,10 @@ class EditionComposer:
         candidate["component_version"] = fb.version
         candidate["_fallback_from"] = component_id
         return candidate
+
+
+def _presentation_role(candidate: dict[str, Any]) -> str:
+    explicit = candidate.get("presentation_role")
+    if explicit == "index_echo" or candidate.get("slot_id") == "digest":
+        return "index_echo"
+    return "primary"

@@ -6,17 +6,15 @@ import { copy } from "../lib/i18n";
 import { Icon, type IconName } from "./icons";
 
 const navigation: Array<{
+  key: string;
   label: string;
   href: string;
   icon: IconName;
-  section?: string;
 }> = [
-  { label: copy.en.current, href: "/", icon: "pulse" },
-  { label: copy.en.expectations, href: "/#expectations", icon: "trend", section: "expectations" },
-  { label: copy.en.rules, href: "/#rules", icon: "document", section: "rules" },
-  { label: copy.en.research, href: "/#research", icon: "search", section: "research" },
-  { label: copy.en.method, href: "/#method", icon: "method" },
-  { label: copy.en.archive, href: "/#archive", icon: "archive" },
+  { key: "current", label: copy.en.current, href: "/", icon: "pulse" },
+  { key: "explore", label: "Explore", href: "/explore", icon: "search" },
+  { key: "archive", label: copy.en.archive, href: "/editions", icon: "archive" },
+  { key: "method", label: copy.en.method, href: "/method", icon: "method" },
 ];
 
 export function SiteShell({
@@ -43,53 +41,59 @@ export function SiteShell({
     <div className="site-frame">
       <a className="skip-link" href="#main-content">Skip to publication</a>
 
-      <aside className="site-rail" aria-label="Primary navigation">
-        <Brand />
-        <nav className="rail-navigation">
-          {navigation.map((item) => {
-            const itemActive = active === (item.section ?? item.label.toLowerCase());
-            return (
-              <Link
-                aria-current={itemActive ? "page" : undefined}
-                className={`rail-link${itemActive ? " is-active" : ""}`}
-                href={item.href}
-                key={item.label}
-              >
-                <Icon name={item.icon} size={23} />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="rail-status">
-          <span className={`status-dot status-${systemState}`} />
-          <span>{copy.en.systemStatus}</span>
-          <small>{systemState}</small>
+      <header className="site-header">
+        <div className="site-header-inner">
+          <Brand />
+          <nav aria-label="Primary navigation" className="primary-navigation">
+            {navigation.map((item) => {
+              const itemActive = active === item.key;
+              return (
+                <Link
+                  aria-current={itemActive ? "page" : undefined}
+                  className={`primary-link${itemActive ? " is-active" : ""}`}
+                  href={item.href}
+                  key={item.key}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+          <div className="header-status" aria-label={`${copy.en.systemStatus}: ${systemState}`}>
+            <span className={`status-dot status-${systemState}`} />
+            <span>{systemState}</span>
+          </div>
+          <button
+            aria-controls="mobile-navigation"
+            aria-expanded={menuOpen}
+            aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+            className="icon-button mobile-menu-button"
+            onClick={() => setMenuOpen((value) => !value)}
+            type="button"
+          >
+            <Icon name={menuOpen ? "close" : "menu"} size={24} />
+          </button>
         </div>
-      </aside>
-
-      <header className="mobile-header">
-        <Brand compact />
-        <button
-          aria-controls="mobile-navigation"
-          aria-expanded={menuOpen}
-          aria-label={menuOpen ? "Close navigation" : "Open navigation"}
-          className="icon-button mobile-menu-button"
-          onClick={() => setMenuOpen((value) => !value)}
-          type="button"
-        >
-          <Icon name={menuOpen ? "close" : "menu"} size={28} />
-        </button>
         <nav
+          aria-label="Mobile navigation"
           className={`mobile-navigation${menuOpen ? " is-open" : ""}`}
           id="mobile-navigation"
         >
-          {navigation.map((item) => (
-            <Link href={item.href} key={item.label} onClick={() => setMenuOpen(false)}>
-              <Icon name={item.icon} size={20} />
-              {item.label}
-            </Link>
-          ))}
+          {navigation.map((item) => {
+            const itemActive = active === item.key;
+            return (
+              <Link
+                aria-current={itemActive ? "page" : undefined}
+                className={itemActive ? "is-active" : undefined}
+                href={item.href}
+                key={item.key}
+                onClick={() => setMenuOpen(false)}
+              >
+                <Icon name={item.icon} size={19} />
+                {item.label}
+              </Link>
+            );
+          })}
           <p><span className={`status-dot status-${systemState}`} /> {systemState}</p>
         </nav>
       </header>
@@ -101,9 +105,9 @@ export function SiteShell({
   );
 }
 
-function Brand({ compact = false }: { compact?: boolean }) {
+function Brand() {
   return (
-    <Link className={`brand${compact ? " brand-compact" : ""}`} href="/" aria-label="Open Signal home">
+    <Link className="brand" href="/" aria-label="Open Signal home">
       <span className="brand-name">Open Signal</span>
       <span className="brand-beta">Public Beta</span>
     </Link>

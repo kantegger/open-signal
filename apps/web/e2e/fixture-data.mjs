@@ -56,6 +56,12 @@ const item = ({ id, slot, position = 0, section, family, component, headline, fi
     unresolved_questions: ["Whether the change persists after the next release."],
     known_limitations: ["The current window covers seven days."],
   },
+  topic: section === "expectations-moved" ? {
+    id: ids.topic,
+    title: "Will the Federal Reserve cut rates by September?",
+    event_type: "monetary_policy",
+    resolution_deadline_at: validUntil,
+  } : null,
   locale: { requested: "en", published: "en", fallback_used: false },
 });
 
@@ -70,18 +76,236 @@ const ids = {
   evidence: "88888888-8888-4888-8888-888888888888",
   resolution: "99999999-9999-4999-8999-999999999999",
   archive: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  topic: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
 };
 
-const series = [
-  ["2026-08-01T00:00:00Z", 0.64],
-  ["2026-08-02T00:00:00Z", 0.66],
-  ["2026-08-03T00:00:00Z", 0.66],
-  ["2026-08-04T00:00:00Z", 0.67],
-  ["2026-08-05T00:00:00Z", 0.70],
-  ["2026-08-06T00:00:00Z", 0.78],
-  ["2026-08-07T00:00:00Z", 0.84],
-  ["2026-08-08T00:00:00Z", 0.85],
+const expectationSeriesTimestamps = Array.from({ length: 29 }, (_, index) => (
+  new Date(fixtureNow - (28 - index) * 6 * 60 * 60_000).toISOString()
+));
+const observedVariation = [0, 0.8, -0.35, 0.5, -0.65, 0.3, -0.15, 0.7, -0.45];
+
+const seriesFor = (baseline, current, variant) => {
+  const sevenDayStart = baseline - (current - baseline) * 0.35;
+  const variationScale = Math.min(0.012, Math.max(0.003, Math.abs(current - baseline) * 0.12));
+  return expectationSeriesTimestamps.map((timestamp, index) => {
+    const anchored = index <= 24
+      ? sevenDayStart + (baseline - sevenDayStart) * index / 24
+      : baseline + (current - baseline) * (index - 24) / 4;
+    const isAnchor = index === 24 || index === 28;
+    const variation = isAnchor ? 0 : observedVariation[(index + variant) % observedVariation.length] * variationScale;
+    return [timestamp, Number(Math.min(0.99, Math.max(0.01, anchored + variation)).toFixed(3))];
+  });
+};
+
+const seriesQuality = (observations, coverageStatus) => {
+  const values = observations.map((point) => point[1]);
+  const timestamps = observations.map((point) => new Date(point[0]).getTime());
+  const gaps = timestamps.slice(1).map((timestamp, index) => timestamp - timestamps[index]);
+  return {
+    coverage_status: coverageStatus,
+    requested_window_hours: 168,
+    observation_count: observations.length,
+    points_returned: observations.length,
+    first_observed_at: observations.at(0)?.[0] ?? null,
+    last_observed_at: observations.at(-1)?.[0] ?? null,
+    span_hours: timestamps.length > 1 ? (timestamps.at(-1) - timestamps[0]) / 3_600_000 : 0,
+    max_gap_hours: gaps.length ? Math.max(...gaps) / 3_600_000 : 0,
+    probability_range_percentage_points: values.length
+      ? Number(((Math.max(...values) - Math.min(...values)) * 100).toFixed(2))
+      : 0,
+  };
+};
+
+const expectationObservations = [
+  [ids.topic, "Will the Federal Reserve cut rates by September?", "monetary_policy", 0.85, 21, 0.64],
+  ["f1111111-1111-4111-8111-111111111111", "Will U.S. headline inflation fall below 3% this quarter?", "macroeconomics", 0.58, -4, 0.62],
+  ["f2222222-2222-4222-8222-222222222222", "Will the EU publish the next AI Act implementation guidance this month?", "regulation", 0.73, 6, 0.67],
+  ["f3333333-3333-4333-8333-333333333333", "Will a solid-state battery pilot clear its next energy-density milestone?", "research", 0.41, 3, 0.38],
+  ["f4444444-4444-4444-8444-444444444444", "Will the Bank of England hold its policy rate at the next meeting?", "monetary_policy", 0.69, 2.4, 0.666],
+  ["f5555555-5555-4555-8555-555555555555", "Will U.S. GDP growth remain above 2% this quarter?", "macroeconomics", 0.62, -1.8, 0.638],
+  ["f6666666-6666-4666-8666-666666666666", "Will an AI model top the current reasoning benchmark this month?", "technology", 0.54, 8.2, 0.458],
+  ["f7777777-7777-4777-8777-777777777777", "Will the next climate disclosure rule survive judicial review?", "regulation", 0.47, -5.1, 0.521],
+].map(([id, title, eventType, probability, delta, baseline], index) => {
+  const completeSeries = seriesFor(baseline, probability, index);
+  let capturedSeries = completeSeries;
+  let coverageStatus = "complete";
+  if (index === 3) {
+    capturedSeries = completeSeries.slice(-11);
+    coverageStatus = "insufficient_observations";
+  } else if (index === 4) {
+    capturedSeries = completeSeries.slice(-24);
+    coverageStatus = "partial_window";
+  } else if (index === 5) {
+    capturedSeries = completeSeries.map(([timestamp]) => [timestamp, probability]);
+    coverageStatus = "no_material_variation";
+  } else if (index === 6) {
+    capturedSeries = completeSeries.slice(0, -3);
+    coverageStatus = "stale_endpoint";
+  } else if (index === 7) {
+    capturedSeries = [];
+    coverageStatus = "insufficient_observations";
+  }
+  return {
+    id,
+    title,
+    event_type: eventType,
+    resolution_deadline_at: validUntil,
+    status: "active",
+    updated_at: dataAsOf,
+    source_market_count: 1,
+    source_market_status: "active",
+    source_label: "Polymarket",
+    current_probability: probability,
+    current_observed_at: dataAsOf,
+    baseline_probability_24h: baseline,
+    baseline_observed_at: previousComposedAt,
+    delta_24h_percentage_points: delta,
+    series: capturedSeries,
+    series_quality: seriesQuality(capturedSeries, coverageStatus),
+  };
+});
+
+const leadSeries = seriesFor(0.64, 0.85, 9).slice(-11);
+const leadSeriesQuality = seriesQuality(leadSeries, "insufficient_observations");
+const secondarySeries = seriesFor(0.55, 0.68, 8).slice(-11);
+const secondarySeriesQuality = seriesQuality(secondarySeries, "insufficient_observations");
+
+const judgmentStatements = [
+  [ids.lead, "expectations-moved", "September rate cut repriced to 85%.", "up", "+21.0pp", "CME FedWatch"],
+  [ids.time, "expectations-moved", "Q3 GDP nowcast moved above its prior range.", "up", "+13.0pp", "Atlanta Fed GDPNow"],
+  [ids.state, "rules-moved", "EU AI Act implementation phase is effective.", "neutral", "adopted → effective", "Official Journal of the EU"],
+  [ids.feed1, "expectations-moved", "Headline inflation below 3% became less likely.", "down", "-4.0pp", "Polymarket"],
+  [ids.feed2, "rules-moved", "Two adopted rules become effective this week.", "neutral", null, "Federal Register"],
+  [ids.feed3, "research-frontier", "Battery materials work crossed into pilot evidence.", "up", null, "OpenAlex"],
+  [ids.document, "rules-moved", "Article 5 expanded the prohibited-practices test.", "neutral", null, "Official Journal of the EU"],
+  [ids.evidence, "research-frontier", "Independent replication appeared for the battery benchmark.", "up", null, "OpenAlex"],
+  [ids.resolution, "expectations-moved", "EU AI implementation forecast resolved in line with the recorded probability.", "neutral", null, "Open Signal resolver"],
+  ["12121212-1212-4212-8212-121212121212", "rules-moved", "Cybersecurity reporting requirements entered final review.", "neutral", "proposed → review", "Federal Register"],
+  ["13131313-1313-4313-8313-131313131313", "expectations-moved", "A new reasoning benchmark leader became more likely.", "up", "+8.2pp", "Polymarket"],
+  ["14141414-1414-4414-8414-141414141414", "rules-moved", "Climate disclosure litigation moved to merits briefing.", "neutral", "filed → briefing", "Federal Register"],
+].map(([id, sectionId, statement, direction, change, sourceLabel], index) => ({
+  id,
+  section_id: sectionId,
+  claim_type: sectionId === "rules-moved" ? "source_fact" : "derived_observation",
+  statement,
+  direction,
+  change,
+  confidence: 0.86,
+  confidence_label: index % 4 === 0 ? "medium-high" : "high",
+  epistemic_status: "verified observation",
+  status: "verified",
+  source_label: sourceLabel,
+  evidence_count: 3 + index % 5,
+  issued_at: assessedAt,
+  updated_at: assessedAt,
+  valid_until: validUntil,
+}));
+
+const ruleWatch = [
+  ["rw-1", "EU AI Act implementation guidance", "adopted", "effective", "European Commission", "EU"],
+  ["rw-2", "Cyber incident reporting requirements", "proposed", "final review", "CISA", "US"],
+  ["rw-3", "Climate disclosure implementation schedule", "filed", "briefing", "SEC", "US"],
+  ["rw-4", "Professional fireworks certification rule", "proposed", "final", "Transportation Department", "US"],
+  ["rw-5", "Pesticide tolerance exemption", "proposed", "final", "EPA", "US"],
+  ["rw-6", "Class D and E airspace amendment", "notice", "final", "FAA", "US"],
+].map(([id, title, previousState, currentState, authority, jurisdiction]) => ({
+  id,
+  title,
+  rule_type: "rule",
+  previous_state: previousState,
+  current_state: currentState,
+  announced_at: previousComposedAt,
+  adopted_at: assessedAt,
+  effective_at: validUntil,
+  enforcement_at: null,
+  updated_at: assessedAt,
+  authority,
+  jurisdiction,
+  transition_at: assessedAt,
+  transition_confidence: 0.96,
+  source_label: "Federal Register",
+}));
+
+const researchWatch = [
+  {
+    id: "rs-1", candidate_type: "institution_entry",
+    headline: "New institutional output appeared in Generative AI and foundation models",
+    entity: "Microsoft Research Asia", topic_label: "Generative AI and foundation models",
+    topic_ids: ["generative-ai"], metric: "0 → 5 works", direction: "up",
+    window_label: "2025–2026 YTD", baseline_label: "Before 2025", evidence_count: 5,
+    screening_stage: "investigated", source_label: "OpenAlex", detected_at: assessedAt,
+  },
+  {
+    id: "rs-2", candidate_type: "institution_entry",
+    headline: "Institutional research activity accelerated in Quantum computing",
+    entity: "Xanadu", topic_label: "Quantum computing", topic_ids: ["quantum-computing"],
+    metric: "4 → 18 works", direction: "up", window_label: "2025–2026 YTD",
+    baseline_label: "Before 2025", evidence_count: 18, screening_stage: "detected",
+    source_label: "OpenAlex", detected_at: assessedAt,
+  },
+  {
+    id: "rs-3", candidate_type: "stage_transition",
+    headline: "Oncology immunotherapy trials span Phase 1 and Phase 2",
+    entity: "National Cancer Institute", topic_label: "Oncology immunotherapy",
+    topic_ids: ["oncology-immunotherapy"], metric: "2 phases · 7 studies", direction: "neutral",
+    window_label: "Registry portfolio as of Aug 2026", baseline_label: "Cross-sectional phase coverage",
+    evidence_count: 7, screening_stage: "investigated", source_label: "ClinicalTrials.gov",
+    detected_at: assessedAt,
+  },
+  {
+    id: "rs-4", candidate_type: "stage_transition",
+    headline: "Synthetic biology trials span Early Phase 1 and Phase 2",
+    entity: "Orchard Therapeutics", topic_label: "Synthetic biology", topic_ids: ["synthetic-biology"],
+    metric: "2 phases · 4 studies", direction: "neutral", window_label: "Registry portfolio as of Aug 2026",
+    baseline_label: "Cross-sectional phase coverage", evidence_count: 4, screening_stage: "detected",
+    source_label: "ClinicalTrials.gov", detected_at: assessedAt,
+  },
+  {
+    id: "rs-5", candidate_type: "cross_topic_relation",
+    headline: "Research connections increased: Generative AI and foundation models × Oncology immunotherapy",
+    entity: "Cross-topic literature", topic_label: "Generative AI and foundation models × Oncology immunotherapy",
+    topic_ids: ["generative-ai", "oncology-immunotherapy"], metric: "2 → 9 papers", direction: "up",
+    window_label: "2025–2026 YTD", baseline_label: "Before 2025", evidence_count: 9,
+    screening_stage: "investigated", source_label: "OpenAlex", detected_at: assessedAt,
+  },
+  {
+    id: "rs-6", candidate_type: "cross_topic_relation",
+    headline: "Research connections increased: Quantum computing × Synthetic biology",
+    entity: "Cross-topic literature", topic_label: "Quantum computing × Synthetic biology",
+    topic_ids: ["quantum-computing", "synthetic-biology"], metric: "1 → 4 papers", direction: "up",
+    window_label: "2025–2026 YTD", baseline_label: "Before 2025", evidence_count: 4,
+    screening_stage: "detected", source_label: "OpenAlex", detected_at: assessedAt,
+  },
 ];
+
+const publicationContext = {
+  version: "1.2.0",
+  snapshot_bound: true,
+  captured_at: composedAt,
+  counts: {
+    verified_claims: judgmentStatements.length,
+    expectation_observations: expectationObservations.length,
+    rules_tracked: ruleWatch.length,
+    research_screening: 12,
+    source_records_24h: 266,
+  },
+  claims: judgmentStatements,
+  expectations: expectationObservations,
+  rules: ruleWatch,
+  research: researchWatch,
+  coverage: [
+    ["openalex", "OpenAlex", 220, 220],
+    ["federal-register", "Federal Register", 40, 34],
+    ["polymarket-gamma", "Polymarket", 8, 8],
+    ["clinicaltrials-gov", "ClinicalTrials.gov", 6, 4],
+  ].map(([source_slug, source_label, records_total, records_24h]) => ({
+    source_slug,
+    source_label,
+    records_total,
+    records_24h,
+    latest_ingested_at: dataAsOf,
+  })),
+};
 
 export const frontPageFixture = {
   snapshot: {
@@ -112,19 +336,20 @@ export const frontPageFixture = {
     channel_updated_at: composedAt,
   },
   sections: ["expectations-moved", "rules-moved", "research-frontier"],
+  publication_context: publicationContext,
   slots: [
     {
       id: "lead-region", type: "lead", size: "lead_large", required: true, collapsible: false, desktop_order: 10, mobile_order: 10,
       items: [item({
         id: "plan-lead", slot: "lead", section: "expectations-moved", family: "signal-hero", component: "signal-hero.expectations", claimId: ids.lead,
         headline: "September rate cut became 21 points more likely.", source: "CME FedWatch",
-        fields: { expectation_title: "September rate cut", headline: "September rate cut became 21 points more likely.", start_probability: 64, current_probability: 85, delta_percentage_points: 21, window: "past 7 days", series, observation: "Three sustained upward moves occurred in the period.", analysis: "The repricing persisted after the initial spike.", assessment: "The system does not infer participant motivation.", trend: "up" },
+        fields: { expectation_title: "September rate cut", headline: "September rate cut became 21 points more likely.", start_probability: 64, current_probability: 85, delta_percentage_points: 21, window: "past 24 hours", series: leadSeries, series_quality: leadSeriesQuality, observation: "Three sustained upward moves occurred in the period.", analysis: "The repricing persisted after the initial spike.", assessment: "The system does not infer participant motivation.", trend: "up" },
       })],
     },
     {
       id: "secondary-signals", type: "secondary", size: "medium", required: true, collapsible: false, desktop_order: 20, mobile_order: 30,
       items: [
-        item({ id: "plan-time", slot: "secondary", section: "expectations-moved", family: "time-series", component: "time-series.probability-move", claimId: ids.time, headline: "Q3 GDP nowcast moved above its prior range.", source: "Atlanta Fed GDPNow", fields: { start_probability: 55, current_probability: 68, delta_percentage_points: 13, series, observation: "The change persisted across three releases." } }),
+        item({ id: "plan-time", slot: "secondary", section: "expectations-moved", family: "time-series", component: "time-series.probability-move", claimId: ids.time, headline: "Q3 GDP nowcast moved above its prior range.", source: "Atlanta Fed GDPNow", fields: { start_probability: 55, current_probability: 68, delta_percentage_points: 13, series: secondarySeries, series_quality: secondarySeriesQuality, observation: "The change persisted across three releases." } }),
         item({ id: "plan-state", slot: "secondary", position: 1, section: "rules-moved", family: "state-transition", component: "state-transition.rule-stage", claimId: ids.state, headline: "EU AI obligations entered the implementation phase.", source: "Official Journal of the EU", fields: { previous_state: "adopted", current_state: "effective", transition_date: "2026-08-02", observation: "The implementation phase began on 2 August 2026." } }),
       ],
     },
@@ -186,6 +411,11 @@ export const emptyFrontPageFixture = {
     retired_during_compile: 10,
   },
   sections: [],
+  publication_context: {
+    ...publicationContext,
+    counts: { ...publicationContext.counts, verified_claims: 0 },
+    claims: [],
+  },
   slots: frontPageFixture.slots.map((publicationSlot) => ({
     ...publicationSlot,
     items: [],
@@ -216,7 +446,65 @@ export const claimFixture = {
   agent_lineage: { lineage_id: "expectations-lead-v2", desk_id: "expectations-desk", name: "Expectations Desk", foundation_model: "DeepSeek", model_version: "v2.3", charter_id: "expectations-charter", charter_version: "v1.4", status: "active" },
   version_history: [{ version_number: 1, public_statement: "September rate cut became 21 points more likely.", change_type: "create", change_reason: "Initial verified publication", confidence: 0.86, created_at: assessedAt }],
   resolution_contract: { id: "resolution-fixture", evaluation_deadline: validUntil, status: "locked" },
+  topic: { id: ids.topic, title: "Will the Federal Reserve cut rates by September?", event_type: "monetary_policy", resolution_deadline_at: validUntil },
   locale: { requested: "en", published: "en", fallback_used: false, translation_provenance: null },
+};
+
+export const topicFixture = {
+  topic: {
+    id: ids.topic,
+    title: "Will the Federal Reserve cut rates by September?",
+    event_type: "monetary_policy",
+    outcome_type: "binary",
+    resolution_deadline_at: validUntil,
+    resolution_authority: "Federal Reserve",
+    resolution_rule_summary: "Resolves Yes if the target federal funds range is lowered on or before the September meeting.",
+    status: "active",
+    canonicalization_version: "canonicalizer-v1",
+    created_at: previousComposedAt,
+    updated_at: assessedAt,
+  },
+  source_event: {
+    id: "polymarket-fed-september",
+    title: "Federal Reserve policy by September",
+    slug: "fed-rate-cut-september",
+    tags: ["Federal Reserve", "interest rates", "monetary policy"],
+    source_url: "https://polymarket.com/",
+  },
+  markets: [
+    {
+      id: "market-fixture-1",
+      external_market_id: "fed-september-cut",
+      question: "Will the Federal Reserve cut rates by September?",
+      description: "Binary prediction market.",
+      outcome_labels: ["Yes", "No"],
+      ends_at: validUntil,
+      liquidity: 2_450_000,
+      volume: 18_700_000,
+      status: "active",
+      current_probability: 0.85,
+      current_observed_at: dataAsOf,
+      baseline_probability_24h: 0.64,
+      baseline_observed_at: previousComposedAt,
+      delta_24h_percentage_points: 21,
+      source_url: "https://polymarket.com/",
+      tags: ["Federal Reserve", "rates"],
+    },
+  ],
+  signals: [
+    {
+      id: ids.lead,
+      public_statement: "September rate cut became 21 points more likely.",
+      claim_type: "derived_observation",
+      status: "verified",
+      confidence: 0.86,
+      confidence_label: "high",
+      epistemic_status: "verified observation",
+      issued_at: assessedAt,
+      updated_at: assessedAt,
+    },
+  ],
+  method: { summary: "Open Signal preserves the source resolution contract and separates market probability from editorial assessment." },
 };
 
 export { ids };

@@ -10,15 +10,64 @@ rate limiting is handled via httpx retries.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
+from sqlalchemy import text
 
 from open_signal.sources.polymarket import GammaClient
 
 BUCKET_MINUTES = 5
 PRICE_METHOD = "source_probability"
+CLOB_HISTORY_METHOD = "clob_history"
+CLOB_BASE_URL = "https://clob.polymarket.com"
+HISTORY_BATCH_SIZE = 20
+HISTORY_FIDELITY_MINUTES = 60
+MIN_HISTORY_POINTS = 24
+
+
+class PriceHistoryClient:
+    """Read-only client for Polymarket's public batch price history."""
+
+    def __init__(
+        self,
+        base_url: str = CLOB_BASE_URL,
+        timeout: float = 30.0,
+        *,
+        client: httpx.Client | None = None,
+    ) -> None:
+        self._client = client or httpx.Client(
+            base_url=base_url.rstrip("/"),
+            timeout=timeout,
+        )
+
+    def fetch_batch(
+        self,
+        token_ids: list[str],
+        *,
+        start_ts: int,
+        end_ts: int,
+        fidelity: int = HISTORY_FIDELITY_MINUTES,
+    ) -> dict[str, list[dict[str, Any]]]:
+        if not token_ids or len(token_ids) > HISTORY_BATCH_SIZE:
+            raise ValueError("price-history batches must contain 1 to 20 token ids")
+        response = self._client.post(
+            "/batch-prices-history",
+            json={
+                "markets": token_ids,
+                "start_ts": start_ts,
+                "end_ts": end_ts,
+                "fidelity": fidelity,
+            },
+        )
+        response.raise_for_status()
+        payload = response.json()
+        history = payload.get("history") if isinstance(payload, dict) else None
+        return history if isinstance(history, dict) else {}
+
+    def close(self) -> None:
+        self._client.close()
 
 
 def floor_to_bucket(now: datetime, bucket_minutes: int) -> datetime:
@@ -43,11 +92,13 @@ class MarketObservationCollector:
         engine: Any,
         *,
         client: GammaClient | None = None,
+        history_client: PriceHistoryClient | None = None,
         bucket_minutes: int = BUCKET_MINUTES,
         retry_attempts: int = 3,
     ) -> None:
         self.engine = engine
         self.client = client or GammaClient()
+        self.history_client = history_client or PriceHistoryClient()
         self.bucket_minutes = bucket_minutes
         self.retry_attempts = retry_attempts
 
@@ -70,6 +121,87 @@ class MarketObservationCollector:
         for market in markets:
             stored += self._store_observation(market, external_id=str(market.get("id")))
         return stored
+
+    def backfill_history(
+        self,
+        markets: list[tuple[str, str]],
+        *,
+        days: int = 7,
+        fidelity: int = HISTORY_FIDELITY_MINUTES,
+        now: datetime | None = None,
+    ) -> dict[str, int]:
+        """Backfill hourly YES-token history for newly monitored markets.
+
+        The current Gamma snapshot is still authoritative for order-book
+        fields.  CLOB history supplies the missing time dimension so the first
+        production run can evaluate 24-hour and 7-day movement instead of
+        waiting a full day to accumulate local samples.
+        """
+        now = now or datetime.now(timezone.utc)
+        unique = dict(markets)
+        if not unique:
+            return {"markets": 0, "batches": 0, "observations": 0, "errors": 0}
+
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                text(
+                    """
+                    SELECT source_market_id, min(observed_at), count(*)
+                    FROM market_observations
+                    WHERE source_market_id = ANY(CAST(:market_ids AS uuid[]))
+                    GROUP BY source_market_id
+                    """
+                ),
+                {"market_ids": list(unique)},
+            ).fetchall()
+        stats = {str(row[0]): (row[1], int(row[2])) for row in rows}
+        history_cutoff = now - timedelta(hours=25)
+        needed = [
+            (market_id, token_id)
+            for market_id, token_id in unique.items()
+            if market_id not in stats
+            or stats[market_id][1] < MIN_HISTORY_POINTS
+            or stats[market_id][0] > history_cutoff
+        ]
+
+        token_to_market = {token_id: market_id for market_id, token_id in needed}
+        token_ids = list(token_to_market)
+        start_ts = int((now - timedelta(days=max(1, days))).timestamp())
+        end_ts = int(now.timestamp())
+        stored = batches = errors = 0
+        for index in range(0, len(token_ids), HISTORY_BATCH_SIZE):
+            batch = token_ids[index : index + HISTORY_BATCH_SIZE]
+            batches += 1
+            try:
+                history = self.history_client.fetch_batch(
+                    batch,
+                    start_ts=start_ts,
+                    end_ts=end_ts,
+                    fidelity=fidelity,
+                )
+            except (httpx.HTTPError, ValueError):
+                errors += 1
+                continue
+            incoming: list[dict[str, Any]] = []
+            for token_id in batch:
+                market_id = token_to_market[token_id]
+                points = history.get(token_id)
+                if not isinstance(points, list):
+                    continue
+                incoming.extend(
+                    history_rows(
+                        market_id,
+                        points,
+                        bucket_minutes=fidelity,
+                    )
+                )
+            stored += self._store_history_rows(incoming)
+        return {
+            "markets": len(needed),
+            "batches": batches,
+            "observations": stored,
+            "errors": errors,
+        }
 
     # ---------------------------------------------------------------- internal
     def _fetch_with_retry(self, market_id: str) -> dict[str, Any] | None:
@@ -167,5 +299,77 @@ class MarketObservationCollector:
             )
         return 1
 
+    def _store_history_rows(self, rows: list[dict[str, Any]]) -> int:
+        """Insert a history batch without per-point transactions."""
+        if not rows:
+            return 0
+        from sqlalchemy import text
+
+        with self.engine.begin() as conn:
+            result = conn.execute(
+                text(
+                    """
+                    WITH incoming AS (
+                      SELECT DISTINCT ON (source_market_id, observed_at)
+                             source_market_id::uuid AS source_market_id,
+                             observed_at,
+                             probability
+                      FROM jsonb_to_recordset(CAST(:rows AS jsonb)) AS item(
+                        source_market_id text,
+                        observed_at timestamptz,
+                        probability numeric
+                      )
+                      ORDER BY source_market_id, observed_at
+                    )
+                    INSERT INTO market_observations
+                      (source_market_id, observed_at, probability,
+                       best_bid, best_ask, midpoint, last_trade_price, spread,
+                       volume, open_interest, price_method, data_quality_flags)
+                    SELECT incoming.source_market_id, incoming.observed_at,
+                           incoming.probability, NULL, NULL, NULL, NULL, NULL,
+                           NULL, NULL, :method,
+                           ARRAY['historical_price_only']::text[]
+                    FROM incoming
+                    WHERE NOT EXISTS (
+                      SELECT 1 FROM market_observations existing
+                      WHERE existing.source_market_id = incoming.source_market_id
+                        AND existing.observed_at = incoming.observed_at
+                    )
+                    """
+                ),
+                {"rows": json.dumps(rows), "method": CLOB_HISTORY_METHOD},
+            )
+        return max(0, int(result.rowcount or 0))
+
     def close(self) -> None:
         self.client.close()
+        self.history_client.close()
+
+
+def history_rows(
+    source_market_id: str,
+    points: list[dict[str, Any]],
+    *,
+    bucket_minutes: int = HISTORY_FIDELITY_MINUTES,
+) -> list[dict[str, Any]]:
+    """Normalize CLOB ``{t, p}`` points into deduplicated DB rows."""
+    normalized: dict[str, dict[str, Any]] = {}
+    for point in points:
+        try:
+            timestamp = float(point.get("t"))
+        except (AttributeError, TypeError, ValueError):
+            continue
+        probability = parse_probability(point.get("p"))
+        if probability is None or not 0 <= probability <= 1:
+            continue
+        observed_at = floor_to_bucket(
+            datetime.fromtimestamp(timestamp, tz=timezone.utc),
+            bucket_minutes,
+        )
+        key = observed_at.isoformat()
+        normalized[key] = {
+            "source_market_id": source_market_id,
+            "observed_at": key,
+            "probability": probability,
+        }
+    return list(normalized.values())

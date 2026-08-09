@@ -35,7 +35,12 @@ def _seed_source(engine, slug: str) -> str:
                 "access_mode, adapter_id, status) "
                 "VALUES (:s, :name, :cat, 'open_aggregator', 'rest', :adapter, 'active') RETURNING id"
             ),
-            {"s": slug, "name": slug, "cat": "scholarly_metadata" if "openalex" in slug else "clinical_registry", "adapter": "v1"},
+            {
+                "s": slug,
+                "name": slug,
+                "cat": "scholarly_metadata" if "openalex" in slug else "clinical_registry",
+                "adapter": "v1",
+            },
         ).fetchone()
         return str(row[0])
 
@@ -53,8 +58,16 @@ def _cleanup(engine, source_id: str) -> None:
 def test_topic_definitions_frozen() -> None:
     chain = OpenAlexChain(None)
     topics = {t["id"] for t in chain.list_topics()}
-    assert topics == {"oncology-immunotherapy", "synthetic-biology", "generative-ai", "quantum-computing"}
-    assert chain.baseline_query("oncology-immunotherapy") == "CAR-T OR checkpoint inhibitor OR tumor immunotherapy"
+    assert topics == {
+        "oncology-immunotherapy",
+        "synthetic-biology",
+        "generative-ai",
+        "quantum-computing",
+    }
+    assert (
+        chain.baseline_query("oncology-immunotherapy")
+        == "CAR-T OR checkpoint inhibitor OR tumor immunotherapy"
+    )
 
 
 def test_baseline_queries_present_for_all_topics() -> None:
@@ -106,13 +119,15 @@ def test_openalex_discover_topic(oa_chain: OpenAlexChain, engine) -> None:
     with engine.connect() as conn:
         row = conn.execute(
             text(
-                "SELECT payload, source_created_at FROM raw_source_records "
-                "WHERE source_id = :s LIMIT 1"
+                "SELECT payload, source_created_at, transport_metadata, adapter_version "
+                "FROM raw_source_records WHERE source_id = :s LIMIT 1"
             ),
             {"s": oa_chain.source_id},
         ).fetchone()
     assert row[0]["type"] == "article"
     assert row[1] is not None
+    assert row[2]["monitoring_topics"] == {"oncology-immunotherapy": True}
+    assert row[3] == "openalex-v2"
 
 
 def test_openalex_discover_idempotent(oa_chain: OpenAlexChain, engine) -> None:
@@ -121,6 +136,38 @@ def test_openalex_discover_idempotent(oa_chain: OpenAlexChain, engine) -> None:
     second = oa_chain.discover_topic(topic_id="oncology-immunotherapy", max_pages=1)
     assert first["works"] == 5
     assert second["works"] == 0
+
+
+def test_openalex_merges_topic_attribution_for_same_work(
+    oa_chain: OpenAlexChain,
+    engine,
+) -> None:
+    _cleanup(engine, oa_chain.source_id)
+    original = oa_chain.fixture_dir / "oncology-immunotherapy_page_1.json"
+    (oa_chain.fixture_dir / "synthetic-biology_page_1.json").write_bytes(original.read_bytes())
+
+    first = oa_chain.discover_topic(
+        topic_id="oncology-immunotherapy",
+        max_pages=1,
+    )
+    second = oa_chain.discover_topic(
+        topic_id="synthetic-biology",
+        max_pages=1,
+    )
+
+    assert first["works"] == 5
+    assert second["works"] == 0
+    from sqlalchemy import text
+
+    with engine.connect() as conn:
+        metadata = conn.execute(
+            text("SELECT transport_metadata FROM raw_source_records WHERE source_id = :s LIMIT 1"),
+            {"s": oa_chain.source_id},
+        ).scalar_one()
+    assert metadata["monitoring_topics"] == {
+        "oncology-immunotherapy": True,
+        "synthetic-biology": True,
+    }
 
 
 def test_openalex_health_live() -> None:
@@ -166,13 +213,15 @@ def test_clinicaltrials_discover(ct_chain: ClinicalTrialsChain, engine) -> None:
     with engine.connect() as conn:
         row = conn.execute(
             text(
-                "SELECT external_id, payload FROM raw_source_records "
-                "WHERE source_id = :s LIMIT 1"
+                "SELECT external_id, payload, transport_metadata, adapter_version "
+                "FROM raw_source_records WHERE source_id = :s LIMIT 1"
             ),
             {"s": ct_chain.source_id},
         ).fetchone()
     assert row[0].startswith("NCT")
     assert row[1]["protocolSection"]["identificationModule"]["nctId"] == row[0]
+    assert row[2]["monitoring_topics"] == {"oncology-immunotherapy": True}
+    assert row[3] == "clinicaltrials-v2"
 
 
 def test_clinicaltrials_skips_ai_topic(ct_chain: ClinicalTrialsChain, engine) -> None:

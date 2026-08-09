@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any
 
 from open_signal.composer.edition_writer import PUBLICATION_CHANNEL, SLOT_ORDER
+from open_signal.composer.publication_context import empty_publication_context
 from open_signal.sources.registry import Registry
 from sqlalchemy import text
 
@@ -18,40 +19,75 @@ class FrontPagePresenter:
         self.engine = engine
         self.registry = registry or Registry.load()
 
-    def build(self, *, locale: str = "en") -> dict[str, Any] | None:
+    def build(
+        self,
+        *,
+        locale: str = "en",
+        edition_id: str | None = None,
+    ) -> dict[str, Any] | None:
         with self.engine.connect() as conn:
-            edition = conn.execute(
-                text(
-                    """
-                    SELECT e.id, e.edition_date, e.generated_at, e.status,
-                           e.included_section_ids, e.composer_version,
-                           e.correction_count, e.trigger_type,
-                           e.supersedes_edition_id, e.freshness_summary,
-                           e.published_at, e.policy_version, e.edition_payload,
-                           pc.previous_edition_id, pc.updated_at
-                    FROM publication_channels pc
-                    JOIN daily_editions e ON e.id = pc.current_edition_id
-                    WHERE pc.id = :channel
-                    """
-                ),
-                {"channel": PUBLICATION_CHANNEL},
-            ).fetchone()
-            if edition is None:
+            if edition_id:
                 edition = conn.execute(
                     text(
                         """
-                        SELECT id, edition_date, generated_at, status,
-                               included_section_ids, composer_version,
-                               correction_count, trigger_type,
-                               supersedes_edition_id, freshness_summary,
-                               published_at, policy_version, edition_payload,
-                               NULL, generated_at
-                        FROM daily_editions
-                        WHERE status IN ('published', 'sparse', 'beta', 'corrected')
-                        ORDER BY generated_at DESC LIMIT 1
+                        SELECT e.id, e.edition_date, e.generated_at, e.status,
+                               e.included_section_ids, e.composer_version,
+                               e.correction_count, e.trigger_type,
+                               e.supersedes_edition_id, e.freshness_summary,
+                               e.published_at, e.policy_version, e.edition_payload,
+                               CASE
+                                 WHEN pc.current_edition_id = e.id
+                                 THEN pc.previous_edition_id
+                                 ELSE e.supersedes_edition_id
+                               END,
+                               CASE
+                                 WHEN pc.current_edition_id = e.id
+                                 THEN pc.updated_at
+                                 ELSE e.generated_at
+                               END,
+                               (pc.current_edition_id = e.id)
+                        FROM daily_editions e
+                        LEFT JOIN publication_channels pc
+                          ON pc.id = :channel
+                        WHERE e.id = :edition
+                          AND e.status IN ('published', 'sparse', 'beta', 'corrected')
                         """
-                    )
+                    ),
+                    {"channel": PUBLICATION_CHANNEL, "edition": edition_id},
                 ).fetchone()
+            else:
+                edition = conn.execute(
+                    text(
+                        """
+                        SELECT e.id, e.edition_date, e.generated_at, e.status,
+                               e.included_section_ids, e.composer_version,
+                               e.correction_count, e.trigger_type,
+                               e.supersedes_edition_id, e.freshness_summary,
+                               e.published_at, e.policy_version, e.edition_payload,
+                               pc.previous_edition_id, pc.updated_at, true
+                        FROM publication_channels pc
+                        JOIN daily_editions e ON e.id = pc.current_edition_id
+                        WHERE pc.id = :channel
+                        """
+                    ),
+                    {"channel": PUBLICATION_CHANNEL},
+                ).fetchone()
+                if edition is None:
+                    edition = conn.execute(
+                        text(
+                            """
+                            SELECT id, edition_date, generated_at, status,
+                                   included_section_ids, composer_version,
+                                   correction_count, trigger_type,
+                                   supersedes_edition_id, freshness_summary,
+                                   published_at, policy_version, edition_payload,
+                                   NULL, generated_at, false
+                            FROM daily_editions
+                            WHERE status IN ('published', 'sparse', 'beta', 'corrected')
+                            ORDER BY generated_at DESC LIMIT 1
+                            """
+                        )
+                    ).fetchone()
             if edition is None:
                 return None
 
@@ -74,11 +110,22 @@ class FrontPagePresenter:
                            eb.primary_evidence, eb.supporting_evidence,
                            eb.counter_evidence, eb.source_coverage,
                            eb.unresolved_questions, eb.known_limitations,
-                           eb.snapshot_hash
+                           eb.snapshot_hash, ce.id, ce.canonical_question,
+                           ce.event_type, ce.resolution_deadline_at
                     FROM render_plans rp
                     LEFT JOIN claims c ON c.id = rp.claim_ids[1]
+                    LEFT JOIN section_instances si
+                      ON si.id = rp.section_instance_id
                     LEFT JOIN evidence_bundles eb
                       ON eb.id = COALESCE(rp.evidence_bundle_id, c.evidence_bundle_id)
+                    LEFT JOIN LATERAL (
+                      SELECT id, canonical_question, event_type,
+                             resolution_deadline_at
+                      FROM canonical_expectations
+                      WHERE si.subject_type = 'source_market'
+                        AND source_market_ids @> ARRAY[si.subject_id]::uuid[]
+                      ORDER BY updated_at DESC LIMIT 1
+                    ) ce ON true
                     WHERE rp.edition_id = :edition
                     ORDER BY rp.slot_id, rp.position, rp.visual_priority
                     """
@@ -124,6 +171,11 @@ class FrontPagePresenter:
             )
 
         freshness = _object(edition[9])
+        edition_payload = _object(edition[12])
+        publication_context = _publication_context(
+            edition_payload.get("publication_context"),
+            captured_at=composed_at,
+        )
         return {
             "snapshot": {
                 "id": str(edition[0]),
@@ -137,7 +189,7 @@ class FrontPagePresenter:
                 "composer_version": edition[5],
                 "policy_version": edition[11],
                 "correction_count": edition[6],
-                "is_current": True,
+                "is_current": bool(edition[15]),
                 "publication_mode": "rolling_snapshot",
             },
             "freshness": {
@@ -146,6 +198,7 @@ class FrontPagePresenter:
                 "channel_updated_at": _iso(edition[14]),
             },
             "sections": list(edition[4] or []),
+            "publication_context": publication_context,
             "slots": slots,
             "archive": [
                 {
@@ -163,7 +216,8 @@ class FrontPagePresenter:
             "method": {
                 "summary": (
                     "Open Signal separates observation, analysis, and assessment; "
-                    "publishes only verified Render Plans; and preserves every snapshot."
+                    "publishes verified judgments alongside explicitly labeled source "
+                    "observations and watch items; and preserves every snapshot."
                 ),
                 "composer_version": edition[5],
                 "policy_version": edition[11],
@@ -315,6 +369,16 @@ class FrontPagePresenter:
                 "unresolved_questions": _list(row[37]),
                 "known_limitations": _list(row[38]),
             },
+            "topic": (
+                {
+                    "id": str(row[40]),
+                    "title": row[41],
+                    "event_type": row[42],
+                    "resolution_deadline_at": _iso(row[43]),
+                }
+                if row[40]
+                else None
+            ),
             "locale": {
                 "requested": locale,
                 "published": published_locale,
@@ -357,6 +421,24 @@ def _list(value: Any) -> list[Any]:
         except json.JSONDecodeError:
             return []
     return []
+
+
+def _publication_context(value: Any, *, captured_at: str | None) -> dict[str, Any]:
+    fallback = empty_publication_context(captured_at=captured_at)
+    captured = _object(value)
+    if not captured:
+        return fallback
+    counts = _object(captured.get("counts"))
+    return {
+        **fallback,
+        **captured,
+        "counts": {**fallback["counts"], **counts},
+        "claims": _list(captured.get("claims")),
+        "expectations": _list(captured.get("expectations")),
+        "rules": _list(captured.get("rules")),
+        "research": _list(captured.get("research")),
+        "coverage": _list(captured.get("coverage")),
+    }
 
 
 def _iso(value: Any) -> str | None:

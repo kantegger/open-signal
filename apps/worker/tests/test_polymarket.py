@@ -10,7 +10,11 @@ import os
 from pathlib import Path
 
 import pytest
-from open_signal.sources.polymarket import FIXTURE_DIR, PolymarketAdapter
+from open_signal.sources.polymarket import (
+    FIXTURE_DIR,
+    PolymarketAdapter,
+    select_monitored_markets,
+)
 
 TEST_SOURCE = "polymarket-gamma-test"
 
@@ -210,3 +214,63 @@ def test_save_fixture_roundtrip(tmp_path) -> None:
     path = adapter.save_fixture(0, markets)
     loaded = json.loads(Path(path).read_text(encoding="utf-8"))
     assert loaded == markets
+
+
+def test_live_load_ignores_repository_fixture(tmp_path) -> None:
+    class FakeClient:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def fetch_markets(self, **_kwargs):
+            self.calls += 1
+            return [{"id": "live", "question": "Live market"}]
+
+        def close(self) -> None:
+            pass
+
+    (tmp_path / "markets_offset_0.json").write_text(
+        '[{"id":"fixture"}]',
+        encoding="utf-8",
+    )
+    client = FakeClient()
+    live = PolymarketAdapter(
+        None,
+        client=client,
+        fixture_dir=tmp_path,
+        offline=False,
+    )
+
+    assert live._load_page(0)[0]["id"] == "live"
+    assert client.calls == 1
+
+
+def test_event_discovery_caps_each_event_before_global_ranking() -> None:
+    events = [
+        {
+            "id": "event-a",
+            "title": "Large slate",
+            "tags": [{"slug": "politics"}],
+            "markets": [
+                {"id": f"a-{index}", "volume24hr": 1000 - index}
+                for index in range(8)
+            ],
+        },
+        {
+            "id": "event-b",
+            "title": "Second topic",
+            "markets": [
+                {"id": "b-1", "volume24hr": 500},
+                {"id": "b-2", "volume24hr": 400},
+            ],
+        },
+    ]
+
+    selected = select_monitored_markets(
+        events,
+        max_markets=4,
+        markets_per_event=2,
+    )
+
+    assert {market["id"] for market in selected} == {"a-0", "a-1", "b-1", "b-2"}
+    assert all(market.get("eventId") for market in selected)
+    assert selected[0]["tags"] == [{"slug": "politics"}]

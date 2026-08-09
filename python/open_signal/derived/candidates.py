@@ -24,6 +24,8 @@ CALCULATION_VERSION = "0.1.0"
 
 MIN_DELTA_24H = 3.0  # percentage points
 SPREAD_MULTIPLIER = 2.0
+SCANNER_MIN_DELTA_24H = 0.5
+SCANNER_SPREAD_MULTIPLIER = 1.0
 DATA_QUALITY_BAD = {"stale", "sparse", "unavailable"}
 
 
@@ -95,11 +97,32 @@ class CandidateDetector:
         data_quality = "ok" if not (set(flags) & DATA_QUALITY_BAD) else ",".join(sorted(set(flags) & DATA_QUALITY_BAD))
         data_completeness = round(len(h24) / max(1, 24 * 12), 4)  # ~5-min buckets
 
-        # §32.5 eligibility
+        # §32.5 eligibility is the featured-story threshold.  The scanner
+        # threshold feeds compact, observation-only surfaces; it does not
+        # lower the bar for analytical or editorial treatment.
         eligible = (
             abs(delta_24h) >= MIN_DELTA_24H
             and (spread is None or abs(delta_24h) >= SPREAD_MULTIPLIER * (spread * 100))
             and data_quality == "ok"
+        )
+        scanner_eligible = (
+            len(series) >= 2
+            and abs(delta_24h) >= SCANNER_MIN_DELTA_24H
+            and (
+                spread is None
+                or abs(delta_24h)
+                >= SCANNER_SPREAD_MULTIPLIER * (spread * 100)
+            )
+            and data_quality == "ok"
+        )
+        publication_tier = (
+            "featured" if eligible else "scanner" if scanner_eligible else "none"
+        )
+        signal_score = (
+            abs(delta_24h)
+            + min(abs(delta_1h), 4.0) * 0.35
+            + (1.25 if reversal else 0.0)
+            + min(persistence, 1.0) * 0.5
         )
 
         output = {
@@ -115,9 +138,14 @@ class CandidateDetector:
             "data_completeness": data_completeness,
             "series_size": len(series),
             "eligible": eligible,
+            "scanner_eligible": scanner_eligible,
+            "publication_tier": publication_tier,
+            "signal_score": round(signal_score, 4),
             "thresholds": {
                 "min_delta_24h_pp": MIN_DELTA_24H,
                 "spread_multiplier": SPREAD_MULTIPLIER,
+                "scanner_min_delta_24h_pp": SCANNER_MIN_DELTA_24H,
+                "scanner_spread_multiplier": SCANNER_SPREAD_MULTIPLIER,
             },
         }
         return output

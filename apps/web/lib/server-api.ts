@@ -5,10 +5,14 @@ import {
   type ClaimPageData,
   type FrontPageData,
   type JsonRecord,
+  type SeoIndexData,
+  type TopicPageData,
 } from "./api";
 
-const DEFAULT_API_BASE = "http://localhost:8000";
+const DEFAULT_API_BASE = "http://127.0.0.1:8000";
 const CACHE_SECONDS = 86_400;
+const LIVE_CACHE_SECONDS = 3_600;
+const INDEX_CACHE_SECONDS = 900;
 
 interface PublicationPointer extends JsonRecord {
   edition_id: string;
@@ -28,6 +32,7 @@ export async function fetchCurrentFrontPageServer(
           `public/publications/channels/front-page/${encodeURIComponent(locale)}.json`,
         ),
         [`front-page:${locale}`, "publication-pointer"],
+        LIVE_CACHE_SECONDS,
       );
       if (
         pointer.locale !== locale ||
@@ -38,6 +43,7 @@ export async function fetchCurrentFrontPageServer(
       return await fetchJson<FrontPageData>(
         joinUrl(publicationBase, pointer.front_page_key),
         [`front-page:${locale}`, `edition:${pointer.edition_id}`],
+        LIVE_CACHE_SECONDS,
       );
     } catch (error) {
       if (!process.env.OPEN_SIGNAL_API_URL) throw error;
@@ -47,6 +53,7 @@ export async function fetchCurrentFrontPageServer(
   return fetchJson<FrontPageData>(
     `${apiBase()}/api/front-page/current?locale=${encodeURIComponent(locale)}`,
     [`front-page:${locale}`],
+    LIVE_CACHE_SECONDS,
   );
 }
 
@@ -75,10 +82,42 @@ export async function fetchClaimServer(
   );
 }
 
-async function fetchJson<T>(url: string, tags: string[]): Promise<T> {
+export async function fetchTopicServer(
+  topicId: string,
+): Promise<TopicPageData> {
+  return fetchJson<TopicPageData>(
+    `${apiBase()}/api/topics/${encodeURIComponent(topicId)}`,
+    [`topic:${topicId}`],
+    LIVE_CACHE_SECONDS,
+  );
+}
+
+export async function fetchEditionFrontPageServer(
+  editionId: string,
+  locale = "en",
+): Promise<FrontPageData> {
+  return fetchJson<FrontPageData>(
+    `${apiBase()}/api/editions/${encodeURIComponent(editionId)}/front-page?locale=${encodeURIComponent(locale)}`,
+    [`edition:${editionId}`, `edition:${editionId}:${locale}`],
+  );
+}
+
+export async function fetchSeoIndexServer(): Promise<SeoIndexData> {
+  return fetchJson<SeoIndexData>(
+    `${apiBase()}/api/seo-index?limit=1000`,
+    ["seo-index"],
+    INDEX_CACHE_SECONDS,
+  );
+}
+
+async function fetchJson<T>(
+  url: string,
+  tags: string[],
+  revalidate = CACHE_SECONDS,
+): Promise<T> {
   const response = await fetch(url, {
     cache: "force-cache",
-    next: { revalidate: CACHE_SECONDS, tags },
+    next: { revalidate, tags },
   });
   if (!response.ok) {
     throw new ApiError(`publication request failed (${response.status})`, response.status);

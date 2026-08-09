@@ -14,7 +14,6 @@ export const copy = {
     method: "Method",
     archive: "Archive",
     systemStatus: "System status",
-    currentFrontPage: "Current front page",
     composed: "Composed",
     lastVerified: "Last verified update",
     viewEvidence: "View full evidence",
