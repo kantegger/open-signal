@@ -115,6 +115,72 @@ test("uses the full ultrawide canvas without letting ledger text cross its colum
   }
 });
 
+test("keeps public information readable and encodes direction semantically", async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Verified judgment ledger" })).toBeVisible();
+
+  const signalHref = await page.locator(".claim-ledger-row:not(.claim-ledger-head) a").first().getAttribute("href");
+  const topicHref = await page.getByRole("link", { name: "Track topic" }).getAttribute("href");
+  const currentSizes = await page.evaluate(() => ({
+    navigation: parseFloat(getComputedStyle(document.querySelector(".primary-link")!).fontSize),
+    feedHeadline: parseFloat(getComputedStyle(document.querySelector(".feed-headline")!).fontSize),
+    ledgerStatement: parseFloat(getComputedStyle(document.querySelector(".claim-ledger-row:not(.claim-ledger-head) strong")!).fontSize),
+    watchHeadline: parseFloat(getComputedStyle(document.querySelector(".watch-list article > strong")!).fontSize),
+    sourceLabel: parseFloat(getComputedStyle(document.querySelector(".source-coverage-band article > span")!).fontSize),
+  }));
+  expect(currentSizes.navigation).toBeGreaterThanOrEqual(11);
+  expect(currentSizes.feedHeadline).toBeGreaterThanOrEqual(15);
+  expect(currentSizes.ledgerStatement).toBeGreaterThanOrEqual(13);
+  expect(currentSizes.watchHeadline).toBeGreaterThanOrEqual(12);
+  expect(currentSizes.sourceLabel).toBeGreaterThanOrEqual(11);
+
+  const [upColor, downColor] = await Promise.all([
+    page.locator(".ledger-direction.trend-up").first().evaluate((element) => getComputedStyle(element).color),
+    page.locator(".ledger-direction.trend-down").first().evaluate((element) => getComputedStyle(element).color),
+  ]);
+  expect(upColor).not.toBe(downColor);
+  const movementStyle = await page.locator(".claim-ledger .statement-movement").first().evaluate((element) => ({
+    color: getComputedStyle(element).color,
+    fontStyle: getComputedStyle(element).fontStyle,
+    fontWeight: Number.parseInt(getComputedStyle(element).fontWeight, 10),
+  }));
+  expect([upColor, downColor]).toContain(movementStyle.color);
+  expect(movementStyle.fontStyle).toBe("italic");
+  expect(movementStyle.fontWeight).toBeGreaterThanOrEqual(600);
+  await page.goto("/explore");
+  await expect(page.getByRole("heading", { name: "Recent Signals" })).toBeVisible();
+  expect(await fontSize(page.locator(".signal-directory-row:not(.signal-directory-head)").first())).toBeGreaterThanOrEqual(11);
+
+  await page.goto("/editions");
+  await expect(page.getByRole("heading", { name: "All public Editions" })).toBeVisible();
+  expect(await fontSize(page.locator(".edition-directory-row:not(.edition-directory-head)").first())).toBeGreaterThanOrEqual(11);
+  const editionHref = await page.locator(".edition-directory-row:not(.edition-directory-head) a").first().getAttribute("href");
+
+  expect(editionHref).toBeTruthy();
+  await page.goto(editionHref!);
+  await expect(page.locator('[data-component-family="document-change"]')).toBeVisible();
+  expect(await fontSize(page.locator(".publication-module .eyebrow").first())).toBeGreaterThanOrEqual(12);
+  expect(await fontSize(page.locator(".publication-module .trust-line").first())).toBeGreaterThanOrEqual(10);
+  expect(await fontSize(page.locator(".document-diff p").first())).toBeGreaterThanOrEqual(11);
+  expect(await fontSize(page.locator(".resolution-grid strong").first())).toBeGreaterThanOrEqual(11);
+
+  await page.goto("/method");
+  expect(await fontSize(page.locator(".method-flow li > p").first())).toBeGreaterThanOrEqual(15);
+
+  expect(topicHref).toBeTruthy();
+  await page.goto(topicHref!);
+  await expect(page.getByRole("heading", { name: "Current market state" })).toBeVisible();
+  expect(await fontSize(page.locator(".topic-signal-table article").first())).toBeGreaterThanOrEqual(12);
+  await expect(page.locator(".topic-probability .trend-up, .topic-probability .trend-down").first()).toContainText(/↗|↘/);
+
+  expect(signalHref).toBeTruthy();
+  await page.goto(signalHref!);
+  await expect(page.getByRole("heading", { name: "Published evidence bundle" })).toBeVisible();
+  expect(await fontSize(page.locator(".claim-record-header dl > div").first())).toBeGreaterThanOrEqual(11);
+  await expect(page.locator(".claim-record-header .statement-movement")).toHaveCount(1);
+});
+
 test("fills an empty lead column with derived signal context", async ({ page, request }) => {
   await request.post("http://127.0.0.1:8001/__control/front-mode?value=no-live-feed");
   await revalidate(request, "e2e-no-live-feed");
@@ -225,6 +291,16 @@ test("mobile order prioritizes the live feed and navigation remains usable", asy
   const topicBox = await topicMonitor.boundingBox();
   expect(topicBox).not.toBeNull();
   expect(secondaryBox!.y).toBeLessThan(topicBox!.y);
+  const mobileWidth = await page.evaluate(() => ({
+    client: document.documentElement.clientWidth,
+    scroll: document.documentElement.scrollWidth,
+  }));
+  expect(mobileWidth.scroll).toBe(mobileWidth.client);
+  const mobileDeskFits = await page
+    .locator(".claim-ledger-row:not(.claim-ledger-head) > :first-child")
+    .first()
+    .evaluate((element) => element.scrollWidth <= element.clientWidth + 1);
+  expect(mobileDeskFits).toBeTruthy();
   await page.getByRole("button", { name: "Open navigation" }).click();
   await expect(page.getByRole("navigation", { name: "Mobile navigation" }).getByRole("link", { name: "Method" })).toBeVisible();
 });
@@ -244,4 +320,8 @@ async function revalidate(request: APIRequestContext, editionId: string) {
     data: { edition_id: editionId, locale: "en", claim_ids: [] },
   });
   expect(response.ok()).toBeTruthy();
+}
+
+async function fontSize(locator: import("@playwright/test").Locator): Promise<number> {
+  return locator.evaluate((element) => parseFloat(getComputedStyle(element).fontSize));
 }

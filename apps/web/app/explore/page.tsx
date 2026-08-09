@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { JsonLd } from "../../components/json-ld";
+import { DirectionalStatement } from "../../components/directional-statement";
 import { SiteShell } from "../../components/site-shell";
 import { formatDateTime, formatRelativeTime, humanize } from "../../lib/i18n";
 import { fetchSeoIndexServer } from "../../lib/server-api";
@@ -139,7 +140,7 @@ export default async function ExplorePage({ searchParams }: Props) {
                 {signals.map((signal) => (
                   <div className="signal-directory-row" role="row" key={signal.id}>
                     <span role="cell">{deskName(signal.desk_id)}</span>
-                    <span role="cell"><Link href={signalPath(signal.title, signal.id)}>{signal.title}</Link></span>
+                    <span role="cell"><Link href={signalPath(signal.title, signal.id)}><DirectionalStatement text={signal.title} /></Link></span>
                     <span role="cell">{humanize(signal.confidence_label ?? signal.epistemic_status)}</span>
                     <time role="cell">{signal.valid_until ? formatDateTime(signal.valid_until) : "Open"}</time>
                     <time role="cell">{formatRelativeTime(signal.updated_at)}</time>

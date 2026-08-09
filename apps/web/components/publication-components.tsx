@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { JsonRecord, RenderPlanItem } from "../lib/api";
 import { formatDateTime, formatRelativeTime, humanize } from "../lib/i18n";
 import { signalPath, topicPath } from "../lib/urls";
+import { DirectionalStatement } from "./directional-statement";
 import { Icon } from "./icons";
 
 export type OpenEvidence = (claimId: string, trigger: HTMLElement) => void;
@@ -204,8 +205,8 @@ export function SignalFeedRow({ item, onEvidence }: ComponentProps) {
       <div className="feed-copy">
         <span className="section-name">{sectionName(item.section_id)}</span>
         {item.trust.claim_id ? (
-          <Link className="feed-headline" href={signalPath(item.headline, item.trust.claim_id)}>{item.headline}</Link>
-        ) : <span className="feed-headline">{item.headline}</span>}
+          <Link className="feed-headline" href={signalPath(item.headline, item.trust.claim_id)}><DirectionalStatement text={item.headline} /></Link>
+        ) : <span className="feed-headline"><DirectionalStatement text={item.headline} /></span>}
       </div>
       <span className={`feed-state trend-${trend || "neutral"}`}>
         {trend === "up" ? "↑ up" : trend === "down" ? "↓ down" : changed || "verified"}
@@ -335,7 +336,9 @@ function ModuleHeading({ item, title }: { item: RenderPlanItem; title: string })
 
 function signalLink(item: RenderPlanItem, label: string) {
   const claimId = item.trust.claim_id;
-  return claimId ? <Link href={signalPath(label, claimId)}>{label}</Link> : label;
+  return claimId
+    ? <Link href={signalPath(label, claimId)}><DirectionalStatement text={label} /></Link>
+    : <DirectionalStatement text={label} />;
 }
 
 function ProbabilityChart({

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { JsonLd } from "../../../components/json-ld";
+import { DirectionalStatement } from "../../../components/directional-statement";
 import { SiteShell } from "../../../components/site-shell";
 import { ApiError, type TopicPageData } from "../../../lib/api";
 import { formatDateTime, formatRelativeTime, humanize } from "../../../lib/i18n";
@@ -132,7 +133,7 @@ export default async function TopicPage({ params }: Props) {
                 {page.signals.map((signal) => (
                   <article key={signal.id}>
                     <time>{formatRelativeTime(signal.issued_at)}</time>
-                    <Link href={signalPath(signal.public_statement, signal.id)}>{signal.public_statement}</Link>
+                    <Link href={signalPath(signal.public_statement, signal.id)}><DirectionalStatement text={signal.public_statement} /></Link>
                     <span>{humanize(signal.confidence_label ?? signal.epistemic_status)}</span>
                     <span>{humanize(signal.status)}</span>
                   </article>
@@ -158,8 +159,10 @@ function MarketCard({ market }: { market: TopicPageData["markets"][number] }) {
       <div><p>{market.question}</p>{market.source_url ? <a href={market.source_url} rel="noreferrer" target="_blank">Source ↗</a> : null}</div>
       <div className="topic-probability">
         <strong>{current === null || current === undefined ? "—" : `${Math.round(current * 100)}%`}</strong>
-        <span className={delta && delta > 0 ? "trend-up" : delta && delta < 0 ? "trend-down" : ""}>
-          {delta === null || delta === undefined ? "24h baseline pending" : `${delta > 0 ? "+" : ""}${delta.toFixed(1)}pp · 24h`}
+        <span className={delta && delta > 0 ? "trend-up" : delta && delta < 0 ? "trend-down" : "trend-neutral"}>
+          {delta === null || delta === undefined
+            ? "— 24h baseline pending"
+            : `${delta > 0 ? "↗ +" : delta < 0 ? "↘ " : "→ "}${delta.toFixed(1)}pp · 24h`}
         </span>
       </div>
       <dl>
