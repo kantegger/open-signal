@@ -191,6 +191,10 @@ function Publication({
   const monitoredTopics = compact
     ? expectationMonitorItems(context.expectations, topics, data.slots)
     : [];
+  const research = context.research
+    .filter((item) => Boolean(item.headline && item.entity && item.evidence_count))
+    .slice(0, 6);
+  const hasLiveTape = compact && Boolean(liveFeed.items.length || monitoredTopics.length);
   const currentIndexItems = uniquePlans([...digest.items, ...main.items, ...utility.items]).slice(0, 8);
   const observationCount = context.counts.expectation_observations + context.counts.rules_tracked;
 
@@ -231,7 +235,7 @@ function Publication({
         )}
       </dl>
 
-      <div className={`dashboard-top${compact ? " current-dashboard-top" : ""}${secondary.items.length || monitoredTopics.length ? " has-side" : ""}`}>
+      <div className={`dashboard-top${compact ? " current-dashboard-top" : ""}${secondary.items.length || hasLiveTape ? " has-side" : ""}`}>
         <div className="dashboard-lead-column">
           <section className="slot-region lead-region" aria-label="Lead signal">
             {lead.items.length ? (
@@ -240,15 +244,19 @@ function Publication({
               <SparseLead data={data} />
             )}
           </section>
-          {compact && liveFeed.items.length ? (
-            <LiveFeed items={liveFeed.items.slice(0, 4)} onEvidence={onEvidence} />
+          {compact && research.length ? (
+            <ResearchWatch
+              featured
+              items={research}
+              total={context.counts.research_screening}
+            />
           ) : null}
-          {compact && !liveFeed.items.length && (monitoredTopics.length || context.claims.length) ? (
+          {compact && !research.length && (monitoredTopics.length || context.claims.length) ? (
             <SignalPulse claims={context.claims} observations={monitoredTopics} />
           ) : null}
         </div>
 
-        {secondary.items.length || monitoredTopics.length ? (
+        {secondary.items.length || hasLiveTape ? (
           <div className="dashboard-side">
             {secondary.items.length ? (
               <section className="slot-region secondary-region" aria-labelledby="secondary-title">
@@ -258,7 +266,13 @@ function Publication({
                 </div>
               </section>
             ) : null}
-            {monitoredTopics.length ? <ExpectationTape observations={monitoredTopics} /> : null}
+            {hasLiveTape ? (
+              <LiveSignalTape
+                items={liveFeed.items}
+                observations={monitoredTopics}
+                onEvidence={onEvidence}
+              />
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -419,43 +433,150 @@ function SignalPulse({
   );
 }
 
-function ExpectationTape({
+function LiveSignalTape({
+  items,
   observations,
+  onEvidence,
 }: {
+  items: RenderPlanItem[];
   observations: PublicationExpectationObservation[];
+  onEvidence: OpenEvidence;
 }) {
+  const verified = uniquePlans(items).slice(0, 4);
+  const observationsById = new Map(observations.map((observation) => [observation.id, observation]));
+  const representedTopics = new Set(
+    verified.flatMap((item) => item.topic?.id ? [item.topic.id] : []),
+  );
+  const sourceOnly = observations
+    .filter((observation) => !representedTopics.has(observation.id))
+    .slice(0, Math.max(0, 8 - verified.length));
+
   return (
     <section className="topic-monitor" aria-labelledby="topic-monitor-title">
       <RegionHeader
         id="topic-monitor-title"
-        title="↗ Expectation tape"
-        note="Source observations · not forecasts"
+        title="↗ Live signal tape"
+        note={`${verified.length} verified · ${observations.length} monitored Topics · deduplicated`}
       />
-      <div className="topic-monitor-list">
-        {observations.map((observation) => (
-          <article key={observation.id}>
-            <div className="topic-monitor-identity">
-              <span>{humanize(observation.event_type)}</span>
-              <Link href={topicPath(observation.title, observation.id)}>{observation.title}</Link>
-            </div>
-            <div className="topic-monitor-state">
-              <strong>{formatProbability(observation.current_probability)}</strong>
-              <span className={deltaClass(observation.delta_24h_percentage_points)}>
-                {trendGlyph(observation.delta_24h_percentage_points)}{" "}
-                {observation.delta_24h_percentage_points == null
-                  ? "baseline —"
-                  : `${formatDelta(observation.delta_24h_percentage_points)} · 24h`}
-              </span>
-            </div>
-            <MiniSparkline observation={observation} />
-            <div className="topic-monitor-time">
-              <time>{formatRelativeTime(observation.current_observed_at ?? observation.updated_at)}</time>
-              <span>⏱ {formatRelativeTime(observation.resolution_deadline_at)}</span>
-            </div>
-          </article>
+      <div className="topic-monitor-list live-signal-list">
+        {verified.map((item) => (
+          <VerifiedTapeRow
+            item={item}
+            key={item.id}
+            observation={item.topic ? observationsById.get(item.topic.id) : undefined}
+            onEvidence={onEvidence}
+          />
         ))}
+        {sourceOnly.map((observation) => <ObservedTapeRow key={observation.id} observation={observation} />)}
       </div>
     </section>
+  );
+}
+
+function VerifiedTapeRow({
+  item,
+  observation,
+  onEvidence,
+}: {
+  item: RenderPlanItem;
+  observation?: PublicationExpectationObservation;
+  onEvidence: OpenEvidence;
+}) {
+  const fields = item.display_fields;
+  const current = numericField(fields.current_probability ?? fields.probability)
+    ?? observation?.current_probability;
+  const delta = numericField(fields.delta_24h_percentage_points ?? fields.delta_percentage_points)
+    ?? observation?.delta_24h_percentage_points;
+  const trend = textField(fields.trend);
+  const directionalValue = delta ?? (trend === "up" ? 1 : trend === "down" ? -1 : null);
+  const change = textField(fields.change_value);
+  const currentState = textField(fields.current_state);
+  const primaryMetric = current != null
+    ? formatProbability(current)
+    : change || humanize(currentState || "verified");
+  const secondaryMetric = delta != null
+    ? `${formatDelta(delta)} · 24h`
+    : current != null && change
+      ? change
+      : `${item.trust.evidence_count} evidence`;
+  const record = item.trust.claim_id
+    ? <Link href={signalPath(item.headline, item.trust.claim_id)}><DirectionalStatement text={item.headline} /></Link>
+    : <span>{item.headline}</span>;
+
+  return (
+    <article className={`tape-row tape-row-verified ${sectionClass(item.section_id)}`}>
+      <div className="topic-monitor-identity">
+        <span><b>Verified</b> · {sectionName(item.section_id)}</span>
+        {record}
+      </div>
+      <div className="topic-monitor-state">
+        <strong>{primaryMetric}</strong>
+        <span className={deltaClass(directionalValue)}>{trendGlyph(directionalValue)} {secondaryMetric}</span>
+      </div>
+      {observation ? (
+        <MiniSparkline observation={observation} />
+      ) : (
+        <span
+          aria-label={directionalValue == null
+            ? `${item.headline}: a time-series is not applicable to this verified record.`
+            : `${item.headline}: verified direction only; a complete source history is unavailable.`}
+          className={`sparkline-fallback ${deltaClass(directionalValue)}`}
+        >
+          <span aria-hidden="true">{trendGlyph(directionalValue)}</span>
+          <small>{directionalValue == null ? "no series" : "direction only"}</small>
+        </span>
+      )}
+      <div className="topic-monitor-time">
+        <time>{formatRelativeTime(item.times.data_as_of ?? item.times.assessed_at)}</time>
+        {item.topic ? <span>⏱ {formatRelativeTime(item.topic.resolution_deadline_at)}</span> : <span>Claim record</span>}
+      </div>
+      {item.trust.claim_id ? (
+        <button
+          aria-label={`Open evidence for ${item.headline}`}
+          className="tape-action"
+          onClick={(event) => onEvidence(item.trust.claim_id!, event.currentTarget)}
+          type="button"
+        >
+          <Icon name="evidence" size={14} />
+        </button>
+      ) : <span className="tape-action-placeholder" />}
+    </article>
+  );
+}
+
+function ObservedTapeRow({
+  observation,
+}: {
+  observation: PublicationExpectationObservation;
+}) {
+  return (
+    <article className="tape-row tape-row-observed section-expectations">
+      <div className="topic-monitor-identity">
+        <span>Source · {humanize(observation.event_type)}</span>
+        <Link href={topicPath(observation.title, observation.id)}>{observation.title}</Link>
+      </div>
+      <div className="topic-monitor-state">
+        <strong>{formatProbability(observation.current_probability)}</strong>
+        <span className={deltaClass(observation.delta_24h_percentage_points)}>
+          {trendGlyph(observation.delta_24h_percentage_points)}{" "}
+          {observation.delta_24h_percentage_points == null
+            ? "baseline —"
+            : `${formatDelta(observation.delta_24h_percentage_points)} · 24h`}
+        </span>
+      </div>
+      <MiniSparkline observation={observation} />
+      <div className="topic-monitor-time">
+        <time>{formatRelativeTime(observation.current_observed_at ?? observation.updated_at)}</time>
+        <span>⏱ {formatRelativeTime(observation.resolution_deadline_at)}</span>
+      </div>
+      <Link
+        aria-label={`Open Topic: ${observation.title}`}
+        className="tape-action"
+        href={topicPath(observation.title, observation.id)}
+      >
+        <Icon name="arrow" size={14} />
+      </Link>
+    </article>
   );
 }
 
@@ -558,12 +679,9 @@ function CurrentIntelligence({
 }) {
   const claims = context.claims.slice(0, 12);
   const rules = context.rules.slice(0, 8);
-  const research = context.research
-    .filter((item) => Boolean(item.headline && item.entity && item.evidence_count))
-    .slice(0, 6);
-  if (!claims.length && !rules.length && !research.length && !fallbackItems.length) return null;
+  if (!claims.length && !rules.length && !fallbackItems.length) return null;
   return (
-    <div className="current-intelligence-grid">
+    <div className={`current-intelligence-grid${rules.length ? "" : " current-intelligence-single"}`}>
       {claims.length ? (
         <ClaimLedger claims={claims} onEvidence={onEvidence} />
       ) : fallbackItems.length ? (
@@ -577,10 +695,7 @@ function CurrentIntelligence({
           />
         </section>
       ) : null}
-      <div className={`watch-stack ${(rules.length > 0) !== (research.length > 0) ? "single-watch" : ""}`}>
-        {rules.length ? <RuleWatch rules={rules} /> : null}
-        {research.length ? <ResearchWatch items={research} total={context.counts.research_screening} /> : null}
-      </div>
+      {rules.length ? <div className="watch-stack single-watch"><RuleWatch rules={rules} /></div> : null}
     </div>
   );
 }
@@ -652,14 +767,19 @@ function RuleWatch({ rules }: { rules: PublicationContext["rules"] }) {
 }
 
 function ResearchWatch({
+  featured = false,
   items,
   total,
 }: {
+  featured?: boolean;
   items: PublicationContext["research"];
   total: number;
 }) {
   return (
-    <section className="watch-panel research-watch" aria-labelledby="research-watch-title">
+    <section
+      className={`watch-panel research-watch${featured ? " research-watch-featured" : ""}`}
+      aria-labelledby="research-watch-title"
+    >
       <RegionHeader id="research-watch-title" title="🔬 Research screening" note={`${total} eligible public watches · not Claims`} />
       <div className="watch-list research-watch-list">
         {items.map((item) => (
@@ -1034,6 +1154,10 @@ function numericField(value: unknown): number | null {
     return Number.isFinite(parsed) ? parsed : null;
   }
   return null;
+}
+
+function textField(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function formatProbability(value: number | null | undefined): string {

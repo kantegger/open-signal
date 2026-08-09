@@ -39,8 +39,8 @@ test("keeps Current compact and preserves the complete grammar in Editions", asy
   await expect(page).toHaveTitle(/Open Signal/);
   await expect(page.getByText("Current front page", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "September rate cut became 21 points more likely." })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /Expectation tape/ })).toBeVisible();
-  await expect(page.getByText("Source observations · not forecasts")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Live signal tape/ })).toBeVisible();
+  await expect(page.getByText(/verified · 8 monitored Topics · deduplicated/)).toBeVisible();
   await expect(page.locator(".topic-monitor-list article")).toHaveCount(8);
   await expect(page.getByRole("heading", { name: "Verified judgment ledger" })).toBeVisible();
   await expect(page.locator(".claim-ledger-row:not(.claim-ledger-head)")).toHaveCount(12);
@@ -61,9 +61,8 @@ test("keeps Current compact and preserves the complete grammar in Editions", asy
   await expect(page.locator(".sparkline-evidence", { hasText: /7d · 29 obs/ })).toHaveCount(3);
   await expect(page.locator(".sparkline-fallback")).toHaveCount(5);
   await expect(page.locator('.sparkline-fallback[data-series-status="insufficient_observations"]')).toHaveCount(2);
-  await expect(page.locator('.sparkline-fallback[data-series-status="partial_window"]')).toHaveCount(1);
-  await expect(page.locator('.sparkline-fallback[data-series-status="no_material_variation"]')).toHaveCount(1);
   await expect(page.locator('.sparkline-fallback[data-series-status="stale_endpoint"]')).toHaveCount(1);
+  await expect(page.locator(".tape-row-verified .sparkline-fallback")).toHaveCount(2);
   await expect(page.locator('.lead-region .probability-direction[data-series-status="insufficient_observations"]')).toBeVisible();
   await expect(page.locator(".lead-region .probability-chart")).toHaveCount(0);
   await expect(page.locator('[data-component-family="document-change"]')).toHaveCount(0);
@@ -75,6 +74,8 @@ test("keeps Current compact and preserves the complete grammar in Editions", asy
   for (const family of families) {
     await expect(page.locator(`[data-component-family="${family}"]`).first()).toBeVisible();
   }
+  await expect(page.getByRole("heading", { name: "Live signal feed" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Live signal tape/ })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Archive" })).toBeVisible();
   await expect(page.getByText("No signals today.")).toHaveCount(0);
 });
@@ -115,6 +116,31 @@ test("uses the full ultrawide canvas without letting ledger text cross its colum
   }
 });
 
+test("uses the full canvas on destination pages and exposes a primary Topic signal", async ({ page }) => {
+  await page.setViewportSize({ width: 2560, height: 1300 });
+  for (const [path, selector, heading] of [
+    ["/explore", ".directory-page", "Explore Signals and Topics"],
+    ["/editions", ".directory-page", "Edition Archive"],
+    ["/method", ".method-page", "How Open Signal makes a public claim"],
+  ] as const) {
+    await page.goto(path);
+    await expect(page.getByRole("heading", { name: heading })).toBeVisible();
+    const layout = await page.locator(selector).evaluate((element) => ({
+      clientWidth: document.documentElement.clientWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      pageWidth: element.getBoundingClientRect().width,
+    }));
+    expect(layout.pageWidth).toBeGreaterThanOrEqual(layout.clientWidth - 1);
+    expect(layout.documentWidth).toBe(layout.clientWidth);
+  }
+
+  await page.goto("/explore");
+  const firstTopicSignal = page.locator(".topic-directory-signal").first();
+  await expect(firstTopicSignal.getByText("Latest source probability")).toBeVisible();
+  await expect(firstTopicSignal.locator("strong")).toHaveText("85%");
+  await expect(firstTopicSignal.locator(".trend-up")).toContainText("↗ +21pp · 24h");
+});
+
 test("keeps public information readable and encodes direction semantically", async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto("/");
@@ -124,13 +150,13 @@ test("keeps public information readable and encodes direction semantically", asy
   const topicHref = await page.getByRole("link", { name: "Track topic" }).getAttribute("href");
   const currentSizes = await page.evaluate(() => ({
     navigation: parseFloat(getComputedStyle(document.querySelector(".primary-link")!).fontSize),
-    feedHeadline: parseFloat(getComputedStyle(document.querySelector(".feed-headline")!).fontSize),
+    tapeHeadline: parseFloat(getComputedStyle(document.querySelector(".live-signal-list .topic-monitor-identity > a")!).fontSize),
     ledgerStatement: parseFloat(getComputedStyle(document.querySelector(".claim-ledger-row:not(.claim-ledger-head) strong")!).fontSize),
     watchHeadline: parseFloat(getComputedStyle(document.querySelector(".watch-list article > strong")!).fontSize),
     sourceLabel: parseFloat(getComputedStyle(document.querySelector(".source-coverage-band article > span")!).fontSize),
   }));
   expect(currentSizes.navigation).toBeGreaterThanOrEqual(11);
-  expect(currentSizes.feedHeadline).toBeGreaterThanOrEqual(15);
+  expect(currentSizes.tapeHeadline).toBeGreaterThanOrEqual(13);
   expect(currentSizes.ledgerStatement).toBeGreaterThanOrEqual(13);
   expect(currentSizes.watchHeadline).toBeGreaterThanOrEqual(12);
   expect(currentSizes.sourceLabel).toBeGreaterThanOrEqual(11);
@@ -182,8 +208,8 @@ test("keeps public information readable and encodes direction semantically", asy
 });
 
 test("fills an empty lead column with derived signal context", async ({ page, request }) => {
-  await request.post("http://127.0.0.1:8001/__control/front-mode?value=no-live-feed");
-  await revalidate(request, "e2e-no-live-feed");
+  await request.post("http://127.0.0.1:8001/__control/front-mode?value=no-research");
+  await revalidate(request, "e2e-no-research");
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: /Signal pulse/ })).toBeVisible();
@@ -278,16 +304,16 @@ test("uses real destination pages while Evidence remains an overlay", async ({ p
   await expect(page.getByRole("heading", { name: "How Open Signal makes a public claim" })).toBeVisible();
 });
 
-test("mobile order prioritizes the live feed and navigation remains usable", async ({ page }) => {
+test("mobile order prioritizes research and navigation remains usable", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/");
-  const liveFeed = page.getByRole("heading", { name: "Live signal feed" });
+  const research = page.getByRole("heading", { name: /Research screening/ });
   const secondary = page.getByRole("heading", { name: "Secondary signals" });
-  const [liveBox, secondaryBox] = await Promise.all([liveFeed.boundingBox(), secondary.boundingBox()]);
-  expect(liveBox).not.toBeNull();
+  const [researchBox, secondaryBox] = await Promise.all([research.boundingBox(), secondary.boundingBox()]);
+  expect(researchBox).not.toBeNull();
   expect(secondaryBox).not.toBeNull();
-  expect(liveBox!.y).toBeLessThan(secondaryBox!.y);
-  const topicMonitor = page.getByRole("heading", { name: /Expectation tape/ });
+  expect(researchBox!.y).toBeLessThan(secondaryBox!.y);
+  const topicMonitor = page.getByRole("heading", { name: /Live signal tape/ });
   const topicBox = await topicMonitor.boundingBox();
   expect(topicBox).not.toBeNull();
   expect(secondaryBox!.y).toBeLessThan(topicBox!.y);

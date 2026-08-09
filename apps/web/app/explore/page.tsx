@@ -3,6 +3,7 @@ import Link from "next/link";
 import { JsonLd } from "../../components/json-ld";
 import { DirectionalStatement } from "../../components/directional-statement";
 import { SiteShell } from "../../components/site-shell";
+import type { SeoIndexData } from "../../lib/api";
 import { formatDateTime, formatRelativeTime, humanize } from "../../lib/i18n";
 import { fetchSeoIndexServer } from "../../lib/server-api";
 import { absoluteUrl } from "../../lib/site";
@@ -25,6 +26,7 @@ const SIGNALS_PER_PAGE = 60;
 const TOPICS_PER_PAGE = 24;
 
 type Props = { searchParams: Promise<{ page?: string }> };
+type TopicIndexItem = SeoIndexData["topics"][number];
 
 export default async function ExplorePage({ searchParams }: Props) {
   const { page: rawPage } = await searchParams;
@@ -114,6 +116,7 @@ export default async function ExplorePage({ searchParams }: Props) {
                   <article key={topic.id}>
                     <p className="eyebrow">{humanize(topic.event_type)}</p>
                     <h3><Link href={topicPath(topic.title, topic.id)}>{topic.title}</Link></h3>
+                    <TopicSignal topic={topic} />
                     <dl>
                       <div><dt>Markets</dt><dd>{topic.source_market_count}</dd></div>
                       <div><dt>Resolves</dt><dd>{formatDateTime(topic.resolution_deadline_at)}</dd></div>
@@ -163,9 +166,58 @@ export default async function ExplorePage({ searchParams }: Props) {
   );
 }
 
+function TopicSignal({ topic }: { topic: TopicIndexItem }) {
+  const hasProbability = topic.current_probability != null;
+  const observedAt = topic.current_observed_at ?? topic.updated_at;
+  const delta = topic.delta_24h_percentage_points;
+  const trendClass = topicTrendClass(delta);
+  return (
+    <div
+      aria-label={hasProbability
+        ? `Latest source probability ${formatTopicProbability(topic.current_probability)}${delta == null ? "" : `, ${formatTopicDelta(delta)} over 24 hours`}`
+        : `Resolution ${formatRelativeTime(topic.resolution_deadline_at)}; source probability unavailable`}
+      className="topic-directory-signal"
+    >
+      <span>{hasProbability ? "Latest source probability" : "Resolution window"}</span>
+      <strong>{hasProbability ? formatTopicProbability(topic.current_probability) : formatRelativeTime(topic.resolution_deadline_at)}</strong>
+      <div>
+        <b className={trendClass}>
+          {hasProbability && delta != null
+            ? `${topicTrendGlyph(delta)} ${formatTopicDelta(delta)} · 24h`
+            : "— no 24h baseline"}
+        </b>
+        <time dateTime={hasProbability ? observedAt : topic.resolution_deadline_at}>
+          {hasProbability ? `observed ${formatRelativeTime(observedAt)}` : formatDateTime(topic.resolution_deadline_at)}
+        </time>
+      </div>
+    </div>
+  );
+}
+
 function parsePage(value: string | undefined): number {
   const parsed = Number.parseInt(value ?? "1", 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function formatTopicProbability(value: number | null | undefined): string {
+  if (value == null) return "—";
+  const percentage = Math.abs(value) <= 1 ? value * 100 : value;
+  return `${Math.round(percentage * 10) / 10}%`;
+}
+
+function formatTopicDelta(value: number): string {
+  const rounded = Math.round(value * 10) / 10;
+  return `${rounded > 0 ? "+" : ""}${rounded}pp`;
+}
+
+function topicTrendClass(value: number | null | undefined): string {
+  if (value == null || Math.abs(value) < 0.05) return "trend-neutral";
+  return value > 0 ? "trend-up" : "trend-down";
+}
+
+function topicTrendGlyph(value: number): string {
+  if (Math.abs(value) < 0.05) return "→";
+  return value > 0 ? "↗" : "↘";
 }
 
 function deskName(deskId: string): string {
