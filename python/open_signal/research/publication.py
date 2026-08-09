@@ -23,11 +23,20 @@ MAX_PER_TOPIC = 2
 def build_public_research_item(candidate: Mapping[str, Any]) -> dict[str, Any] | None:
     """Return one qualified public item, or ``None`` for an internal-only row."""
 
+    item, _ = qualify_public_research_item(candidate)
+    return item
+
+
+def qualify_public_research_item(
+    candidate: Mapping[str, Any],
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Return a public item or a stable operational rejection reason."""
+
     candidate_type = str(candidate.get("candidate_type") or "")
     metrics = _mapping(candidate.get("derived_metrics"))
     common = _common_fields(candidate, metrics)
     if common is None:
-        return None
+        return None, _common_rejection_reason(candidate, metrics)
 
     if candidate_type == "institution_entry":
         institution = _text(metrics.get("institution"))
@@ -36,10 +45,14 @@ def build_public_research_item(candidate: Mapping[str, Any]) -> dict[str, Any] |
         recent = _number(metrics.get("recent_works"))
         prior = _number(metrics.get("prior_works"))
         evidence = _records(metrics.get("representative_works"))
-        if not all((institution, topic_id, topic_label, evidence)):
-            return None
+        if not institution:
+            return None, "missing_entity"
+        if not topic_id or not topic_label:
+            return None, "missing_topic_attribution"
+        if not evidence:
+            return None, "insufficient_source_evidence"
         if recent is None or prior is None or recent < 1:
-            return None
+            return None, "invalid_metric"
         headline = (
             f"New institutional output appeared in {topic_label}"
             if prior == 0
@@ -59,10 +72,12 @@ def build_public_research_item(candidate: Mapping[str, Any]) -> dict[str, Any] |
             ),
             "direction": "up" if recent > prior else "neutral",
             "source_label": "OpenAlex",
-        }
+        }, None
 
     if candidate_type == "stage_transition":
-        sponsor = _text(metrics.get("sponsor"))
+        entity = _text(metrics.get("sponsor")) or _text(metrics.get("entity"))
+        portfolio_scope = _text(metrics.get("portfolio_scope")) or "sponsor"
+        sponsors = _texts(metrics.get("sponsors"))
         topic_id = _text(metrics.get("topic_id"))
         topic_label = _text(metrics.get("topic_label"))
         phases = _texts(metrics.get("phase_labels")) or [
@@ -70,10 +85,16 @@ def build_public_research_item(candidate: Mapping[str, Any]) -> dict[str, Any] |
         ]
         phases = list(dict.fromkeys(phases))
         evidence = _records(metrics.get("representative_studies"))
-        if not all((sponsor, topic_id, topic_label)):
-            return None
-        if len(phases) < 2 or len(evidence) < 2:
-            return None
+        if not entity:
+            return None, "missing_entity"
+        if portfolio_scope == "topic" and len(sponsors) < 2:
+            return None, "missing_entity_attribution"
+        if not topic_id or not topic_label:
+            return None, "missing_topic_attribution"
+        if len(phases) < 2:
+            return None, "insufficient_phase_coverage"
+        if len(evidence) < 2:
+            return None, "insufficient_source_evidence"
         study_count = max(
             len(evidence),
             int(_number(metrics.get("study_count")) or 0),
@@ -82,14 +103,14 @@ def build_public_research_item(candidate: Mapping[str, Any]) -> dict[str, Any] |
             **common,
             "candidate_type": candidate_type,
             "headline": f"{topic_label} trials span {_joined(phases)}",
-            "entity": sponsor,
+            "entity": entity,
             "topic_label": topic_label,
             "topic_ids": [topic_id],
             "metric": f"{len(phases)} phases · {study_count} studies",
             "evidence_count": study_count,
             "direction": "neutral",
             "source_label": "ClinicalTrials.gov",
-        }
+        }, None
 
     if candidate_type == "cross_topic_relation":
         topic_ids = _texts(metrics.get("topics"))
@@ -97,10 +118,12 @@ def build_public_research_item(candidate: Mapping[str, Any]) -> dict[str, Any] |
         recent = _number(metrics.get("recent_cooccurrences"))
         prior = _number(metrics.get("prior_cooccurrences"))
         evidence = _records(metrics.get("representative_works"))
-        if len(topic_ids) != 2 or len(topic_labels) != 2 or not evidence:
-            return None
+        if len(topic_ids) != 2 or len(topic_labels) != 2:
+            return None, "missing_topic_attribution"
+        if not evidence:
+            return None, "insufficient_source_evidence"
         if recent is None or prior is None or recent <= prior:
-            return None
+            return None, "invalid_metric"
         return {
             **common,
             "candidate_type": candidate_type,
@@ -117,9 +140,30 @@ def build_public_research_item(candidate: Mapping[str, Any]) -> dict[str, Any] |
             ),
             "direction": "up",
             "source_label": "OpenAlex",
-        }
+        }, None
 
-    return None
+    return None, "unsupported_candidate_type"
+
+
+def public_research_qualification_report(
+    candidates: list[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Summarize why candidate rows did or did not clear the public boundary."""
+
+    reasons: Counter[str] = Counter()
+    eligible = 0
+    for candidate in candidates:
+        item, reason = qualify_public_research_item(candidate)
+        if item is not None:
+            eligible += 1
+        else:
+            reasons[reason or "unknown"] += 1
+    return {
+        "evaluated": len(candidates),
+        "eligible": eligible,
+        "rejected": len(candidates) - eligible,
+        "rejection_reasons": dict(sorted(reasons.items())),
+    }
 
 
 def select_public_research_items(
@@ -198,6 +242,21 @@ def _common_fields(
         ),
         "detected_at": detected_at,
     }
+
+
+def _common_rejection_reason(
+    candidate: Mapping[str, Any],
+    metrics: Mapping[str, Any],
+) -> str:
+    if not _text(candidate.get("id")):
+        return "missing_candidate_id"
+    if not _text(metrics.get("window_label")) or not _text(
+        metrics.get("baseline_label")
+    ):
+        return "missing_measurement_window"
+    if not _iso(candidate.get("created_at")):
+        return "missing_detection_timestamp"
+    return "invalid_publication_metadata"
 
 
 def _selection_score(

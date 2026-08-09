@@ -169,9 +169,11 @@ Interaction destinations are explicit:
   sponsor names are secondary entity labels, except on a future entity-specific
   page. Selection de-duplicates repeated runs and caps both candidate type and
   Topic at two items so one high-volume source pattern cannot dominate Current.
-- ClinicalTrials phase coverage is described as a sponsor portfolio spanning
-  phases. Cross-sectional registry records never justify wording that a trial
-  "advanced" or "transitioned" without longitudinal evidence for that trial.
+- ClinicalTrials phase coverage is described as either a sponsor portfolio or
+  an explicitly cross-sponsor Topic portfolio spanning phases. Both require at
+  least two named study records. Cross-sectional registry records never justify
+  wording that a trial "advanced" or "transitioned" without longitudinal
+  evidence for that trial.
 - A Claim may have one full presentation and one compact `index_echo`. The echo
   points to the same Claim; it is not a duplicate Claim or a second analysis.
 - Section diversity and Component Family repetition rules apply to editorial

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from collections.abc import Mapping
 from typing import Any
@@ -13,11 +14,17 @@ from open_signal.agents.runtime import Abstention, AgentRuntime, DeepSeekClient
 from open_signal.budget import BudgetGuard
 from open_signal.orchestration.metadata import ensure_runtime_metadata
 from open_signal.research.agent import ResearchDomainAgent
-from open_signal.research.candidates import ResearchCandidateDetector
+from open_signal.research.candidates import CANDIDATE_VERSION, ResearchCandidateDetector
+from open_signal.research.publication import (
+    public_research_qualification_report,
+    select_public_research_items,
+)
+from open_signal.security.hardening import audit
 from open_signal.sources.openalex import OpenAlexChain
 
 SECTION_ID = "research-frontier"
 DESK_ID = "research-frontier-desk"
+logger = logging.getLogger(__name__)
 
 
 class ResearchSectionService:
@@ -27,7 +34,13 @@ class ResearchSectionService:
     def generate_candidates(
         self, payload: Mapping[str, Any] | None = None
     ) -> dict[str, Any]:
-        del payload
+        payload = payload or {}
+        requested_version = str(payload.get("candidate_version") or "").strip()
+        if requested_version and requested_version != CANDIDATE_VERSION:
+            raise ValueError(
+                "research candidate schedule/code mismatch: "
+                f"requested {requested_version}, running {CANDIDATE_VERSION}"
+            )
         source_ids = ensure_runtime_metadata(self.engine)
         topic_chain = OpenAlexChain(None)
         try:
@@ -76,16 +89,42 @@ class ResearchSectionService:
             ),
         ]
         stored = detector.persist(candidates)
-        return {
+        publication_candidates = detector.publication_candidates()
+        selected, eligible_total = select_public_research_items(
+            publication_candidates
+        )
+        qualification = public_research_qualification_report(
+            publication_candidates
+        )
+        result = {
             "section_id": SECTION_ID,
             "maturity": "shadow",
+            "candidate_generator_version": CANDIDATE_VERSION,
             "works_evaluated": len(works),
             "studies_evaluated": len(studies),
             "candidates_detected": len(candidates),
             "candidates_created": stored,
             "duplicates_skipped": len(candidates) - stored,
+            "public_contract_evaluated": qualification["evaluated"],
+            "public_contract_eligible": eligible_total,
+            "public_contract_selected": len(selected),
+            "public_contract_rejected": qualification["rejected"],
+            "public_rejection_reasons": qualification["rejection_reasons"],
             "public_claims_created": 0,
         }
+        if (works or studies) and eligible_total == 0:
+            logger.warning(
+                "research candidate refresh produced zero public-eligible items: %s",
+                result,
+            )
+            result["zero_output_audit_event_id"] = audit(
+                self.engine,
+                action="research.publication.zero_output",
+                actor=f"research-candidate-detector/{CANDIDATE_VERSION}",
+                target=SECTION_ID,
+                detail=result,
+            )
+        return result
 
     def investigate_shadow(
         self, payload: Mapping[str, Any] | None = None
@@ -121,11 +160,12 @@ class ResearchSectionService:
                            derived_metrics
                     FROM research_signal_candidates
                     WHERE status = 'generated'
+                      AND candidate_generator_version = :version
                     ORDER BY created_at
                     LIMIT :limit
                     """
                 ),
-                {"limit": maximum},
+                {"limit": maximum, "version": CANDIDATE_VERSION},
             ).fetchall()
 
         client = DeepSeekClient(model="deepseek-chat")
@@ -155,6 +195,7 @@ class ResearchSectionService:
             "section_id": SECTION_ID,
             "maturity": "shadow",
             "status": "completed",
+            "candidate_generator_version": CANDIDATE_VERSION,
             "candidates_selected": len(rows),
             "investigated": investigated,
             "abstained": abstained,

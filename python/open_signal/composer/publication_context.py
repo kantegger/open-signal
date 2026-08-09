@@ -9,6 +9,7 @@ so every public number and micro-chart belongs to the same immutable snapshot.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -17,9 +18,10 @@ from typing import Any
 from sqlalchemy import text
 
 from open_signal.derived.series_contract import market_series_snapshot
+from open_signal.research.candidates import CANDIDATE_VERSION
 from open_signal.research.publication import select_public_research_items
 
-CONTEXT_VERSION = "1.2.0"
+CONTEXT_VERSION = "1.3.0"
 CLAIM_LIMIT = 24
 EXPECTATION_LIMIT = 12
 RULE_LIMIT = 8
@@ -36,11 +38,13 @@ class PublicationContextBuilder:
         expectations = self._expectations(conn, captured_at=captured_at)
         rules = self._rules(conn, captured_at=captured_at)
         research, research_total = self._research(conn, captured_at=captured_at)
+        research_fingerprint = _research_fingerprint(research, research_total)
         coverage = self._coverage(conn, captured_at=captured_at)
         return {
             "version": CONTEXT_VERSION,
             "snapshot_bound": True,
             "captured_at": captured_at.isoformat(),
+            "research_fingerprint": research_fingerprint,
             "counts": {
                 "verified_claims": claim_total,
                 "expectation_observations": len(expectations),
@@ -281,7 +285,8 @@ class PublicationContextBuilder:
                        observation_window_start, observation_window_end,
                        baseline_definition, evidence_relation_ids
                 FROM research_signal_candidates
-                WHERE status IN ('generated', 'shadow_investigation')
+                WHERE candidate_generator_version = :candidate_version
+                  AND status IN ('generated', 'shadow_investigation')
                   AND created_at <= :captured_at
                   AND created_at >= :captured_at - interval '30 days'
                 ORDER BY (status = 'shadow_investigation') DESC,
@@ -289,7 +294,11 @@ class PublicationContextBuilder:
                 LIMIT :limit
                 """
             ),
-            {"captured_at": captured_at, "limit": RESEARCH_SCAN_LIMIT},
+            {
+                "captured_at": captured_at,
+                "candidate_version": CANDIDATE_VERSION,
+                "limit": RESEARCH_SCAN_LIMIT,
+            },
         ).fetchall()
         candidates = [
             {
@@ -309,6 +318,15 @@ class PublicationContextBuilder:
             candidates,
             limit=RESEARCH_LIMIT,
         )
+
+    def research_fingerprint(self, conn: Any, *, captured_at: datetime) -> str:
+        """Fingerprint the current public-qualified Research screening set."""
+
+        items, eligible_total = self._research(
+            conn,
+            captured_at=_utc(captured_at),
+        )
+        return _research_fingerprint(items, eligible_total)
 
     def _coverage(
         self, conn: Any, *, captured_at: datetime
@@ -352,6 +370,7 @@ def empty_publication_context(*, captured_at: str | None = None) -> dict[str, An
         "version": CONTEXT_VERSION,
         "snapshot_bound": False,
         "captured_at": captured_at,
+        "research_fingerprint": _research_fingerprint([], 0),
         "counts": {
             "verified_claims": 0,
             "expectation_observations": 0,
@@ -365,6 +384,25 @@ def empty_publication_context(*, captured_at: str | None = None) -> dict[str, An
         "research": [],
         "coverage": [],
     }
+
+
+def _research_fingerprint(
+    items: list[dict[str, Any]],
+    eligible_total: int,
+) -> str:
+    payload = {
+        "candidate_generator_version": CANDIDATE_VERSION,
+        "eligible_total": eligible_total,
+        "items": items,
+    }
+    return hashlib.sha256(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
 
 
 def _claim_change(proposition: dict[str, Any]) -> tuple[str, str | None]:

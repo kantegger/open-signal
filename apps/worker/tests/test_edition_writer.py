@@ -2,6 +2,7 @@
 OPEN_SIGNAL_TEST_DATABASE_URL (migration 0001 applied).
 """
 
+import json
 import os
 import uuid
 from datetime import UTC, date, datetime
@@ -193,7 +194,8 @@ def test_snapshot_captures_typed_publication_context(writer, engine) -> None:
     stored = writer.edition_json(result["edition_id"])
     context = stored["edition_payload"]["publication_context"]
     assert context["snapshot_bound"] is True
-    assert context["version"] == "1.2.0"
+    assert context["version"] == "1.3.0"
+    assert len(context["research_fingerprint"]) == 64
     assert set(context) >= {
         "counts",
         "claims",
@@ -444,7 +446,91 @@ def test_freshness_reconcile_backfills_publication_context(writer, engine) -> No
         for transition in refreshed["transitions"]
     )
     payload = writer.edition_json(refreshed["edition_id"])
-    assert payload["edition_payload"]["publication_context"]["version"] == "1.2.0"
+    assert payload["edition_payload"]["publication_context"]["version"] == "1.3.0"
+    _cleanup(engine)
+
+
+def test_freshness_reconcile_publishes_when_research_screening_changes(
+    writer, engine
+) -> None:
+    from sqlalchemy import text
+
+    _cleanup(engine)
+    with engine.begin() as conn:
+        conn.execute(text("DELETE FROM research_signal_candidates"))
+    initial = writer.build_edition(
+        [_candidate("c1")],
+        generated_at=datetime(2026, 8, 7, 13, tzinfo=UTC),
+    )
+    initial_context = writer.edition_json(initial["edition_id"])["edition_payload"][
+        "publication_context"
+    ]
+    assert initial_context["research"] == []
+
+    metrics = {
+        "entity": "Sponsor A + Sponsor B",
+        "portfolio_scope": "topic",
+        "sponsors": ["Sponsor A", "Sponsor B"],
+        "topic_id": "oncology-immunotherapy",
+        "topic_label": "Oncology immunotherapy",
+        "phases": ["PHASE1", "PHASE2"],
+        "phase_labels": ["Phase 1", "Phase 2"],
+        "representative_studies": [
+            {"id": "NCT00000001", "title": "Phase one study"},
+            {"id": "NCT00000002", "title": "Phase two study"},
+        ],
+        "study_count": 2,
+        "evidence_count": 2,
+        "window_label": "Registry portfolio as of Aug 2026",
+        "baseline_label": "Cross-sectional phase coverage",
+    }
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                INSERT INTO research_signal_candidates
+                  (candidate_type, subject_ids, observation_window_start,
+                   observation_window_end, baseline_definition, derived_metrics,
+                   evidence_relation_ids, candidate_generator_version, status,
+                   idempotency_key, created_at)
+                VALUES
+                  ('stage_transition', CAST('{}' AS uuid[]), :window_start,
+                   :window_end, :baseline, CAST(:metrics AS jsonb),
+                   CAST('{}' AS uuid[]), 'os-021.2', 'generated', :key,
+                   :created_at)
+                """
+            ),
+            {
+                "window_start": datetime(2026, 1, 1, tzinfo=UTC),
+                "window_end": datetime(2026, 8, 7, 13, 30, tzinfo=UTC),
+                "baseline": (
+                    "registered topic portfolio phase distribution across sponsors"
+                ),
+                "metrics": json.dumps(metrics),
+                "key": f"research-test:{uuid.uuid4()}",
+                "created_at": datetime(2026, 8, 7, 13, 30, tzinfo=UTC),
+            },
+        )
+
+    refreshed = writer.reconcile_freshness(
+        generated_at=datetime(2026, 8, 7, 14, tzinfo=UTC)
+    )
+
+    assert refreshed["published"] is True
+    assert any(
+        transition["reason"] == "public research screening changed"
+        for transition in refreshed["transitions"]
+    )
+    refreshed_context = writer.edition_json(refreshed["edition_id"])[
+        "edition_payload"
+    ]["publication_context"]
+    assert len(refreshed_context["research"]) == 1
+    assert (
+        refreshed_context["research_fingerprint"]
+        != initial_context["research_fingerprint"]
+    )
+    with engine.begin() as conn:
+        conn.execute(text("DELETE FROM research_signal_candidates"))
     _cleanup(engine)
 
 

@@ -10,6 +10,7 @@ from open_signal.jobs.scheduler import (
     next_schedule_boundary,
     schedule_bucket_start,
 )
+from open_signal.research.candidates import CANDIDATE_VERSION
 from open_signal.sources.registry import JobScheduleDefinition, Registry
 
 
@@ -77,6 +78,24 @@ def test_schedule_bucket_and_key_are_deterministic() -> None:
     assert scheduler.next_due_at(now) == datetime(2026, 8, 8, 13, 0, tzinfo=UTC)
 
 
+def test_schedule_revision_replays_only_the_changed_contract() -> None:
+    queue = FakeQueue()
+    schedule = _schedule(
+        revision="os-021.2",
+        payload={"candidate_version": "os-021.2"},
+    )
+    scheduler = JobScheduler(queue, [schedule], version="2.0.0")
+    now = datetime(2026, 8, 8, 12, 7, tzinfo=UTC)
+
+    scheduled = scheduler.enqueue_due(now)[0]
+
+    assert scheduled.idempotency_key == (
+        "schedule:2.0.0:expectations-source:os-021.2:1786190400"
+    )
+    assert queue.enqueued[0]["payload"]["_schedule_revision"] == "os-021.2"
+    assert queue.enqueued[0]["payload"]["candidate_version"] == "os-021.2"
+
+
 def test_hourly_boundary_leaves_neon_quiet_window() -> None:
     registry = Registry.load()
     schedules = registry.job_schedules()
@@ -85,6 +104,17 @@ def test_hourly_boundary_leaves_neon_quiet_window() -> None:
     now = datetime(2026, 8, 8, 12, 0, 1, tzinfo=UTC)
     next_due = min(next_schedule_boundary(schedule, now) for schedule in schedules)
     assert (next_due - now).total_seconds() > 5 * 60
+
+
+def test_research_schedule_revision_matches_candidate_contract() -> None:
+    schedule = next(
+        item
+        for item in Registry.load().job_schedules()
+        if item.id == "research-candidate-refresh"
+    )
+
+    assert schedule.revision == CANDIDATE_VERSION
+    assert schedule.payload["candidate_version"] == CANDIDATE_VERSION
 
 
 def test_worker_drains_dependency_stages_in_order() -> None:
