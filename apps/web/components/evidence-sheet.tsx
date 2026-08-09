@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ClaimPageData, JsonRecord } from "../lib/api";
 import { fetchClaim } from "../lib/api";
 import { formatDateTime, humanize } from "../lib/i18n";
+import { DirectionalStatement } from "./directional-statement";
 import { Icon } from "./icons";
 
 export default function EvidenceSheet({
@@ -141,7 +142,7 @@ function SheetRecord({ page }: { page: ClaimPageData }) {
       <section className="claim-statement-block">
         <div>
           <p className="eyebrow">Claim <span>(public statement)</span></p>
-          <h2>{page.claim.public_statement || page.observation}</h2>
+          <h2><DirectionalStatement text={page.claim.public_statement || page.observation} /></h2>
           <p className="claim-context">{page.observation}</p>
         </div>
         <dl className="claim-identity">

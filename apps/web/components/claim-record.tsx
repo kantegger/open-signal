@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ClaimPageData, JsonRecord } from "../lib/api";
 import { formatDateTime, humanize } from "../lib/i18n";
 import { topicPath } from "../lib/urls";
+import { DirectionalStatement } from "./directional-statement";
 import { Icon } from "./icons";
 
 export function ClaimRecord({ page }: { page: ClaimPageData }) {
@@ -19,7 +20,7 @@ export function ClaimRecord({ page }: { page: ClaimPageData }) {
       <header className="claim-record-header">
         <div>
           <p className="eyebrow">Public Claim · {humanize(page.claim.claim_type)}</p>
-          <h1>{page.claim.public_statement || page.observation}</h1>
+          <h1><DirectionalStatement text={page.claim.public_statement || page.observation} /></h1>
           <p>{page.observation}</p>
         </div>
         <dl>
@@ -77,7 +78,7 @@ export function ClaimRecord({ page }: { page: ClaimPageData }) {
             <article key={version.version_number}>
               <strong>v{version.version_number}</strong>
               <div><span>{humanize(version.change_type)}</span><time>{formatDateTime(version.created_at)}</time></div>
-              <p>{version.public_statement}</p>
+              <p><DirectionalStatement text={version.public_statement} /></p>
               <small>{version.change_reason}</small>
             </article>
           ))}

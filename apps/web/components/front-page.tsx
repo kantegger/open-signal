@@ -16,6 +16,7 @@ import type {
 import { fetchCurrentFrontPage } from "../lib/api";
 import { copy, formatDateTime, formatRelativeTime, humanize } from "../lib/i18n";
 import { editionPath, signalPath, topicPath } from "../lib/urls";
+import { DirectionalStatement } from "./directional-statement";
 import { Icon } from "./icons";
 import { PlanRenderer, SignalFeedRow, type OpenEvidence } from "./publication-components";
 import { SiteShell } from "./site-shell";
@@ -606,9 +607,13 @@ function ClaimLedger({
         </div>
         {claims.map((claim) => (
           <div className={`claim-ledger-row ${sectionClass(claim.section_id)}`} key={claim.id} role="row">
-            <span role="cell"><b>{directionGlyph(claim.direction)}</b>{sectionName(claim.section_id)}</span>
             <span role="cell">
-              <Link href={signalPath(claim.statement, claim.id)}><strong>{claim.statement}</strong></Link>
+              <b aria-hidden="true" className={`ledger-direction ${directionClass(claim.direction)}`}>{directionGlyph(claim.direction)}</b>
+              <span className="sr-only">{humanize(claim.direction)} direction · </span>
+              {sectionName(claim.section_id)}
+            </span>
+            <span role="cell">
+              <Link href={signalPath(claim.statement, claim.id)}><strong><DirectionalStatement text={claim.statement} /></strong></Link>
               <small>{claim.source_label}</small>
             </span>
             <span className={directionClass(claim.direction)} role="cell">{claim.change ?? "—"}</span>
@@ -783,8 +788,8 @@ function DigestTable({
           <span role="cell">{sectionName(item.section_id)}</span>
           <span role="cell">
             {item.trust.claim_id ? (
-              <Link href={signalPath(item.headline, item.trust.claim_id)}><strong>{item.headline}</strong></Link>
-            ) : <strong>{item.headline}</strong>}
+              <Link href={signalPath(item.headline, item.trust.claim_id)}><strong><DirectionalStatement text={item.headline} /></strong></Link>
+            ) : <strong><DirectionalStatement text={item.headline} /></strong>}
           </span>
           <span role="cell">{item.trust.source_label}</span>
           <span role="cell">{humanize(item.trust.confidence_label ?? item.trust.epistemic_status)}</span>
