@@ -2,7 +2,7 @@ import { SiteShell } from "../../../components/site-shell";
 
 export default function ClaimLoading() {
   return (
-    <SiteShell active="claim" systemState="checking">
+    <SiteShell active="explore" systemState="checking">
       <div aria-busy="true" className="claim-record-page claim-loading">
         <div className="skeleton skeleton-kicker" />
         <div className="skeleton skeleton-headline" />

@@ -8,8 +8,14 @@ import json
 import os
 from datetime import UTC, datetime
 
+import httpx
 import pytest
-from open_signal.sources.market_obs import MarketObservationCollector, floor_to_bucket
+from open_signal.sources.market_obs import (
+    MarketObservationCollector,
+    PriceHistoryClient,
+    floor_to_bucket,
+    history_rows,
+)
 
 # ------------------------------------------------------------ bucket (no DB)
 
@@ -30,6 +36,58 @@ def test_parse_probability_helpers() -> None:
     assert parse_probability("0.64") == 0.64
     assert parse_probability(None) is None
     assert parse_probability("abc") is None
+
+
+def test_history_rows_bucket_and_validate_points() -> None:
+    rows = history_rows(
+        "11111111-1111-1111-1111-111111111111",
+        [
+            {"t": 1_786_219_224, "p": 0.505},
+            {"t": 1_786_219_240, "p": 0.51},
+            {"t": "bad", "p": 0.8},
+            {"t": 1_786_222_800, "p": 1.2},
+        ],
+        bucket_minutes=60,
+    )
+
+    assert len(rows) == 1
+    assert rows[0]["probability"] == 0.51
+    assert rows[0]["observed_at"].endswith("+00:00")
+
+
+def test_price_history_client_posts_official_batch_shape() -> None:
+    captured: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.update(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json={"history": {"yes-token": [{"t": 100, "p": 0.6}]}},
+        )
+
+    transport = httpx.MockTransport(handler)
+    http_client = httpx.Client(
+        base_url="https://clob.polymarket.com",
+        transport=transport,
+    )
+    client = PriceHistoryClient(client=http_client)
+    try:
+        history = client.fetch_batch(
+            ["yes-token"],
+            start_ts=10,
+            end_ts=20,
+            fidelity=60,
+        )
+    finally:
+        client.close()
+
+    assert captured == {
+        "markets": ["yes-token"],
+        "start_ts": 10,
+        "end_ts": 20,
+        "fidelity": 60,
+    }
+    assert history["yes-token"][0]["p"] == 0.6
 
 
 # ------------------------------------------------------------ integration (DB)
@@ -100,7 +158,7 @@ def test_collect_from_records_idempotent(collector, engine) -> None:
 
     markets = _fixture_markets()
     # map the first two markets
-    market_uuid = _seed_market(engine, str(markets[0]["id"]), markets[0]["question"])
+    _seed_market(engine, str(markets[0]["id"]), markets[0]["question"])
     _seed_market(engine, str(markets[1]["id"]), markets[1]["question"])
 
     # map gamma id -> uuid for the collector

@@ -73,8 +73,30 @@ class ClaimPagePresenter:
                     {"id": claim[17]},
                 ).fetchone()
 
+            topic = conn.execute(
+                text(
+                    """
+                    SELECT ce.id, ce.canonical_question, ce.event_type,
+                           ce.resolution_deadline_at, ce.updated_at
+                    FROM section_instances si
+                    JOIN canonical_expectations ce
+                      ON ce.source_market_ids @> ARRAY[si.subject_id]::uuid[]
+                    WHERE si.claim_id = :claim
+                      AND si.subject_type = 'source_market'
+                    ORDER BY ce.updated_at DESC LIMIT 1
+                    """
+                ),
+                {"claim": claim_id},
+            ).fetchone()
+
         return self._assemble(
-            claim, versions, evidence, lineage, resolution, locale=locale
+            claim,
+            versions,
+            evidence,
+            lineage,
+            resolution,
+            topic,
+            locale=locale,
         )
 
     # ------------------------------------------------------------------ view
@@ -85,6 +107,7 @@ class ClaimPagePresenter:
         evidence: Any | None,
         lineage: Any | None,
         resolution: Any | None,
+        topic: Any | None,
         *,
         locale: str,
     ) -> dict[str, Any]:
@@ -175,6 +198,17 @@ class ClaimPagePresenter:
                 for v in versions
             ],
             "resolution_contract": self._resolution_contract(resolution),
+            "topic": (
+                {
+                    "id": str(topic[0]),
+                    "title": topic[1],
+                    "event_type": topic[2],
+                    "resolution_deadline_at": topic[3].isoformat(),
+                    "updated_at": topic[4].isoformat(),
+                }
+                if topic
+                else None
+            ),
             "locale": {
                 "requested": locale,
                 "published": published_locale,

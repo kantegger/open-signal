@@ -7,6 +7,7 @@ frozen_at: "2026-08-07"
 topics:
   - id: oncology-immunotherapy
     label: 肿瘤免疫治疗
+    label_en: Oncology immunotherapy
     description: T 细胞疗法、免疫检查点抑制剂、肿瘤微环境。
     baseline_queries:
       openalex: "CAR-T OR checkpoint inhibitor OR tumor immunotherapy"
@@ -20,6 +21,7 @@ topics:
 
   - id: synthetic-biology
     label: 合成生物学
+    label_en: Synthetic biology
     description: CRISPR 基因编辑、合成基因组、生物制造。
     baseline_queries:
       openalex: "CRISPR OR synthetic biology OR gene editing"
@@ -33,6 +35,7 @@ topics:
 
   - id: generative-ai
     label: 生成式 AI / 基础模型
+    label_en: Generative AI and foundation models
     description: 大语言模型、扩散模型、Agent 推理、对齐。
     baseline_queries:
       openalex: "large language model OR foundation model OR generative AI"
@@ -46,6 +49,7 @@ topics:
 
   - id: quantum-computing
     label: 量子计算
+    label_en: Quantum computing
     description: 超导/拓扑量子比特、量子纠错、量子优势。
     baseline_queries:
       openalex: "quantum computing OR qubit OR quantum error correction"

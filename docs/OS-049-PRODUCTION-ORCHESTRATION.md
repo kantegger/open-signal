@@ -27,10 +27,16 @@ atomic rolling-page compile when meaning changed
   Research investigation cannot stop an Expectations refresh or retire a Rules
   item.
 - Research remains `shadow`: ingestion, candidate detection, and Agent
-  investigation run, but they do not create a public Claim or occupy a public
-  Slot until the Registry maturity changes.
+  investigation run, but they do not create a public Claim or occupy an
+  editorial Slot until the Registry maturity changes. Qualified deterministic
+  candidate metrics may appear only in the explicitly non-Claim Research Watch
+  layer of the snapshot-bound `publication_context`.
 - A Section refresh only recompiles the front page when it produced new verified
   meaning. Unchanged Sections retain their last verified output.
+- A compact Expectations observation refresh retains still-valid featured
+  Expectations items while atomically recompiling the full Section. New items
+  receive placement priority; carried items remain subject to normal freshness
+  and capacity rules.
 - Freshness reconciliation publishes only when an item ages, is demoted, or is
   retired. An hourly check must not manufacture hourly Edition snapshots.
 - If any handler or compiler fails, the current Edition pointer does not move.
@@ -67,6 +73,21 @@ The authoritative values live in
 | Research candidate + investigation | daily | shadow ledger only |
 | Freshness reconciliation | hourly | only on age/retirement transition |
 | R2 publication snapshot delivery | hourly | only advances after a complete snapshot |
+
+The hourly Polymarket batch discovers active event envelopes rather than a
+fixture or a single global market page. It monitors up to 500 activity-ranked
+markets with a per-event cap, backfills up to seven days of hourly CLOB price
+history for newly monitored markets, and evaluates two publication tiers:
+three Featured candidates and up to twelve compact Scanner candidates. These
+are bounded monitoring and layout budgets, not topic allowlists.
+
+OpenAlex and ClinicalTrials raw records preserve every monitoring Topic that led
+to their discovery inside `transport_metadata.monitoring_topics`. Repeated
+discovery of identical source content merges this attribution without changing
+the source payload hash or counting the record as newly ingested. Candidate
+detection groups institutional and sponsor activity within those Topics;
+legacy OpenAlex rows may be attributed conservatively from frozen concept
+mappings, while unattributed records remain internal-only.
 
 ## Queue and retry semantics
 

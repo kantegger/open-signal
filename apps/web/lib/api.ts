@@ -70,6 +70,13 @@ export interface ClaimPageData {
     created_at: string;
   }>;
   resolution_contract?: JsonRecord | null;
+  topic?: {
+    id: string;
+    title: string;
+    event_type: string;
+    resolution_deadline_at: string;
+    updated_at: string;
+  } | null;
   locale?: LocaleState;
 }
 
@@ -150,6 +157,12 @@ export interface RenderPlanItem {
     unresolved_questions: unknown[];
     known_limitations: unknown[];
   };
+  topic?: {
+    id: string;
+    title: string;
+    event_type: string;
+    resolution_deadline_at: string;
+  } | null;
   locale: LocaleState;
 }
 
@@ -162,6 +175,121 @@ export interface PublicationSlot {
   desktop_order: number;
   mobile_order: number;
   items: RenderPlanItem[];
+}
+
+export interface PublicationClaimRecord {
+  id: string;
+  section_id: string;
+  claim_type: string;
+  statement: string;
+  direction: "up" | "down" | "neutral" | string;
+  change?: string | null;
+  confidence?: number | null;
+  confidence_label?: string | null;
+  epistemic_status?: string | null;
+  status: string;
+  source_label: string;
+  evidence_count: number;
+  issued_at: string;
+  updated_at: string;
+  valid_until?: string | null;
+}
+
+export interface PublicationExpectationObservation {
+  id: string;
+  title: string;
+  event_type: string;
+  resolution_deadline_at: string;
+  status: string;
+  updated_at: string;
+  source_market_count: number;
+  source_market_status?: string | null;
+  source_label: string;
+  current_probability?: number | null;
+  current_observed_at?: string | null;
+  baseline_probability_24h?: number | null;
+  baseline_observed_at?: string | null;
+  delta_24h_percentage_points?: number | null;
+  series: Array<[string, number]>;
+  series_quality?: {
+    coverage_status:
+      | "complete"
+      | "insufficient_observations"
+      | "partial_window"
+      | "stale_endpoint"
+      | "gapped"
+      | "no_material_variation"
+      | string;
+    requested_window_hours: number;
+    observation_count: number;
+    points_returned: number;
+    first_observed_at?: string | null;
+    last_observed_at?: string | null;
+    span_hours: number;
+    max_gap_hours: number;
+    probability_range_percentage_points: number;
+  };
+}
+
+export interface PublicationRuleObservation {
+  id: string;
+  title: string;
+  rule_type: string;
+  previous_state?: string | null;
+  current_state: string;
+  announced_at?: string | null;
+  adopted_at?: string | null;
+  effective_at?: string | null;
+  enforcement_at?: string | null;
+  updated_at: string;
+  authority?: string | null;
+  jurisdiction?: string | null;
+  transition_at?: string | null;
+  transition_confidence?: number | null;
+  source_label: string;
+}
+
+export interface PublicationResearchWatch {
+  id: string;
+  candidate_type: string;
+  headline: string;
+  entity: string;
+  topic_label: string;
+  topic_ids: string[];
+  metric: string;
+  window_label: string;
+  baseline_label: string;
+  evidence_count: number;
+  direction: "up" | "down" | "neutral" | string;
+  screening_stage: "detected" | "investigated" | string;
+  source_label: string;
+  detected_at: string;
+}
+
+export interface PublicationSourceCoverage {
+  source_slug: string;
+  source_label: string;
+  records_total: number;
+  records_24h: number;
+  latest_ingested_at?: string | null;
+}
+
+export interface PublicationContext {
+  version: string;
+  snapshot_bound: boolean;
+  captured_at?: string | null;
+  counts: {
+    verified_claims: number;
+    expectation_observations: number;
+    rules_tracked: number;
+    research_screening: number;
+    source_records_24h: number;
+  };
+  claims: PublicationClaimRecord[];
+  expectations: PublicationExpectationObservation[];
+  rules: PublicationRuleObservation[];
+  research: PublicationResearchWatch[];
+  coverage: PublicationSourceCoverage[];
 }
 
 export interface FrontPageData {
@@ -189,6 +317,7 @@ export interface FrontPageData {
     channel_updated_at?: string | null;
   };
   sections: string[];
+  publication_context: PublicationContext;
   slots: PublicationSlot[];
   archive: Array<{
     id: string;
@@ -217,6 +346,97 @@ export interface FetchFrontPageResult {
   data: FrontPageData | null;
   etag: string | null;
   notModified: boolean;
+}
+
+export interface TopicPageData {
+  topic: {
+    id: string;
+    title: string;
+    event_type: string;
+    outcome_type: string;
+    resolution_deadline_at: string;
+    resolution_authority?: string | null;
+    resolution_rule_summary: string;
+    status: string;
+    canonicalization_version: string;
+    created_at: string;
+    updated_at: string;
+  };
+  source_event?: {
+    id?: string | null;
+    title?: string | null;
+    slug?: string | null;
+    tags: string[];
+    source_url?: string | null;
+  } | null;
+  markets: Array<{
+    id: string;
+    external_market_id: string;
+    question: string;
+    description?: string | null;
+    outcome_labels: string[];
+    ends_at: string;
+    liquidity?: number | null;
+    volume?: number | null;
+    status: string;
+    current_probability?: number | null;
+    current_observed_at?: string | null;
+    baseline_probability_24h?: number | null;
+    baseline_observed_at?: string | null;
+    delta_24h_percentage_points?: number | null;
+    source_url?: string | null;
+    tags: string[];
+  }>;
+  signals: Array<{
+    id: string;
+    public_statement: string;
+    claim_type: string;
+    status: string;
+    confidence?: number | null;
+    confidence_label?: string | null;
+    epistemic_status?: string | null;
+    issued_at: string;
+    updated_at: string;
+  }>;
+  method: { summary: string };
+}
+
+export interface SeoIndexData {
+  claims: Array<{
+    id: string;
+    title: string;
+    claim_type: string;
+    desk_id: string;
+    confidence_label?: string | null;
+    epistemic_status?: string | null;
+    status: string;
+    published_at: string;
+    updated_at: string;
+    valid_until?: string | null;
+  }>;
+  topics: Array<{
+    id: string;
+    title: string;
+    event_type: string;
+    resolution_deadline_at: string;
+    status: string;
+    source_market_count: number;
+    updated_at: string;
+    current_probability?: number | null;
+    current_observed_at?: string | null;
+    delta_24h_percentage_points?: number | null;
+    baseline_observed_at?: string | null;
+  }>;
+  editions: Array<{
+    id: string;
+    edition_date: string;
+    updated_at: string;
+    status: string;
+    sections: string[];
+    claim_count: number;
+    correction_count: number;
+    trigger_type: string;
+  }>;
 }
 
 export async function fetchCurrentFrontPage(

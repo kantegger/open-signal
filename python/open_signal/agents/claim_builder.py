@@ -17,6 +17,8 @@ from typing import Any
 
 from sqlalchemy import text
 
+from open_signal.derived.series_contract import market_series_snapshot
+
 SECTION_ID = "expectations-moved"
 CAPABILITY_ID = "expectation.probability-change"
 DESK_ID = "expectations-desk"
@@ -366,18 +368,22 @@ class DeterministicClaimBuilder:
                     FROM market_observations
                     WHERE source_market_id = :market
                       AND probability IS NOT NULL
-                    ORDER BY observed_at DESC
-                    LIMIT 336
+                      AND observed_at <= :captured_at
+                      AND observed_at >= :captured_at - interval '7 days'
+                    ORDER BY observed_at
                     """
                 ),
-                {"market": source_market_id},
+                {"market": source_market_id, "captured_at": now},
             ).fetchall()
-        ordered = list(reversed(rows))
+        series_snapshot = market_series_snapshot(
+            [(row[0], row[1]) for row in rows],
+            captured_at=now,
+        )
         series = [
-            {"timestamp": row[0].isoformat(), "probability": float(row[1])}
-            for row in ordered
+            {"timestamp": point[0], "probability": point[1]}
+            for point in series_snapshot["points"]
         ]
-        current = float(ordered[-1][1]) if ordered else None
+        current = float(series[-1]["probability"]) if series else None
         delta = float(calculation.get("delta_24h", 0.0))
         start = current - delta / 100 if current is not None else None
         observation = (
@@ -398,6 +404,7 @@ class DeterministicClaimBuilder:
                 "delta_percentage_points": round(delta, 4),
                 "window": "24h",
                 "series": series,
+                "series_quality": series_snapshot["quality"],
                 "source_name": "Polymarket Gamma",
                 "updated_at": now.isoformat(),
                 "observation": observation,
@@ -410,7 +417,7 @@ class DeterministicClaimBuilder:
             "mobile_priority": 2,
             "generated_by": f"os-011/{CHARTER_VERSION}",
             "approved_by_verification_run_id": None,
-            "data_as_of": ordered[-1][0].isoformat() if ordered else now.isoformat(),
+            "data_as_of": series[-1]["timestamp"] if series else now.isoformat(),
             "assessed_at": now.isoformat(),
             "materially_updated_at": now.isoformat(),
         }

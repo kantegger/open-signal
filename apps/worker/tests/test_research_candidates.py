@@ -32,22 +32,40 @@ def _cleanup(engine) -> None:
         conn.execute(text("DELETE FROM research_signal_candidates"))
 
 
-def _work(year: str, institution: str, concepts: list[str], title: str = "t") -> dict:
-    return {
+def _work(
+    year: str,
+    institution: str,
+    concepts: list[str],
+    title: str = "t",
+    topic_id: str | None = "generative-ai",
+) -> dict:
+    work = {
+        "id": f"https://openalex.org/W{uuid.uuid4().hex[:10]}",
         "publication_date": f"{year}-06-01",
         "title": title,
         "authorships": [{"institutions": [{"display_name": institution}]}],
         "concepts": [{"display_name": c} for c in concepts],
     }
+    if topic_id:
+        work["_open_signal"] = {"monitoring_topic_ids": [topic_id]}
+    return work
 
 
-def _study(sponsor: str, phase: str, title: str = "Study") -> dict:
+def _study(
+    sponsor: str,
+    phase: str,
+    title: str = "Study",
+    topic_id: str | None = "oncology-immunotherapy",
+) -> dict:
     return {
+        "_open_signal": {
+            "monitoring_topic_ids": [topic_id] if topic_id else [],
+        },
         "protocolSection": {
             "identificationModule": {"nctId": f"NCT{uuid.uuid4().hex[:6]}", "briefTitle": title},
             "sponsorCollaboratorsModule": {"leadSponsor": {"name": sponsor}},
             "designModule": {"phases": [phase]},
-        }
+        },
     }
 
 
@@ -62,23 +80,39 @@ def test_institution_entry_detected(detector, engine) -> None:
     # new entrant: burst in recent window
     works += [_work("2024", "New Lab", ["A"]) for _ in range(5)]
 
-    candidates = detector.detect_institution_entry(works, window_years=2, now=datetime(2025, 1, 1, tzinfo=UTC))
+    candidates = detector.detect_institution_entry(
+        works,
+        window_years=2,
+        now=datetime(2025, 1, 1, tzinfo=UTC),
+        topic_labels={"generative-ai": "Generative AI and foundation models"},
+    )
     names = [c["derived_metrics"]["institution"] for c in candidates]
     assert "New Lab" in names
     assert "Old University" not in names
+    metrics = candidates[0]["derived_metrics"]
+    assert metrics["topic_id"] == "generative-ai"
+    assert metrics["representative_works"]
+    assert metrics["window_label"] == "2024–2025 YTD"
 
 
 def test_institution_entry_needs_burst(detector, engine) -> None:
     works = [_work("2024", "Trickle", ["A"]) for _ in range(1)]
-    candidates = detector.detect_institution_entry(works, window_years=2, now=datetime(2025, 1, 1, tzinfo=UTC))
+    candidates = detector.detect_institution_entry(
+        works, window_years=2, now=datetime(2025, 1, 1, tzinfo=UTC)
+    )
     assert candidates == []
 
 
 def test_stage_transition_detected(detector, engine) -> None:
     studies = [_study("PharmaCo", "PHASE1"), _study("PharmaCo", "PHASE2")]
-    candidates = detector.detect_stage_transition(studies)
+    candidates = detector.detect_stage_transition(
+        studies,
+        topic_labels={"oncology-immunotherapy": "Oncology immunotherapy"},
+    )
     sponsors = [c["derived_metrics"]["sponsor"] for c in candidates]
     assert "PharmaCo" in sponsors
+    assert candidates[0]["derived_metrics"]["phase_labels"] == ["Phase 1", "Phase 2"]
+    assert len(candidates[0]["derived_metrics"]["representative_studies"]) == 2
 
 
 def test_stage_transition_single_phase_not_candidate(detector, engine) -> None:
@@ -99,10 +133,40 @@ def test_cross_topic_relation_detected(detector, engine) -> None:
     # recent growth
     works += [_work("2024", "X", ["CAR T cell therapy", "CRISPR"]) for _ in range(3)]
     candidates = detector.detect_cross_topic_relation(
-        works, topic_concepts=topic_concepts, window_years=2, now=datetime(2025, 1, 1, tzinfo=UTC)
+        works,
+        topic_concepts=topic_concepts,
+        topic_labels={
+            "oncology-immunotherapy": "Oncology immunotherapy",
+            "synthetic-biology": "Synthetic biology",
+            "generative-ai": "Generative AI and foundation models",
+        },
+        window_years=2,
+        now=datetime(2025, 1, 1, tzinfo=UTC),
     )
     assert len(candidates) == 1
-    assert candidates[0]["derived_metrics"]["topics"] == ["oncology-immunotherapy", "synthetic-biology"]
+    assert candidates[0]["derived_metrics"]["topics"] == [
+        "oncology-immunotherapy",
+        "synthetic-biology",
+    ]
+    assert candidates[0]["derived_metrics"]["topic_labels"] == [
+        "Oncology immunotherapy",
+        "Synthetic biology",
+    ]
+    assert candidates[0]["derived_metrics"]["representative_works"]
+
+
+def test_institution_counts_each_work_once(detector, engine) -> None:
+    works = [_work("2024", "New Lab", ["A"]) for _ in range(3)]
+    for work in works:
+        work["authorships"].append({"institutions": [{"display_name": "New Lab"}]})
+
+    candidates = detector.detect_institution_entry(
+        works,
+        window_years=2,
+        now=datetime(2025, 1, 1, tzinfo=UTC),
+    )
+
+    assert candidates[0]["derived_metrics"]["recent_works"] == 3
 
 
 # ---------------------------------------------------------------- persistence

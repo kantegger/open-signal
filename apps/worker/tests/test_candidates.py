@@ -134,6 +134,8 @@ def test_candidate_rejected_when_below_threshold(detector, engine) -> None:
     _cleanup(engine, mid)
     assert output["delta_24h"] == 2.0
     assert output["eligible"] is False
+    assert output["scanner_eligible"] is True
+    assert output["publication_tier"] == "scanner"
 
 
 def test_candidate_rejected_on_bad_data_quality(detector, engine) -> None:

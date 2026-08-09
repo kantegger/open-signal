@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ClaimPageData, JsonRecord } from "../lib/api";
 import { formatDateTime, humanize } from "../lib/i18n";
+import { topicPath } from "../lib/urls";
 import { Icon } from "./icons";
 
 export function ClaimRecord({ page }: { page: ClaimPageData }) {
@@ -8,7 +9,11 @@ export function ClaimRecord({ page }: { page: ClaimPageData }) {
   return (
     <article className="claim-record-page">
       <nav className="claim-breadcrumb" aria-label="Breadcrumb">
-        <Link href="/">Current front page</Link><span>→</span><span>Claim {page.claim.id.slice(0, 8)}</span>
+        <Link href="/">Current</Link><span>→</span>
+        {page.topic ? (
+          <><Link href={topicPath(page.topic.title, page.topic.id)}>{page.topic.title}</Link><span>→</span></>
+        ) : null}
+        <span>Claim {page.claim.id.slice(0, 8)}</span>
       </nav>
 
       <header className="claim-record-header">

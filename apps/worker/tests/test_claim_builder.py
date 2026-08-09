@@ -168,6 +168,8 @@ def test_full_pipeline(builder, engine) -> None:
     rc = result["render_candidate"]
     assert rc["component_id"] == "time-series.probability-move"
     assert rc["display_fields"]["delta_percentage_points"] == 20.0
+    assert rc["display_fields"]["series_quality"]["observation_count"] == 30
+    assert rc["display_fields"]["series_quality"]["coverage_status"] == "partial_window"
     assert rc["slot_id"] == "secondary"
 
     _cleanup(engine, market_uuid)

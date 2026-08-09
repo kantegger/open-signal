@@ -4,8 +4,8 @@ Generates investigation candidates only — never "frontier" Claims directly:
 
 - institution entry: an institution's publication count in a topic spikes
   relative to its prior output (new entrant)
-- stage transition: a sponsor's trials advance across phases (e.g. Phase 1
-  -> Phase 2) for a related condition
+- phase portfolio: a sponsor has registered trials across multiple phases for
+  a monitored topic (this does not by itself prove that one trial advanced)
 - cross-topic relation increase: concept co-occurrence between two topics
   grows over time
 
@@ -22,9 +22,10 @@ from typing import Any
 
 from sqlalchemy import text
 
-CANDIDATE_VERSION = "os-021"
+CANDIDATE_VERSION = "os-021.1"
 INSTITUTION_ENTRY_MULTIPLIER = 3.0
 INSTITUTION_ENTRY_MIN_WORKS = 3
+REPRESENTATIVE_EVIDENCE_LIMIT = 3
 
 
 class ResearchCandidateDetector:
@@ -38,43 +39,80 @@ class ResearchCandidateDetector:
         *,
         window_years: int = 2,
         now: datetime | None = None,
+        topic_labels: dict[str, str] | None = None,
     ) -> list[dict[str, Any]]:
-        """Institutions whose recent output in the corpus spiked.
+        """Institutions whose recent output spiked within a monitored topic.
 
         works: OpenAlex work dicts (must include authorships + publication_date).
+        Records without topic attribution still produce internal candidates, but
+        the public contract rejects them until attribution and evidence exist.
         """
         now = now or datetime.now(timezone.utc)
         year_now = now.year
-        recent = Counter()
-        prior = Counter()
+        start_year = year_now - window_years + 1
+        topic_labels = topic_labels or {}
+        recent: Counter[tuple[str | None, str]] = Counter()
+        prior: Counter[tuple[str | None, str]] = Counter()
+        recent_evidence: dict[tuple[str | None, str], list[dict[str, Any]]] = (
+            defaultdict(list)
+        )
         for w in works:
             pub = (w.get("publication_date") or "")[:4]
             try:
                 y = int(pub)
-            except ValueError:
+            except (TypeError, ValueError):
                 continue
-            for a in w.get("authorships") or []:
-                for inst in a.get("institutions") or []:
-                    name = inst.get("display_name")
-                    if not name:
-                        continue
-                    if y >= year_now - window_years + 1:
-                        recent[name] += 1
+            institutions = {
+                str(inst.get("display_name")).strip()
+                for authorship in w.get("authorships") or []
+                for inst in authorship.get("institutions") or []
+                if inst.get("display_name")
+            }
+            topic_ids: list[str | None] = _monitoring_topic_ids(w) or [None]
+            evidence = _work_evidence(w)
+            for topic_id in topic_ids:
+                for name in institutions:
+                    key = (topic_id, name)
+                    if y >= start_year:
+                        recent[key] += 1
+                        if evidence:
+                            recent_evidence[key].append(evidence)
                     else:
-                        prior[name] += 1
+                        prior[key] += 1
 
         candidates = []
-        for name, count in recent.items():
-            base = prior.get(name, 0)
-            if count >= INSTITUTION_ENTRY_MIN_WORKS and count >= INSTITUTION_ENTRY_MULTIPLIER * max(1, base):
+        for (topic_id, name), count in sorted(
+            recent.items(),
+            key=lambda item: (item[0][0] or "", item[0][1]),
+        ):
+            base = prior.get((topic_id, name), 0)
+            if (
+                count >= INSTITUTION_ENTRY_MIN_WORKS
+                and count >= INSTITUTION_ENTRY_MULTIPLIER * max(1, base)
+            ):
+                metrics: dict[str, Any] = {
+                    "institution": name,
+                    "recent_works": count,
+                    "prior_works": base,
+                    "representative_works": _representative_evidence(
+                        recent_evidence[(topic_id, name)]
+                    ),
+                    "evidence_count": count,
+                    "window_label": _publication_window_label(year_now, window_years),
+                    "baseline_label": f"Before {start_year}",
+                }
+                if topic_id:
+                    metrics["topic_id"] = topic_id
+                    if topic_labels.get(topic_id):
+                        metrics["topic_label"] = topic_labels[topic_id]
                 candidates.append(
                     {
                         "candidate_type": "institution_entry",
                         "subject_ids": [],
-                        "observation_window_start": f"{year_now - window_years}-01-01",
-                        "observation_window_end": f"{year_now}-12-31",
-                        "baseline_definition": f"prior-year works {base}",
-                        "derived_metrics": {"institution": name, "recent_works": count, "prior_works": base},
+                        "observation_window_start": f"{start_year}-01-01",
+                        "observation_window_end": now.date().isoformat(),
+                        "baseline_definition": f"works published before {start_year}: {base}",
+                        "derived_metrics": metrics,
                         "evidence_relation_ids": [],
                         "status": "generated",
                     }
@@ -86,40 +124,79 @@ class ResearchCandidateDetector:
         studies: list[dict[str, Any]],
         *,
         now: datetime | None = None,
+        topic_labels: dict[str, str] | None = None,
     ) -> list[dict[str, Any]]:
-        """Sponsors advancing trials across phases for a related condition.
+        """Sponsors with registered trials spanning multiple phases.
 
-        studies: ClinicalTrials.gov v2 study dicts.
+        This is a portfolio-shape observation, not evidence that a particular
+        trial advanced. ``studies`` contains ClinicalTrials.gov v2 records.
         """
-        sponsor_phases: dict[str, set[str]] = defaultdict(set)
-        sponsor_title: dict[str, str] = {}
+        now = now or datetime.now(timezone.utc)
+        topic_labels = topic_labels or {}
+        sponsor_phases: dict[tuple[str | None, str], set[str]] = defaultdict(set)
+        sponsor_studies: dict[tuple[str | None, str], dict[str, dict[str, Any]]] = (
+            defaultdict(dict)
+        )
         for s in studies:
             ps = s.get("protocolSection") or {}
-            ident = ps.get("identificationModule") or {}
-            sponsor = (ps.get("sponsorCollaboratorsModule") or {}).get("leadSponsor", {}).get("name")
+            sponsor = (
+                (ps.get("sponsorCollaboratorsModule") or {})
+                .get("leadSponsor", {})
+                .get("name")
+            )
             phases = (ps.get("designModule") or {}).get("phases") or []
             if not sponsor:
                 continue
-            sponsor_phases[sponsor].update(phases)
-            sponsor_title.setdefault(sponsor, ident.get("briefTitle") or "")
+            topic_ids: list[str | None] = _monitoring_topic_ids(s) or [None]
+            evidence = _study_evidence(s)
+            for topic_id in topic_ids:
+                key = (topic_id, str(sponsor).strip())
+                sponsor_phases[key].update(str(phase) for phase in phases)
+                if evidence:
+                    sponsor_studies[key][evidence["id"]] = evidence
 
         candidates = []
-        phase_rank = {"EARLY_PHASE1": 1, "PHASE1": 1, "PHASE2": 2, "PHASE3": 3, "PHASE4": 4}
-        for sponsor, phases in sponsor_phases.items():
+        phase_rank = {
+            "EARLY_PHASE1": 1,
+            "PHASE1": 1,
+            "PHASE2": 2,
+            "PHASE3": 3,
+            "PHASE4": 4,
+        }
+        for (topic_id, sponsor), phases in sorted(
+            sponsor_phases.items(),
+            key=lambda item: (item[0][0] or "", item[0][1]),
+        ):
             ranks = [phase_rank.get(p, 0) for p in phases if p in phase_rank]
             if len({r for r in ranks if r}) >= 2:  # spans >= 2 phases
+                ordered_phases = sorted(
+                    phases,
+                    key=lambda phase: (phase_rank.get(phase, 99), phase),
+                )
+                metrics: dict[str, Any] = {
+                    "sponsor": sponsor,
+                    "phases": ordered_phases,
+                    "phase_labels": [_phase_label(phase) for phase in ordered_phases],
+                    "representative_studies": list(
+                        sponsor_studies[(topic_id, sponsor)].values()
+                    )[:REPRESENTATIVE_EVIDENCE_LIMIT],
+                    "study_count": len(sponsor_studies[(topic_id, sponsor)]),
+                    "evidence_count": len(sponsor_studies[(topic_id, sponsor)]),
+                    "window_label": f"Registry portfolio as of {now:%b %Y}",
+                    "baseline_label": "Cross-sectional phase coverage",
+                }
+                if topic_id:
+                    metrics["topic_id"] = topic_id
+                    if topic_labels.get(topic_id):
+                        metrics["topic_label"] = topic_labels[topic_id]
                 candidates.append(
                     {
                         "candidate_type": "stage_transition",
                         "subject_ids": [],
                         "observation_window_start": "2020-01-01",
-                        "observation_window_end": f"{now or datetime.now(timezone.utc)}".split(" ")[0],
-                        "baseline_definition": "trial phase distribution",
-                        "derived_metrics": {
-                            "sponsor": sponsor,
-                            "phases": sorted(phases),
-                            "title_hint": sponsor_title[sponsor][:120],
-                        },
+                        "observation_window_end": now.date().isoformat(),
+                        "baseline_definition": "registered sponsor portfolio phase distribution",
+                        "derived_metrics": metrics,
                         "evidence_relation_ids": [],
                         "status": "generated",
                     }
@@ -133,17 +210,21 @@ class ResearchCandidateDetector:
         topic_concepts: dict[str, list[str]],
         window_years: int = 2,
         now: datetime | None = None,
+        topic_labels: dict[str, str] | None = None,
     ) -> list[dict[str, Any]]:
         """Growth in co-occurrence between two topics' concepts."""
         now = now or datetime.now(timezone.utc)
         year_now = now.year
-        recent = Counter()
-        prior = Counter()
+        start_year = year_now - window_years + 1
+        topic_labels = topic_labels or {}
+        recent: Counter[tuple[str, str]] = Counter()
+        prior: Counter[tuple[str, str]] = Counter()
+        recent_evidence: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
         for w in works:
             pub = (w.get("publication_date") or "")[:4]
             try:
                 y = int(pub)
-            except ValueError:
+            except (TypeError, ValueError):
                 continue
             concepts = {c.get("display_name", "") for c in w.get("concepts") or []}
             pairs = set()
@@ -152,8 +233,11 @@ class ResearchCandidateDetector:
                     pairs.add(tid)
             if len(pairs) >= 2:
                 for a, b in _pair_combinations(sorted(pairs)):
-                    if y >= year_now - window_years + 1:
+                    if y >= start_year:
                         recent[(a, b)] += 1
+                        evidence = _work_evidence(w)
+                        if evidence:
+                            recent_evidence[(a, b)].append(evidence)
                     else:
                         prior[(a, b)] += 1
 
@@ -161,14 +245,28 @@ class ResearchCandidateDetector:
         for (a, b), count in recent.items():
             base = prior.get((a, b), 0)
             if count >= 2 and count > base:
+                labels = [topic_labels.get(a), topic_labels.get(b)]
                 candidates.append(
                     {
                         "candidate_type": "cross_topic_relation",
                         "subject_ids": [],
-                        "observation_window_start": f"{year_now - window_years}-01-01",
-                        "observation_window_end": f"{year_now}-12-31",
-                        "baseline_definition": f"prior co-occurrence {base}",
-                        "derived_metrics": {"topics": [a, b], "recent_cooccurrences": count, "prior_cooccurrences": base},
+                        "observation_window_start": f"{start_year}-01-01",
+                        "observation_window_end": now.date().isoformat(),
+                        "baseline_definition": f"co-occurrences before {start_year}: {base}",
+                        "derived_metrics": {
+                            "topics": [a, b],
+                            "topic_labels": labels if all(labels) else [],
+                            "recent_cooccurrences": count,
+                            "prior_cooccurrences": base,
+                            "representative_works": _representative_evidence(
+                                recent_evidence[(a, b)]
+                            ),
+                            "evidence_count": count,
+                            "window_label": _publication_window_label(
+                                year_now, window_years
+                            ),
+                            "baseline_label": f"Before {start_year}",
+                        },
                         "evidence_relation_ids": [],
                         "status": "generated",
                     }
@@ -176,7 +274,9 @@ class ResearchCandidateDetector:
         return candidates
 
     # --------------------------------------------------------------- storage
-    def persist(self, candidates: list[dict[str, Any]], section_id: str = "research-frontier") -> int:
+    def persist(
+        self, candidates: list[dict[str, Any]], section_id: str = "research-frontier"
+    ) -> int:
         del section_id  # retained for compatibility; table is Research-specific
         stored = 0
         with self.engine.begin() as conn:
@@ -228,7 +328,9 @@ class ResearchCandidateDetector:
                 stored += result.rowcount
         return stored
 
-    def recent_candidates(self, candidate_type: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
+    def recent_candidates(
+        self, candidate_type: str | None = None, limit: int = 50
+    ) -> list[dict[str, Any]]:
         with self.engine.connect() as conn:
             if candidate_type:
                 rows = conn.execute(
@@ -248,10 +350,92 @@ class ResearchCandidateDetector:
                     {"limit": limit},
                 ).fetchall()
         return [
-            {"candidate_type": r[0], "derived_metrics": r[1], "baseline_definition": r[2], "status": r[3]}
+            {
+                "candidate_type": r[0],
+                "derived_metrics": r[1],
+                "baseline_definition": r[2],
+                "status": r[3],
+            }
             for r in rows
         ]
 
 
 def _pair_combinations(items: list[str]) -> list[tuple[str, str]]:
-    return [(items[i], items[j]) for i in range(len(items)) for j in range(i + 1, len(items))]
+    return [
+        (items[i], items[j])
+        for i in range(len(items))
+        for j in range(i + 1, len(items))
+    ]
+
+
+def _monitoring_topic_ids(record: dict[str, Any]) -> list[str]:
+    metadata = record.get("_open_signal")
+    if not isinstance(metadata, dict):
+        return []
+    values = metadata.get("monitoring_topic_ids")
+    if not isinstance(values, list):
+        return []
+    return sorted({str(value) for value in values if value})
+
+
+def _work_evidence(work: dict[str, Any]) -> dict[str, Any] | None:
+    identifier = work.get("id") or work.get("doi")
+    title = work.get("display_name") or work.get("title")
+    if not identifier or not title:
+        return None
+    return {
+        "id": str(identifier),
+        "title": str(title)[:240],
+        "publication_date": str(work.get("publication_date") or "") or None,
+        "cited_by_count": int(work.get("cited_by_count") or 0),
+    }
+
+
+def _study_evidence(study: dict[str, Any]) -> dict[str, Any] | None:
+    protocol = study.get("protocolSection") or {}
+    identification = protocol.get("identificationModule") or {}
+    identifier = identification.get("nctId")
+    title = identification.get("briefTitle") or identification.get("officialTitle")
+    if not identifier or not title:
+        return None
+    status = protocol.get("statusModule") or {}
+    return {
+        "id": str(identifier),
+        "title": str(title)[:240],
+        "start_date": (status.get("startDateStruct") or {}).get("date"),
+        "phases": [
+            _phase_label(str(phase))
+            for phase in (protocol.get("designModule") or {}).get("phases") or []
+        ],
+    }
+
+
+def _representative_evidence(values: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    unique = {str(value["id"]): value for value in values if value.get("id")}
+    ordered = sorted(
+        unique.values(),
+        key=lambda value: (
+            str(value.get("publication_date") or ""),
+            int(value.get("cited_by_count") or 0),
+            str(value.get("id") or ""),
+        ),
+        reverse=True,
+    )
+    return ordered[:REPRESENTATIVE_EVIDENCE_LIMIT]
+
+
+def _publication_window_label(year_now: int, window_years: int) -> str:
+    start_year = year_now - window_years + 1
+    return f"{start_year}–{year_now} YTD"
+
+
+def _phase_label(value: str) -> str:
+    labels = {
+        "EARLY_PHASE1": "Early Phase 1",
+        "PHASE1": "Phase 1",
+        "PHASE2": "Phase 2",
+        "PHASE3": "Phase 3",
+        "PHASE4": "Phase 4",
+        "NA": "Not applicable",
+    }
+    return labels.get(value, value.replace("_", " ").title())

@@ -15,6 +15,8 @@ schedules:
       source_slug: "polymarket-gamma"
       section_id: "expectations-moved"
       max_pages: 3
+      max_markets: 500
+      markets_per_event: 12
 
   - id: "rules-source-refresh"
     job_type: "source.discover"
@@ -40,6 +42,10 @@ schedules:
     maximum_attempts: 3
     payload:
       section_id: "expectations-moved"
+      monitor_window_hours: 2
+      history_backfill: true
+      history_market_limit: 200
+      history_days: 7
 
   - id: "research-openalex-refresh"
     job_type: "source.discover"
@@ -73,7 +79,8 @@ schedules:
     maximum_attempts: 3
     payload:
       section_id: "expectations-moved"
-      maximum_claims: 3
+      maximum_featured_claims: 3
+      maximum_scanner_claims: 12
 
   - id: "rules-editorial-refresh"
     job_type: "derived.detect_rule_transition"

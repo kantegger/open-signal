@@ -45,7 +45,13 @@ class SourceDiscoveryService:
             try:
                 return {
                     "source_slug": source_slug,
-                    **adapter.refresh(max_pages=max_pages),
+                    **adapter.refresh(
+                        max_pages=max_pages,
+                        max_markets=int(payload.get("max_markets") or 500),
+                        markets_per_event=int(
+                            payload.get("markets_per_event") or 12
+                        ),
+                    ),
                 }
             finally:
                 adapter.close()

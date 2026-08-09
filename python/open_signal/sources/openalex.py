@@ -35,7 +35,12 @@ class OpenAlexClient:
         )
 
     def search_works(
-        self, *, query: str, page: int = 1, per_page: int = 25, from_date: str | None = None
+        self,
+        *,
+        query: str,
+        page: int = 1,
+        per_page: int = 25,
+        from_date: str | None = None,
     ) -> dict[str, Any]:
         params: dict[str, Any] = {"search": query, "page": page, "per-page": per_page}
         if from_date:
@@ -90,7 +95,11 @@ class OpenAlexChain:
 
     # --------------------------------------------------------------- discover
     def discover_topic(
-        self, *, topic_id: str, max_pages: int | None = None, window_years: int | None = None
+        self,
+        *,
+        topic_id: str,
+        max_pages: int | None = None,
+        window_years: int | None = None,
     ) -> dict[str, int]:
         """Run the baseline query for one topic; store works idempotently."""
         from sqlalchemy import text
@@ -101,7 +110,11 @@ class OpenAlexChain:
 
         max_pages = max_pages or self.topics.get("max_pages_per_topic", 3)
         window_years = window_years or self.topics.get("default_window_years", 3)
-        from_date = (datetime.now(timezone.utc) - timedelta(days=365 * window_years)).date().isoformat()
+        from_date = (
+            (datetime.now(timezone.utc) - timedelta(days=365 * window_years))
+            .date()
+            .isoformat()
+        )
 
         stored = 0
         pages = 0
@@ -122,40 +135,69 @@ class OpenAlexChain:
                             INSERT INTO raw_source_records
                               (source_id, external_id, record_type, mime_type,
                                payload, source_created_at, content_hash,
-                               adapter_version, status)
+                               transport_metadata, adapter_version, status)
                             VALUES
                               (:sid, :ext, 'work', 'application/json',
                                CAST(:payload AS jsonb),
                                CAST(:pub AS timestamptz), :hash,
-                               'openalex-v1', 'active')
-                            ON CONFLICT (source_id, external_id, content_hash) DO NOTHING
+                               CAST(:metadata AS jsonb), 'openalex-v2', 'active')
+                            ON CONFLICT (source_id, external_id, content_hash)
+                            DO UPDATE SET
+                              transport_metadata = jsonb_set(
+                                COALESCE(raw_source_records.transport_metadata, '{}'::jsonb)
+                                  || EXCLUDED.transport_metadata,
+                                '{monitoring_topics}',
+                                COALESCE(
+                                  raw_source_records.transport_metadata -> 'monitoring_topics',
+                                  '{}'::jsonb
+                                ) || COALESCE(
+                                  EXCLUDED.transport_metadata -> 'monitoring_topics',
+                                  '{}'::jsonb
+                                ),
+                                true
+                              ),
+                              last_seen_at = now(),
+                              adapter_version = EXCLUDED.adapter_version
+                            RETURNING (xmax = 0) AS inserted
                             """
                         ),
                         {
                             "sid": self.source_id,
                             "ext": work_id,
                             "payload": payload,
-                            "pub": f"{work.get('publication_date')}T00:00:00Z" if work.get("publication_date") else None,
+                            "pub": f"{work.get('publication_date')}T00:00:00Z"
+                            if work.get("publication_date")
+                            else None,
                             "hash": content_hash,
+                            "metadata": json.dumps(
+                                {"monitoring_topics": {topic_id: True}},
+                                sort_keys=True,
+                            ),
                         },
                     )
-                    stored += result.rowcount
+                    stored += int(bool(result.scalar_one()))
         return {"works": stored, "pages": pages}
 
     # --------------------------------------------------------------- fixtures
-    def _load_page(self, topic_id: str, page: int, query: str, from_date: str) -> dict[str, Any]:
+    def _load_page(
+        self, topic_id: str, page: int, query: str, from_date: str
+    ) -> dict[str, Any]:
         fixture = self.fixture_dir / f"{topic_id}_page_{page}.json"
         if fixture.exists():
             with fixture.open(encoding="utf-8") as f:
                 return json.load(f)
         if self.offline:
             return {"results": []}
-        return self.client.search_works(query=query, page=page, per_page=25, from_date=from_date)
+        return self.client.search_works(
+            query=query, page=page, per_page=25, from_date=from_date
+        )
 
     def save_fixture(self, topic_id: str, page: int, data: dict[str, Any]) -> Path:
         self.fixture_dir.mkdir(parents=True, exist_ok=True)
         path = self.fixture_dir / f"{topic_id}_page_{page}.json"
-        path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        path.write_text(
+            json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
         return path
 
     def close(self) -> None:
