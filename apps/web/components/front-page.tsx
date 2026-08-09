@@ -242,6 +242,9 @@ function Publication({
           {compact && liveFeed.items.length ? (
             <LiveFeed items={liveFeed.items.slice(0, 4)} onEvidence={onEvidence} />
           ) : null}
+          {compact && !liveFeed.items.length && (monitoredTopics.length || context.claims.length) ? (
+            <SignalPulse claims={context.claims} observations={monitoredTopics} />
+          ) : null}
         </div>
 
         {secondary.items.length || monitoredTopics.length ? (
@@ -329,6 +332,87 @@ function LiveFeed({
       <RegionHeader id="live-feed-title" title={copy.en.liveFeed} note={copy.en.recentFirst} />
       <div className="feed-list">
         {items.map((item) => <SignalFeedRow item={item} key={item.id} onEvidence={onEvidence} />)}
+      </div>
+    </section>
+  );
+}
+
+function SignalPulse({
+  claims,
+  observations,
+}: {
+  claims: PublicationClaimRecord[];
+  observations: PublicationExpectationObservation[];
+}) {
+  const measured = observations.filter((observation) => (
+    observation.delta_24h_percentage_points != null
+  ));
+  const rising = measured.filter((observation) => observation.delta_24h_percentage_points! > 0).length;
+  const falling = measured.filter((observation) => observation.delta_24h_percentage_points! < 0).length;
+  const largestMove = [...measured].sort((left, right) => (
+    Math.abs(right.delta_24h_percentage_points!) - Math.abs(left.delta_24h_percentage_points!)
+  ))[0];
+  const nearestResolution = observations
+    .filter((observation) => Number.isFinite(Date.parse(observation.resolution_deadline_at)))
+    .sort((left, right) => Date.parse(left.resolution_deadline_at) - Date.parse(right.resolution_deadline_at))[0];
+  const evidenceReferences = claims.reduce((total, claim) => total + claim.evidence_count, 0);
+  const latestClaim = [...claims]
+    .filter((claim) => Number.isFinite(Date.parse(claim.updated_at ?? claim.issued_at)))
+    .sort((left, right) => (
+      Date.parse(right.updated_at ?? right.issued_at) - Date.parse(left.updated_at ?? left.issued_at)
+    ))[0];
+
+  return (
+    <section className="signal-pulse" aria-labelledby="signal-pulse-title">
+      <RegionHeader
+        id="signal-pulse-title"
+        title="↕ Signal pulse"
+        note="Derived context · not a new Claim"
+      />
+      <div className="signal-pulse-grid">
+        <article>
+          <span>24h breadth</span>
+          <strong className="signal-pulse-breadth">
+            <b className="trend-up">↗ {rising}</b>
+            <b className="trend-down">↘ {falling}</b>
+            <b className="trend-neutral">— {observations.length - rising - falling}</b>
+          </strong>
+          <small>up · down · flat or without a comparable baseline</small>
+        </article>
+        <article>
+          <span>Largest observed move</span>
+          {largestMove ? (
+            <>
+              <strong className={deltaClass(largestMove.delta_24h_percentage_points)}>
+                {trendGlyph(largestMove.delta_24h_percentage_points)} {formatDelta(largestMove.delta_24h_percentage_points!)}
+                <small>{formatProbability(largestMove.current_probability)}</small>
+              </strong>
+              <Link href={topicPath(largestMove.title, largestMove.id)}>{largestMove.title}</Link>
+            </>
+          ) : (
+            <><strong>—</strong><small>No complete 24h comparison is available.</small></>
+          )}
+        </article>
+        <article>
+          <span>Nearest resolution</span>
+          {nearestResolution ? (
+            <>
+              <strong>{formatRelativeTime(nearestResolution.resolution_deadline_at)}</strong>
+              <Link href={topicPath(nearestResolution.title, nearestResolution.id)}>{nearestResolution.title}</Link>
+            </>
+          ) : (
+            <><strong>—</strong><small>No active deadline is attached.</small></>
+          )}
+        </article>
+        <article>
+          <span>Judgment base</span>
+          <strong>{claims.length} verified <small>· {evidenceReferences} evidence refs</small></strong>
+          {latestClaim ? (
+            <Link href={signalPath(latestClaim.statement, latestClaim.id)}>
+              Latest · {formatRelativeTime(latestClaim.updated_at ?? latestClaim.issued_at)}
+            </Link>
+          ) : <small>No current Claim record.</small>}
+        </article>
       </div>
     </section>
   );
