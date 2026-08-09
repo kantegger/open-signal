@@ -7,6 +7,8 @@ from open_signal.composer.editions import ComposeError, EditionComposer
 from open_signal.composer.slots import SlotFiller, SlotFillError
 from open_signal.sources.registry import Registry
 
+COMPOSE_NOW = datetime(2026, 8, 8, tzinfo=UTC)
+
 
 @pytest.fixture(scope="module")
 def filler() -> SlotFiller:
@@ -99,7 +101,7 @@ def test_all_hard_expired_candidates_compile_complete_empty_plan(composer) -> No
             "updated_at": "2026-01-01T00:00:00Z",
         },
     )
-    plan = composer.compose([expired], now=datetime(2026, 8, 8, tzinfo=UTC))
+    plan = composer.compose([expired], now=COMPOSE_NOW)
     assert plan["items"] == []
     assert set(plan["slots"]) == {
         "lead",
@@ -114,13 +116,17 @@ def test_all_hard_expired_candidates_compile_complete_empty_plan(composer) -> No
 
 
 def test_withdrawal_event_retires_without_blocking_compile(composer) -> None:
-    plan = composer.compose([_pm_candidate("c1", claim_status="withdrawn")])
+    plan = composer.compose(
+        [_pm_candidate("c1", claim_status="withdrawn")], now=COMPOSE_NOW
+    )
     assert plan["items"] == []
     assert any("semantic invalidator: withdrawn" in warning for warning in plan["warnings"])
 
 
 def test_deduplication(composer) -> None:
-    plan = composer.compose([_pm_candidate("c1"), _pm_candidate("c1", slot_id="main")])
+    plan = composer.compose(
+        [_pm_candidate("c1"), _pm_candidate("c1", slot_id="main")], now=COMPOSE_NOW
+    )
     ids = [i["claim_id"] for i in plan["items"]]
     assert ids.count("c1") == 1
 
@@ -133,13 +139,13 @@ def test_section_diversity(composer) -> None:
         _pm_candidate("c4", section_id="expectations-moved"),
     ]
     with pytest.raises(ComposeError, match="section diversity"):
-        composer.compose(candidates)
+        composer.compose(candidates, now=COMPOSE_NOW)
 
 
 def test_slot_compatibility(composer) -> None:
     # probability-move in lead slot is rejected by component validation
     bad = _pm_candidate("c1", slot_id="lead", component_id="time-series.probability-move")
-    plan = composer.compose([bad])
+    plan = composer.compose([bad], now=COMPOSE_NOW)
     assert any("slot" in w.lower() for w in plan["warnings"]) or len(plan["items"]) == 0
 
 
@@ -159,7 +165,7 @@ def test_fallback_applied(composer) -> None:
         "slot_id": "secondary",
         "display_fields": {},  # invalid -> triggers fallback path
     }
-    plan = composer.compose([candidate])
+    plan = composer.compose([candidate], now=COMPOSE_NOW)
     assert len(plan["items"]) >= 0  # fallback or warning; must not crash
 
 
