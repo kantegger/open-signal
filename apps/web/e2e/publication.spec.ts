@@ -79,6 +79,72 @@ test("keeps Current compact and preserves the complete grammar in Editions", asy
   await expect(page.getByText("No signals today.")).toHaveCount(0);
 });
 
+test("uses the wide canvas without letting ledger text cross its columns", async ({ page }) => {
+  await page.setViewportSize({ width: 2048, height: 1132 });
+  await page.goto("/");
+
+  const layout = await page.evaluate(() => {
+    const frontPage = document.querySelector<HTMLElement>(".front-page");
+    return {
+      clientWidth: document.documentElement.clientWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      frontPageWidth: frontPage?.getBoundingClientRect().width ?? 0,
+    };
+  });
+  expect(layout.frontPageWidth).toBeGreaterThanOrEqual(layout.clientWidth - 1);
+  expect(layout.documentWidth).toBe(layout.clientWidth);
+
+  const ledgerBounds = await page.locator(".claim-ledger-row:not(.claim-ledger-head)").evaluateAll((rows) => (
+    rows.map((row) => {
+      const claimCell = row.children.item(1) as HTMLElement | null;
+      const claimLink = claimCell?.querySelector<HTMLElement>("a");
+      const cellRect = claimCell?.getBoundingClientRect();
+      const linkRect = claimLink?.getBoundingClientRect();
+      return {
+        cellRight: cellRect?.right ?? 0,
+        linkRight: linkRect?.right ?? 0,
+      };
+    })
+  ));
+  expect(ledgerBounds.length).toBeGreaterThan(0);
+  for (const bounds of ledgerBounds) {
+    expect(bounds.linkRight).toBeLessThanOrEqual(bounds.cellRight + 1);
+  }
+});
+
+test("fills an empty lead column with derived signal context", async ({ page, request }) => {
+  await request.post("http://127.0.0.1:8001/__control/front-mode?value=no-live-feed");
+  await revalidate(request, "e2e-no-live-feed");
+  await page.goto("/");
+
+  await expect(page.getByRole("heading", { name: /Signal pulse/ })).toBeVisible();
+  await expect(page.getByText("Derived context · not a new Claim")).toBeVisible();
+  await expect(page.getByText("24h breadth")).toBeVisible();
+  await expect(page.getByText("Largest observed move")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Live signal feed" })).toHaveCount(0);
+
+  const pulse = await page.locator(".signal-pulse").boundingBox();
+  const side = await page.locator(".dashboard-side").boundingBox();
+  expect(pulse).not.toBeNull();
+  expect(side).not.toBeNull();
+  expect(Math.abs((pulse!.y + pulse!.height) - (side!.y + side!.height))).toBeLessThanOrEqual(1);
+
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.reload();
+  await expect(page.locator(".signal-pulse")).toBeVisible();
+  await expect(page.locator(".secondary-region")).toBeVisible();
+  const mobileOrder = await Promise.all([
+    page.locator(".coverage-strip").boundingBox(),
+    page.locator(".lead-region").boundingBox(),
+    page.locator(".signal-pulse").boundingBox(),
+    page.locator(".secondary-region").boundingBox(),
+  ]);
+  for (const box of mobileOrder) expect(box).not.toBeNull();
+  expect(mobileOrder[0]!.y).toBeLessThan(mobileOrder[1]!.y);
+  expect(mobileOrder[1]!.y).toBeLessThan(mobileOrder[2]!.y);
+  expect(mobileOrder[2]!.y).toBeLessThan(mobileOrder[3]!.y);
+});
+
 test("opens an accessible evidence sheet and restores focus", async ({ page }) => {
   await page.goto("/");
   const trigger = page.getByRole("button", { name: "View full evidence" });

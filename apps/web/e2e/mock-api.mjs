@@ -63,7 +63,10 @@ const server = http.createServer(async (request, response) => {
     return;
   }
   if (request.method === "POST" && url.pathname === "/__control/front-mode") {
-    frontPageMode = url.searchParams.get("value") === "empty" ? "empty" : "full";
+    const requestedMode = url.searchParams.get("value");
+    frontPageMode = requestedMode === "empty" || requestedMode === "no-live-feed"
+      ? requestedMode
+      : "full";
     json(response, 200, { mode: frontPageMode });
     return;
   }
@@ -73,13 +76,25 @@ const server = http.createServer(async (request, response) => {
       json(response, 503, { detail: "fixture publication service unavailable" });
       return;
     }
-    const etag = '"fixture-front-page:en"';
+    const etag = `"fixture-front-page:${frontPageMode}:en"`;
     if (request.headers["if-none-match"] === etag) {
       response.writeHead(304, { ETag: etag }).end();
       return;
     }
     response.setHeader("ETag", etag);
-    json(response, 200, frontPageMode === "empty" ? emptyFrontPageFixture : frontPageFixture);
+    const fixture = frontPageMode === "empty"
+      ? emptyFrontPageFixture
+      : frontPageMode === "no-live-feed"
+        ? {
+            ...frontPageFixture,
+            slots: frontPageFixture.slots.map((publicationSlot) => (
+              publicationSlot.type === "live_feed"
+                ? { ...publicationSlot, items: [] }
+                : publicationSlot
+            )),
+          }
+        : frontPageFixture;
+    json(response, 200, fixture);
     return;
   }
   if (request.method === "GET" && url.pathname.startsWith("/api/claims/")) {
