@@ -38,7 +38,7 @@ export function SiteShell({
   }, [menuOpen]);
 
   return (
-    <div className="site-frame">
+    <div className="site-frame" data-active-route={active}>
       <a className="skip-link" href="#main-content">Skip to publication</a>
 
       <header className="site-header">
