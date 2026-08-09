@@ -2201,6 +2201,23 @@ dd,
 }
 
 /* Dense live dashboard */
+.site-frame[data-active-route="current"] {
+  --dashboard-gutter: clamp(18px, 1.2vw, 24px);
+}
+
+.site-frame[data-active-route="current"] .site-header-inner,
+.site-frame[data-active-route="current"] .front-page {
+  inline-size: 100%;
+  max-inline-size: none;
+  margin-inline: 0;
+}
+
+.site-frame[data-active-route="current"] .site-header-inner,
+.site-frame[data-active-route="current"] .front-page,
+.site-frame[data-active-route="current"] .publication-warning {
+  padding-inline: var(--dashboard-gutter);
+}
+
 .coverage-strip { order: 5; }
 .dashboard-top { order: 10; }
 .live-feed-region { order: 20; }

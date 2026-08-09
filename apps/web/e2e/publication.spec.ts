@@ -79,19 +79,22 @@ test("keeps Current compact and preserves the complete grammar in Editions", asy
   await expect(page.getByText("No signals today.")).toHaveCount(0);
 });
 
-test("uses the wide canvas without letting ledger text cross its columns", async ({ page }) => {
-  await page.setViewportSize({ width: 2048, height: 1132 });
+test("uses the full ultrawide canvas without letting ledger text cross its columns", async ({ page }) => {
+  await page.setViewportSize({ width: 2560, height: 1300 });
   await page.goto("/");
 
   const layout = await page.evaluate(() => {
     const frontPage = document.querySelector<HTMLElement>(".front-page");
+    const header = document.querySelector<HTMLElement>(".site-header-inner");
     return {
       clientWidth: document.documentElement.clientWidth,
       documentWidth: document.documentElement.scrollWidth,
       frontPageWidth: frontPage?.getBoundingClientRect().width ?? 0,
+      headerWidth: header?.getBoundingClientRect().width ?? 0,
     };
   });
   expect(layout.frontPageWidth).toBeGreaterThanOrEqual(layout.clientWidth - 1);
+  expect(layout.headerWidth).toBeGreaterThanOrEqual(layout.clientWidth - 1);
   expect(layout.documentWidth).toBe(layout.clientWidth);
 
   const ledgerBounds = await page.locator(".claim-ledger-row:not(.claim-ledger-head)").evaluateAll((rows) => (
