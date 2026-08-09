@@ -27,6 +27,7 @@ PUBLICATION_CHANNEL = "front-page"
 SPARSE_THRESHOLD = 3
 PUBLIC_STATUSES = {"published", "sparse", "beta", "corrected"}
 SLOT_ORDER = ("lead", "secondary", "live_feed", "digest", "main", "utility", "archive")
+EDITORIAL_SLOTS = frozenset({"lead", "secondary", "main"})
 
 
 class EditionWriter:
@@ -237,6 +238,7 @@ class EditionWriter:
                 str(item["section_id"]) for item in candidates if item.get("section_id")
             }
         active: list[dict[str, Any]] = []
+        carried_from_refreshed: list[dict[str, Any]] = []
         for item in self._current_candidates():
             if item.get("section_id") not in refreshed:
                 active.append(item)
@@ -246,8 +248,21 @@ class EditionWriter:
                 carried["priority"] = 1000 + int(
                     item.get("visual_priority") or item.get("position") or 0
                 )
-                active.append(carried)
-        merged = _dedupe_candidates([*active, *candidates])
+                carried_from_refreshed.append(carried)
+
+        # Scanner refreshes retain compact history, but a refreshed Section's
+        # old full editorial surfaces may only fill capacity left by the new
+        # candidates.  Without this boundary, three new featured Expectations
+        # plus three still-current featured items trip the composer's strict
+        # Section-diversity gate before its priority/slot rules can run.
+        carried_from_refreshed = _retain_within_editorial_cap(
+            carried_from_refreshed,
+            candidates,
+            section_cap=self.composer.section_cap,
+        )
+        merged = _dedupe_candidates(
+            [*active, *carried_from_refreshed, *candidates]
+        )
         return self.build_edition(
             merged,
             edition_date=(generated_at or datetime.now(timezone.utc)).date(),
@@ -823,6 +838,65 @@ def _dedupe_candidates(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]
         )
         deduped[key] = item
     return list(deduped.values())
+
+
+def _retain_within_editorial_cap(
+    carried: list[dict[str, Any]],
+    candidates: list[dict[str, Any]],
+    *,
+    section_cap: int,
+) -> list[dict[str, Any]]:
+    """Keep refreshed history without exceeding full-surface diversity.
+
+    New candidates always own the available editorial capacity. Compact feed,
+    digest, and utility items do not consume the cap and remain eligible for
+    normal slot-capacity and freshness handling in ``EditionComposer``.
+    """
+    if not carried:
+        return []
+
+    new_candidates = _dedupe_candidates(candidates)
+    new_keys = {
+        _candidate_identity(item, index)
+        for index, item in enumerate(new_candidates)
+    }
+    new_editorial_counts: dict[str, int] = {}
+    for item in new_candidates:
+        if item.get("slot_id") not in EDITORIAL_SLOTS:
+            continue
+        section = str(item.get("section_id") or "default")
+        new_editorial_counts[section] = new_editorial_counts.get(section, 0) + 1
+
+    retained: list[dict[str, Any]] = []
+    carried_editorial_counts: dict[str, int] = {}
+    for index, item in enumerate(carried):
+        if _candidate_identity(item, index) in new_keys:
+            continue
+        if item.get("slot_id") not in EDITORIAL_SLOTS:
+            retained.append(item)
+            continue
+
+        section = str(item.get("section_id") or "default")
+        available = max(0, section_cap - new_editorial_counts.get(section, 0))
+        used = carried_editorial_counts.get(section, 0)
+        if used >= available:
+            continue
+        carried_editorial_counts[section] = used + 1
+        retained.append(item)
+    return retained
+
+
+def _candidate_identity(item: dict[str, Any], index: int) -> str:
+    claim_id = item.get("claim_id")
+    role = item.get("presentation_role") or (
+        "index_echo" if item.get("slot_id") == "digest" else "primary"
+    )
+    if claim_id:
+        return f"{claim_id}:{role}"
+    return (
+        f"{item.get('section_id')}:{item.get('component_id')}:"
+        f"{item.get('headline')}:{index}"
+    )
 
 
 def _json_object(value: Any) -> dict[str, Any]:

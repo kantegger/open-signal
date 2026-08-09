@@ -275,6 +275,82 @@ def test_scanner_refresh_retains_current_featured_item(writer, engine) -> None:
     _cleanup(engine)
 
 
+def test_refresh_replaces_old_editorial_surfaces_before_section_cap(
+    writer, engine, monkeypatch
+) -> None:
+    _cleanup(engine)
+    old_lead = _candidate(
+        "c1",
+        slot_id="lead",
+        component_id="signal-hero.expectations",
+        display_fields={
+            **_candidate("c1")["display_fields"],
+            "headline": "Old lead",
+            "primary_observation": "Old lead observation.",
+        },
+        headline="Old lead",
+    )
+    old_feed = _candidate(
+        "c4",
+        slot_id="live_feed",
+        component_id="signal-feed.compact-change",
+        component_variant="compact",
+        display_fields={
+            "change_title": "Still-current scanner item",
+            "change_value": "+2.0pp · 62%",
+            "claim_type": "derived_observation",
+            "source_name": "Polymarket",
+            "updated_at": "2026-08-07T12:00:00Z",
+        },
+        headline="Still-current scanner item",
+    )
+    monkeypatch.setattr(
+        writer,
+        "_current_candidates",
+        lambda: [
+            old_lead,
+            _candidate("c2", slot_id="secondary"),
+            _candidate("c3", slot_id="main"),
+            old_feed,
+        ],
+    )
+
+    new_lead = _candidate(
+        "c5",
+        slot_id="lead",
+        component_id="signal-hero.expectations",
+        display_fields={
+            **_candidate("c5")["display_fields"],
+            "headline": "New lead",
+            "primary_observation": "New lead observation.",
+        },
+        headline="New lead",
+        priority=10,
+    )
+    refreshed = writer.build_rolling_edition(
+        [
+            new_lead,
+            _candidate("c6", slot_id="secondary", priority=20),
+            _candidate("c7", slot_id="main", priority=30),
+        ],
+        refreshed_section_ids={"expectations-moved"},
+        retain_refreshed_items=True,
+        generated_at=datetime(2026, 8, 7, 14, tzinfo=UTC),
+        section_maturity="beta",
+    )
+
+    # New featured output consumes all three full editorial surfaces. The old
+    # scanner row remains useful and does not count against Section diversity.
+    assert set(refreshed["claim_ids"]) == {
+        CLAIM_UUIDS[3],
+        CLAIM_UUIDS[4],
+        CLAIM_UUIDS[5],
+        CLAIM_UUIDS[6],
+    }
+    assert refreshed["item_count"] == 4
+    _cleanup(engine)
+
+
 def test_freshness_reconcile_is_noop_until_meaning_changes(writer, engine) -> None:
     _cleanup(engine)
     initial = writer.build_edition(
