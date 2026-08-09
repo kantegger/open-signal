@@ -207,6 +207,43 @@ test("keeps public information readable and encodes direction semantically", asy
   await expect(page.locator(".claim-record-header .statement-movement")).toHaveCount(1);
 });
 
+test("adapts typography and disclosure to collection size", async ({ page, request }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await request.post("http://127.0.0.1:8001/__control/front-mode?value=sparse-research");
+  await revalidate(request, "e2e-sparse-research");
+  await page.goto("/");
+
+  const sparseResearch = page.locator(".research-watch-list");
+  await expect(sparseResearch).toHaveAttribute("data-count", "2");
+  await expect(sparseResearch).toHaveAttribute("data-density", "sparse");
+  await expect(sparseResearch.locator(".research-context").first()).toBeVisible();
+  await expect(sparseResearch.getByText(/not yet a Claim/).first()).toBeVisible();
+  const sparseTitleSize = await fontSize(sparseResearch.locator("article > strong").first());
+
+  await request.post("http://127.0.0.1:8001/__control/front-mode?value=full");
+  await revalidate(request, "e2e-dense-research");
+  await page.reload();
+
+  const denseResearch = page.locator(".research-watch-list");
+  await expect(denseResearch).toHaveAttribute("data-count", "6");
+  await expect(denseResearch).toHaveAttribute("data-density", "dense");
+  await expect(denseResearch.locator(".research-context").first()).toBeHidden();
+  const denseTitleSize = await fontSize(denseResearch.locator("article > strong").first());
+  expect(sparseTitleSize).toBeGreaterThanOrEqual(20);
+  expect(denseTitleSize).toBeLessThanOrEqual(13);
+  expect(sparseTitleSize).toBeGreaterThan(denseTitleSize);
+
+  await page.goto("/explore");
+  await expect(page.locator(".topic-directory-grid")).toHaveAttribute("data-density", "balanced");
+  await expect(page.locator(".signal-directory-table")).toHaveAttribute("data-density", "sparse");
+  await expect(page.locator(".signal-directory-table .collection-detail").first()).toBeVisible();
+
+  await page.locator(".topic-directory-grid h3 a").first().click();
+  await expect(page.locator(".topic-market-grid")).toHaveAttribute("data-density", "sparse");
+  await expect(page.getByText("Binary prediction market.", { exact: true })).toBeVisible();
+  await expect(page.locator(".topic-signal-table")).toHaveAttribute("data-density", "sparse");
+});
+
 test("fills an empty lead column with derived signal context", async ({ page, request }) => {
   await request.post("http://127.0.0.1:8001/__control/front-mode?value=no-research");
   await revalidate(request, "e2e-no-research");

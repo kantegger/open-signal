@@ -4,6 +4,7 @@ import { JsonLd } from "../../components/json-ld";
 import { DirectionalStatement } from "../../components/directional-statement";
 import { SiteShell } from "../../components/site-shell";
 import type { SeoIndexData } from "../../lib/api";
+import { collectionDensity } from "../../lib/collection-density";
 import { formatDateTime, formatRelativeTime, humanize } from "../../lib/i18n";
 import { fetchSeoIndexServer } from "../../lib/server-api";
 import { absoluteUrl } from "../../lib/site";
@@ -111,14 +112,23 @@ export default async function ExplorePage({ searchParams }: Props) {
               <p>{topics.length} shown · grouped across source markets</p>
             </header>
             {topics.length ? (
-              <div className="topic-directory-grid">
+              <div
+                className="topic-directory-grid"
+                data-count={topics.length}
+                data-density={collectionDensity(topics.length, "grid")}
+              >
                 {topics.map((topic) => (
                   <article key={topic.id}>
                     <p className="eyebrow">{humanize(topic.event_type)}</p>
                     <h3><Link href={topicPath(topic.title, topic.id)}>{topic.title}</Link></h3>
                     <TopicSignal topic={topic} />
+                    <p className="collection-detail collection-detail-sparse topic-directory-context">
+                      Aggregates {topic.source_market_count} source market{topic.source_market_count === 1 ? "" : "s"}.
+                      The latest observation was captured {formatRelativeTime(topic.current_observed_at ?? topic.updated_at)};
+                      resolution is scheduled for {formatDateTime(topic.resolution_deadline_at)}.
+                    </p>
                     <dl>
-                      <div><dt>Markets</dt><dd>{topic.source_market_count}</dd></div>
+                      <div className="collection-tertiary"><dt>Markets</dt><dd>{topic.source_market_count}</dd></div>
                       <div><dt>Resolves</dt><dd>{formatDateTime(topic.resolution_deadline_at)}</dd></div>
                       <div><dt>Updated</dt><dd>{formatRelativeTime(topic.updated_at)}</dd></div>
                     </dl>
@@ -134,7 +144,13 @@ export default async function ExplorePage({ searchParams }: Props) {
               <p>{signals.length} shown · newest assessments first</p>
             </header>
             {signals.length ? (
-              <div className="signal-directory-table" role="table" aria-label="Recent verified Signals">
+              <div
+                className="signal-directory-table"
+                role="table"
+                aria-label="Recent verified Signals"
+                data-count={signals.length}
+                data-density={collectionDensity(signals.length, "table")}
+              >
                 <div className="signal-directory-row signal-directory-head" role="row">
                   <span role="columnheader">Desk</span><span role="columnheader">Signal</span>
                   <span role="columnheader">Confidence</span><span role="columnheader">Valid until</span>
@@ -143,7 +159,12 @@ export default async function ExplorePage({ searchParams }: Props) {
                 {signals.map((signal) => (
                   <div className="signal-directory-row" role="row" key={signal.id}>
                     <span role="cell">{deskName(signal.desk_id)}</span>
-                    <span role="cell"><Link href={signalPath(signal.title, signal.id)}><DirectionalStatement text={signal.title} /></Link></span>
+                    <span role="cell">
+                      <Link href={signalPath(signal.title, signal.id)}><DirectionalStatement text={signal.title} /></Link>
+                      <small className="collection-detail collection-detail-balanced">
+                        {humanize(signal.claim_type)} · {humanize(signal.status)}
+                      </small>
+                    </span>
                     <span role="cell">{humanize(signal.confidence_label ?? signal.epistemic_status)}</span>
                     <time role="cell">{signal.valid_until ? formatDateTime(signal.valid_until) : "Open"}</time>
                     <time role="cell">{formatRelativeTime(signal.updated_at)}</time>

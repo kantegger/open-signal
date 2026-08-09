@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { JsonLd } from "../../components/json-ld";
 import { SiteShell } from "../../components/site-shell";
+import { collectionDensity } from "../../lib/collection-density";
 import { formatDateTime, humanize } from "../../lib/i18n";
 import { fetchSeoIndexServer } from "../../lib/server-api";
 import { absoluteUrl } from "../../lib/site";
@@ -78,7 +79,13 @@ export default async function EditionsPage() {
               <p>Open any row to reconstruct that publication state.</p>
             </header>
             {editions.length ? (
-              <div className="edition-directory-table" role="table" aria-label="Edition archive">
+              <div
+                className="edition-directory-table"
+                role="table"
+                aria-label="Edition archive"
+                data-count={editions.length}
+                data-density={collectionDensity(editions.length, "table")}
+              >
                 <div className="edition-directory-row edition-directory-head" role="row">
                   <span role="columnheader">Composed</span><span role="columnheader">Coverage</span>
                   <span role="columnheader">Claims</span><span role="columnheader">Trigger</span>
@@ -88,7 +95,12 @@ export default async function EditionsPage() {
                 {editions.map((edition) => (
                   <div className="edition-directory-row" role="row" key={edition.id}>
                     <time role="cell">{formatDateTime(edition.updated_at)}</time>
-                    <span role="cell">{edition.sections.length} Sections</span>
+                    <span role="cell">
+                      {edition.sections.length} Sections
+                      <small className="collection-detail collection-detail-balanced">
+                        {edition.sections.map(humanize).join(" · ") || "No active Sections"}
+                      </small>
+                    </span>
                     <span role="cell">{edition.claim_count}</span>
                     <span role="cell">{humanize(edition.trigger_type)}</span>
                     <span role="cell">{edition.correction_count}</span>

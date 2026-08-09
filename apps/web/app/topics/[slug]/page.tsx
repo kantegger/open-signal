@@ -6,6 +6,7 @@ import { JsonLd } from "../../../components/json-ld";
 import { DirectionalStatement } from "../../../components/directional-statement";
 import { SiteShell } from "../../../components/site-shell";
 import { ApiError, type TopicPageData } from "../../../lib/api";
+import { collectionDensity } from "../../../lib/collection-density";
 import { formatDateTime, formatRelativeTime, humanize } from "../../../lib/i18n";
 import { fetchTopicServer } from "../../../lib/server-api";
 import { absoluteUrl } from "../../../lib/site";
@@ -111,7 +112,11 @@ export default async function TopicPage({ params }: Props) {
 
           <section className="topic-market-section" aria-labelledby="market-state-title">
             <header className="region-heading"><h2 id="market-state-title">Current market state</h2><p>Source probability, not an Open Signal forecast</p></header>
-            <div className="topic-market-grid">
+            <div
+              className="topic-market-grid"
+              data-count={page.markets.length}
+              data-density={collectionDensity(page.markets.length, "grid")}
+            >
               {page.markets.map((market) => <MarketCard key={market.id} market={market} />)}
             </div>
           </section>
@@ -129,11 +134,20 @@ export default async function TopicPage({ params }: Props) {
           <section className="topic-signals" aria-labelledby="signal-history-title">
             <header className="region-heading"><h2 id="signal-history-title">Verified signal history</h2><p>Newest first</p></header>
             {page.signals.length ? (
-              <div className="topic-signal-table">
+              <div
+                className="topic-signal-table"
+                data-count={page.signals.length}
+                data-density={collectionDensity(page.signals.length, "table")}
+              >
                 {page.signals.map((signal) => (
                   <article key={signal.id}>
                     <time>{formatRelativeTime(signal.issued_at)}</time>
-                    <Link href={signalPath(signal.public_statement, signal.id)}><DirectionalStatement text={signal.public_statement} /></Link>
+                    <Link href={signalPath(signal.public_statement, signal.id)}>
+                      <DirectionalStatement text={signal.public_statement} />
+                      <small className="collection-detail collection-detail-balanced">
+                        {humanize(signal.claim_type)} · updated {formatRelativeTime(signal.updated_at)}
+                      </small>
+                    </Link>
                     <span>{humanize(signal.confidence_label ?? signal.epistemic_status)}</span>
                     <span>{humanize(signal.status)}</span>
                   </article>
@@ -157,6 +171,11 @@ function MarketCard({ market }: { market: TopicPageData["markets"][number] }) {
   return (
     <article className="topic-market-card">
       <div><p>{market.question}</p>{market.source_url ? <a href={market.source_url} rel="noreferrer" target="_blank">Source ↗</a> : null}</div>
+      {market.description ? (
+        <p className="collection-detail collection-detail-sparse topic-market-description">
+          {market.description}
+        </p>
+      ) : null}
       <div className="topic-probability">
         <strong>{current === null || current === undefined ? "—" : `${Math.round(current * 100)}%`}</strong>
         <span className={delta && delta > 0 ? "trend-up" : delta && delta < 0 ? "trend-down" : "trend-neutral"}>
