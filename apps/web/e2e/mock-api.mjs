@@ -64,7 +64,7 @@ const server = http.createServer(async (request, response) => {
   }
   if (request.method === "POST" && url.pathname === "/__control/front-mode") {
     const requestedMode = url.searchParams.get("value");
-    frontPageMode = requestedMode === "empty" || requestedMode === "no-live-feed"
+    frontPageMode = requestedMode === "empty" || requestedMode === "no-live-feed" || requestedMode === "no-research"
       ? requestedMode
       : "full";
     json(response, 200, { mode: frontPageMode });
@@ -93,6 +93,18 @@ const server = http.createServer(async (request, response) => {
                 : publicationSlot
             )),
           }
+        : frontPageMode === "no-research"
+          ? {
+              ...frontPageFixture,
+              publication_context: {
+                ...frontPageFixture.publication_context,
+                counts: {
+                  ...frontPageFixture.publication_context.counts,
+                  research_screening: 0,
+                },
+                research: [],
+              },
+            }
         : frontPageFixture;
     json(response, 200, fixture);
     return;
