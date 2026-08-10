@@ -52,11 +52,17 @@ verified Section output or expiry event
 - Scanner-style Section refreshes recompile new observations together with the
   Section's still-valid featured and compact items. A minor new observation
   must not accidentally evict an otherwise valid Lead.
+- When a refresh leaves fewer than three Secondary Signals, the compiler may
+  draw from a bounded continuity reserve of recent immutable Editions. Fresh
+  output always wins; reserve items must still pass current freshness, Claim,
+  source-state, deadline, and event-deduplication gates. Their original
+  `data_as_of` and material timestamps remain unchanged (OS-051).
 - A hard-expired item is removed from the active pool before composition.
 - The compiler may omit an entire content Section. It must never publish a blank
   card, empty placeholder, partial page, or transient hole.
-- Sparse pages are valid. The shell keeps real routes to Explore, Archive, and
-  Method available without manufacturing low-quality current content.
+- Sparse pages are valid only after the continuity reserve has been exhausted.
+  The shell keeps real routes to Explore, Archive, and Method available without
+  manufacturing low-quality current content.
 - A snapshot becomes public only after all Render Plans, typed Observation/Watch
   context, and page-level rules pass. `publication_context` is captured into the
   immutable Edition payload; Current never assembles its charts from a separate

@@ -9,7 +9,10 @@ from datetime import UTC, date, datetime
 
 import pytest
 from open_signal.api.editions import FrontPagePresenter
-from open_signal.composer.edition_writer import EditionWriter
+from open_signal.composer.edition_writer import (
+    EditionWriter,
+    _continuity_source_is_live,
+)
 
 
 @pytest.fixture()
@@ -353,6 +356,159 @@ def test_refresh_replaces_old_editorial_surfaces_before_section_cap(
     _cleanup(engine)
 
 
+def test_continuity_reserve_backfills_secondary_and_preserves_age(
+    writer, engine
+) -> None:
+    _cleanup(engine)
+    observed_at = "2026-08-10T09:00:00+00:00"
+    historical_rules = [
+        _candidate(
+            "c1",
+            section="rules-moved",
+            slot_id="secondary",
+            component_id="signal-hero.rules",
+            headline="Durable rule hero",
+            data_as_of=observed_at,
+            materially_updated_at=observed_at,
+            display_fields={
+                "rule_title": "Durable rule hero",
+                "previous_state": "proposed",
+                "current_state": "final",
+                "transition_date": "2026-08-10",
+                "authority": "Test authority",
+                "source_url": "https://example.com/rule-hero",
+                "headline": "Durable rule hero",
+                "primary_observation": "The authoritative state changed.",
+            },
+        ),
+        _candidate(
+            "c2",
+            section="rules-moved",
+            slot_id="secondary",
+            component_id="state-transition.rule-stage",
+            headline="Durable rule transition",
+            data_as_of=observed_at,
+            materially_updated_at=observed_at,
+            display_fields={
+                "rule_title": "Durable rule transition",
+                "previous_state": "proposed",
+                "current_state": "final",
+                "transition_date": "2026-08-10",
+                "authority": "Test authority",
+                "source_url": "https://example.com/rule-transition",
+            },
+        ),
+    ]
+    historical = writer.build_edition(
+        historical_rules,
+        generated_at=datetime(2026, 8, 10, 9, tzinfo=UTC),
+        section_maturity="beta",
+    )
+
+    fresh_at = "2026-08-10T12:00:00+00:00"
+    lead_fields = {
+        **_candidate("c3")["display_fields"],
+        "updated_at": fresh_at,
+        "headline": "Fresh expectation lead",
+        "primary_observation": "A newly verified expectation moved.",
+    }
+    current = writer.build_edition(
+        [
+            _candidate(
+                "c3",
+                slot_id="lead",
+                component_id="signal-hero.expectations",
+                headline="Fresh expectation lead",
+                display_fields=lead_fields,
+                data_as_of=fresh_at,
+                materially_updated_at=fresh_at,
+            ),
+            _candidate(
+                "c4",
+                slot_id="secondary",
+                headline="Fresh expectation secondary",
+                display_fields={
+                    **_candidate("c4")["display_fields"],
+                    "expectation_title": "Fresh expectation secondary",
+                    "updated_at": fresh_at,
+                },
+                data_as_of=fresh_at,
+                materially_updated_at=fresh_at,
+            ),
+            _candidate(
+                "c5",
+                slot_id="main",
+                headline="Fresh expectation main",
+                display_fields={
+                    **_candidate("c5")["display_fields"],
+                    "expectation_title": "Fresh expectation main",
+                    "updated_at": fresh_at,
+                },
+                data_as_of=fresh_at,
+                materially_updated_at=fresh_at,
+            ),
+        ],
+        generated_at=datetime(2026, 8, 10, 12, tzinfo=UTC),
+        section_maturity="beta",
+    )
+
+    refreshed = writer.build_rolling_edition(
+        [],
+        refreshed_section_ids=set(),
+        generated_at=datetime(2026, 8, 10, 13, tzinfo=UTC),
+        section_maturity="beta",
+    )
+
+    assert refreshed["supersedes_edition_id"] == current["edition_id"]
+    from sqlalchemy import text
+
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT headline, data_as_of, hidden_detail_fields "
+                "FROM render_plans "
+                "WHERE edition_id = :edition AND slot_id = 'secondary' "
+                "ORDER BY position"
+            ),
+            {"edition": refreshed["edition_id"]},
+        ).fetchall()
+    assert len(rows) == 3
+    carried = [row for row in rows if row[2].get("publication_continuity")]
+    assert {row[0] for row in carried} == {
+        "Durable rule hero",
+        "Durable rule transition",
+    }
+    assert all(row[1].isoformat() == observed_at for row in carried)
+    assert all(
+        row[2]["publication_continuity"]["source_edition_id"]
+        == historical["edition_id"]
+        for row in carried
+    )
+    payload = writer.edition_json(refreshed["edition_id"])["edition_payload"]
+    assert payload["continuity"]["carried_items"] == 2
+    assert payload["continuity"]["source_edition_ids"] == [historical["edition_id"]]
+    _cleanup(engine)
+
+
+def test_continuity_reserve_rejects_past_expectation_deadline() -> None:
+    candidate = _candidate(
+        "c1",
+        source_status="active",
+        topic_status="active",
+        resolution_deadline_at="2026-08-10T11:59:59+00:00",
+    )
+
+    assert not _continuity_source_is_live(
+        candidate,
+        now=datetime(2026, 8, 10, 12, tzinfo=UTC),
+    )
+    candidate["resolution_deadline_at"] = "2026-08-10T12:00:01+00:00"
+    assert _continuity_source_is_live(
+        candidate,
+        now=datetime(2026, 8, 10, 12, tzinfo=UTC),
+    )
+
+
 def test_freshness_reconcile_is_noop_until_meaning_changes(writer, engine) -> None:
     _cleanup(engine)
     initial = writer.build_edition(
@@ -447,6 +603,36 @@ def test_freshness_reconcile_backfills_publication_context(writer, engine) -> No
     )
     payload = writer.edition_json(refreshed["edition_id"])
     assert payload["edition_payload"]["publication_context"]["version"] == "1.4.0"
+    _cleanup(engine)
+
+
+def test_freshness_reconcile_applies_new_composer_version(writer, engine) -> None:
+    from sqlalchemy import text
+
+    _cleanup(engine)
+    initial = writer.build_edition(
+        [_candidate("c1")],
+        generated_at=datetime(2026, 8, 7, 13, tzinfo=UTC),
+    )
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "UPDATE daily_editions SET composer_version = 'os-048' "
+                "WHERE id = :edition"
+            ),
+            {"edition": initial["edition_id"]},
+        )
+
+    refreshed = writer.reconcile_freshness(
+        generated_at=datetime(2026, 8, 7, 14, tzinfo=UTC)
+    )
+
+    assert refreshed["published"] is True
+    assert any(
+        transition["reason"] == "edition composer version changed"
+        for transition in refreshed["transitions"]
+    )
+    assert writer.edition_json(refreshed["edition_id"])["composer_version"] == "os-051"
     _cleanup(engine)
 
 

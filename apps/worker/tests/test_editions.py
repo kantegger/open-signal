@@ -189,6 +189,41 @@ def test_section_diversity(composer) -> None:
         composer.compose(candidates, now=COMPOSE_NOW)
 
 
+def test_bounded_continuity_fill_uses_spare_secondary_capacity(composer) -> None:
+    lead_fields = {
+        **_pm_candidate("c1")["display_fields"],
+        "headline": "Fresh lead",
+        "primary_observation": "A newly verified move.",
+    }
+    candidates = [
+        _pm_candidate(
+            "c1",
+            slot_id="lead",
+            component_id="signal-hero.expectations",
+            display_fields=lead_fields,
+        ),
+        _pm_candidate("c2", slot_id="secondary"),
+        _pm_candidate("c3", slot_id="main"),
+        _pm_candidate(
+            "c4",
+            slot_id="secondary",
+            _continuity_fill=True,
+            priority=2000,
+        ),
+        _pm_candidate(
+            "c5",
+            slot_id="secondary",
+            _continuity_fill=True,
+            priority=2001,
+        ),
+    ]
+
+    plan = composer.compose(candidates, now=COMPOSE_NOW)
+
+    assert len(plan["slots"]["secondary"]) == 3
+    assert len(plan["items"]) == 5
+
+
 def test_slot_compatibility(composer) -> None:
     # probability-move in lead slot is rejected by component validation
     bad = _pm_candidate("c1", slot_id="lead", component_id="time-series.probability-move")
