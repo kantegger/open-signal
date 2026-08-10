@@ -268,7 +268,7 @@ class ExpectationsSectionService:
         detected.sort(key=lambda item: (item[0], -item[1]))
 
         builder = DeterministicClaimBuilder(self.engine)
-        built: list[tuple[str, dict[str, Any]]] = []
+        built: list[tuple[str, str, dict[str, Any]]] = []
         duplicates = 0
         built_by_tier = {"featured": 0, "scanner": 0}
         used_events: set[str] = set()
@@ -287,7 +287,7 @@ class ExpectationsSectionService:
             if not result["created"]:
                 duplicates += 1
                 continue
-            built.append((tier, result))
+            built.append((tier, event_key, result))
             built_by_tier[tier] += 1
             if (
                 built_by_tier["featured"] >= maximum_featured
@@ -299,10 +299,16 @@ class ExpectationsSectionService:
         candidates: list[dict[str, Any]] = []
         verified_claim_ids: set[str] = set()
         tier_indices = {"featured": 0, "scanner": 0}
-        for tier, result in built:
+        for tier, event_key, result in built:
             index = tier_indices[tier]
             tier_indices[tier] += 1
             candidate = self._publication_candidate(result, tier=tier, index=index)
+            candidate["continuity_key"] = event_key
+            hidden = dict(candidate.get("hidden_detail_fields") or {})
+            publication = dict(hidden.get("publication") or {})
+            publication["event_key"] = event_key
+            hidden["publication"] = publication
+            candidate["hidden_detail_fields"] = hidden
             if verifier.gate_for_composer(result["claim_id"], candidate):
                 candidate["claim_status"] = "verified"
                 candidates.append(candidate)

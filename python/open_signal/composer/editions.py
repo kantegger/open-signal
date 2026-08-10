@@ -149,10 +149,15 @@ class EditionComposer:
 
         # 3. section diversity — cap only full editorial surfaces.  Compact
         # feeds and indices are intentionally list-shaped and may repeat a
-        # Section while preserving the editorial cap above them.
+        # Section while preserving the editorial cap above them.  A bounded
+        # continuity fill is the sole exception: EditionWriter adds at most
+        # enough still-valid, event-distinct history to fill otherwise-empty
+        # Secondary capacity after normal candidates have won.
         section_counts: dict[str, int] = {}
         for c in deduped:
             if c.get("slot_id") not in {"lead", "secondary", "main"}:
+                continue
+            if c.get("_continuity_fill"):
                 continue
             section = c.get("section_id") or "default"
             section_counts[section] = section_counts.get(section, 0) + 1
@@ -189,6 +194,7 @@ class EditionComposer:
             if (
                 slot_id in {"lead", "secondary", "main"}
                 and last_family.get(slot_id) == family
+                and not c.get("_continuity_fill")
             ):
                 warnings.append(
                     f"repetition avoided: {family} consecutive in {slot_id}"

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import text
@@ -22,12 +22,16 @@ from open_signal.composer.publication_context import (
     PublicationContextBuilder,
 )
 
-COMPOSER_VERSION = "os-048"
+COMPOSER_VERSION = "os-051"
 PUBLICATION_CHANNEL = "front-page"
 SPARSE_THRESHOLD = 3
 PUBLIC_STATUSES = {"published", "sparse", "beta", "corrected"}
 SLOT_ORDER = ("lead", "secondary", "live_feed", "digest", "main", "utility", "archive")
 EDITORIAL_SLOTS = frozenset({"lead", "secondary", "main"})
+CONTINUITY_LOOKBACK_HOURS = 720
+CONTINUITY_SECONDARY_TARGET = 3
+CONTINUITY_QUERY_LIMIT = 5000
+CONTINUITY_PRIORITY_BASE = 2000
 
 
 class EditionWriter:
@@ -107,6 +111,7 @@ class EditionWriter:
                 "lead": _lead(items),
                 "lead_set": _lead_set(items),
                 "slots": _slots_summary(items),
+                "continuity": _continuity_summary(items),
                 "freshness": freshness_summary,
                 "warnings": plan["warnings"],
                 "publication_context": publication_context,
@@ -232,6 +237,7 @@ class EditionWriter:
         Unrefreshed Sections are always carried forward and independently
         re-evaluated for Claim validity and elapsed-age retirement.
         """
+        generated_at = _utc(generated_at or datetime.now(timezone.utc))
         refreshed = set(refreshed_section_ids or ())
         if refreshed_section_ids is None:
             refreshed = {
@@ -240,6 +246,10 @@ class EditionWriter:
         active: list[dict[str, Any]] = []
         carried_from_refreshed: list[dict[str, Any]] = []
         for item in self._current_candidates():
+            if item.get("_continuity_fill") and not _continuity_source_is_live(
+                item, now=generated_at
+            ):
+                continue
             if item.get("section_id") not in refreshed:
                 active.append(item)
                 continue
@@ -260,12 +270,14 @@ class EditionWriter:
             candidates,
             section_cap=self.composer.section_cap,
         )
-        merged = _dedupe_candidates(
-            [*active, *carried_from_refreshed, *candidates]
+        merged = self._fill_continuity_reserve(
+            _dedupe_candidates([*active, *carried_from_refreshed, *candidates]),
+            generated_at=generated_at,
+            section_maturity=section_maturity,
         )
         return self.build_edition(
             merged,
-            edition_date=(generated_at or datetime.now(timezone.utc)).date(),
+            edition_date=generated_at.date(),
             section_maturity=section_maturity,
             trigger_type=trigger_type,
             generated_at=generated_at,
@@ -317,6 +329,7 @@ class EditionWriter:
                 text(
                     """
                     SELECT pc.policy_version,
+                           e.composer_version,
                            e.edition_payload #>> '{publication_context,version}',
                            e.edition_payload #>>
                              '{publication_context,research_fingerprint}'
@@ -332,8 +345,9 @@ class EditionWriter:
                 captured_at=generated_at,
             )
         channel_policy = channel_state[0] if channel_state else None
-        context_version = channel_state[1] if channel_state else None
-        stored_research_fingerprint = channel_state[2] if channel_state else None
+        channel_composer = channel_state[1] if channel_state else None
+        context_version = channel_state[2] if channel_state else None
+        stored_research_fingerprint = channel_state[3] if channel_state else None
         current_policy = self.composer.freshness_evaluator.policy_version
         if channel_policy != current_policy:
             transitions.append(
@@ -342,6 +356,15 @@ class EditionWriter:
                     "from": channel_policy,
                     "to": current_policy,
                     "reason": "freshness policy version changed",
+                }
+            )
+        if channel_composer != COMPOSER_VERSION:
+            transitions.append(
+                {
+                    "claim_id": None,
+                    "from": channel_composer,
+                    "to": COMPOSER_VERSION,
+                    "reason": "edition composer version changed",
                 }
             )
         if context_version != CONTEXT_VERSION:
@@ -533,57 +556,204 @@ class EditionWriter:
                            rp.data_as_of, rp.assessed_at,
                            rp.materially_updated_at, rp.freshness_state,
                            rp.expires_at, c.id, c.status, c.section_id,
-                           c.claim_type, c.issued_at, c.valid_until, c.updated_at
-                    FROM render_plans rp
-                    LEFT JOIN claims c ON c.id = rp.claim_ids[1]
-                    WHERE rp.edition_id = :edition
-                    ORDER BY rp.slot_id, rp.position
+                           c.claim_type, c.issued_at, c.valid_until, c.updated_at,
+                           si.subject_type, si.subject_id, sm.source_id,
+                           sm.external_event_id, sm.status,
+                           ce.id, ce.status, ce.resolution_deadline_at
+                     FROM render_plans rp
+                     LEFT JOIN claims c ON c.id = rp.claim_ids[1]
+                     LEFT JOIN section_instances si
+                       ON si.id = rp.section_instance_id
+                     LEFT JOIN source_markets sm
+                       ON si.subject_type = 'source_market'
+                      AND sm.id = si.subject_id
+                     LEFT JOIN LATERAL (
+                       SELECT id, status, resolution_deadline_at
+                       FROM canonical_expectations
+                       WHERE si.subject_type = 'source_market'
+                         AND source_market_ids @> ARRAY[si.subject_id]::uuid[]
+                       ORDER BY updated_at DESC LIMIT 1
+                     ) ce ON true
+                     WHERE rp.edition_id = :edition
+                     ORDER BY rp.slot_id, rp.position
                     """
                 ),
                 {"edition": edition_id},
             ).fetchall()
+        return [_candidate_from_render_row(row) for row in rows]
+
+    def _recent_editorial_candidates(
+        self, *, generated_at: datetime
+    ) -> list[dict[str, Any]]:
+        """Load a bounded, immutable history pool for continuity backfill.
+
+        The query intentionally reads only prior full editorial surfaces.  It
+        never republishes them directly: every row is re-evaluated against the
+        current freshness and semantic-validity policy before selection.
+        """
+        lookback_start = generated_at - timedelta(hours=CONTINUITY_LOOKBACK_HOURS)
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                text(
+                    """
+                    SELECT rp.slot_id, rp.section_instance_id, rp.claim_ids,
+                           rp.component_id, rp.component_version,
+                           rp.component_variant, rp.headline, rp.dek,
+                           rp.display_fields, rp.hidden_detail_fields,
+                           rp.evidence_bundle_id, rp.visual_priority,
+                           rp.mobile_priority, rp.generated_by,
+                           rp.approved_by_verification_run_id, rp.position,
+                           rp.data_as_of, rp.assessed_at,
+                           rp.materially_updated_at, rp.freshness_state,
+                           rp.expires_at, c.id, c.status, c.section_id,
+                           c.claim_type, c.issued_at, c.valid_until, c.updated_at,
+                           si.subject_type, si.subject_id, sm.source_id,
+                           sm.external_event_id, sm.status,
+                           ce.id, ce.status, ce.resolution_deadline_at,
+                           e.id, e.generated_at
+                    FROM daily_editions e
+                    JOIN render_plans rp ON rp.edition_id = e.id
+                    LEFT JOIN claims c ON c.id = rp.claim_ids[1]
+                    LEFT JOIN section_instances si
+                      ON si.id = rp.section_instance_id
+                    LEFT JOIN source_markets sm
+                      ON si.subject_type = 'source_market'
+                     AND sm.id = si.subject_id
+                    LEFT JOIN LATERAL (
+                      SELECT id, status, resolution_deadline_at
+                      FROM canonical_expectations
+                      WHERE si.subject_type = 'source_market'
+                        AND source_market_ids @> ARRAY[si.subject_id]::uuid[]
+                      ORDER BY updated_at DESC LIMIT 1
+                    ) ce ON true
+                    WHERE e.generated_at >= :lookback_start
+                      AND e.generated_at <= :generated_at
+                      AND e.status IN ('published', 'sparse', 'beta', 'corrected')
+                      AND rp.slot_id IN ('lead', 'secondary', 'main')
+                    ORDER BY e.generated_at DESC,
+                             CASE rp.slot_id
+                               WHEN 'lead' THEN 0
+                               WHEN 'secondary' THEN 1
+                               ELSE 2
+                             END,
+                             rp.visual_priority, rp.position
+                    LIMIT :query_limit
+                    """
+                ),
+                {
+                    "lookback_start": lookback_start,
+                    "generated_at": generated_at,
+                    "query_limit": CONTINUITY_QUERY_LIMIT,
+                },
+            ).fetchall()
         candidates: list[dict[str, Any]] = []
         for row in rows:
-            candidates.append(
-                {
-                    "slot_id": row[0],
-                    "presentation_role": (
-                        "index_echo" if row[0] == "digest" else "primary"
-                    ),
-                    "section_instance_id": str(row[1]) if row[1] else None,
-                    "claim_ids": [str(value) for value in row[2]],
-                    "claim_id": str(row[21])
-                    if row[21]
-                    else (str(row[2][0]) if row[2] else None),
-                    "component_id": row[3],
-                    "component_version": row[4],
-                    "component_variant": row[5],
-                    "headline": row[6],
-                    "dek": row[7],
-                    "display_fields": _json_object(row[8]),
-                    "hidden_detail_fields": _json_object(row[9]),
-                    "evidence_bundle_id": str(row[10]) if row[10] else None,
-                    "visual_priority": row[11],
-                    "mobile_priority": row[12],
-                    "generated_by": row[13],
-                    "approved_by_verification_run_id": str(row[14])
-                    if row[14]
-                    else None,
-                    "position": row[15],
-                    "data_as_of": row[16].isoformat() if row[16] else None,
-                    "assessed_at": row[17].isoformat() if row[17] else None,
-                    "materially_updated_at": row[18].isoformat() if row[18] else None,
-                    "freshness_state": row[19],
-                    "expires_at": row[20].isoformat() if row[20] else None,
-                    "claim_status": row[22] or "published",
-                    "section_id": row[23] or "default",
-                    "claim_type": row[24] or "source_fact",
-                    "issued_at": row[25].isoformat() if row[25] else None,
-                    "valid_until": row[26].isoformat() if row[26] else None,
-                    "claim_updated_at": row[27].isoformat() if row[27] else None,
-                }
-            )
+            candidate = _candidate_from_render_row(row)
+            candidate["_continuity_source_edition_id"] = str(row[36])
+            candidate["_continuity_source_edition_generated_at"] = row[37].isoformat()
+            candidate["_continuity_source_slot"] = candidate.get("slot_id")
+            candidates.append(candidate)
         return candidates
+
+    def _fill_continuity_reserve(
+        self,
+        candidates: list[dict[str, Any]],
+        *,
+        generated_at: datetime,
+        section_maturity: str,
+    ) -> list[dict[str, Any]]:
+        """Fill spare Secondary capacity from still-valid recent Editions.
+
+        Fresh candidates and the current Edition always win.  The reserve is
+        considered only when Secondary Signals would otherwise be under the
+        OS-048 target of three.  Original evidence and material timestamps are
+        preserved, making the age visible instead of presenting carry-forward
+        material as newly observed.
+        """
+        visible = _dedupe_candidates(candidates)
+        preflight = self.composer.compose(
+            visible,
+            section_maturity=section_maturity,
+            now=generated_at,
+        )
+        secondary_count = len(preflight["slots"].get("secondary", []))
+        needed = max(0, CONTINUITY_SECONDARY_TARGET - secondary_count)
+        if needed == 0:
+            return visible
+
+        seen_claims = {
+            str(item.get("claim_id"))
+            for item in visible
+            if item.get("claim_id")
+        }
+        seen_keys = {_continuity_identity(item) for item in visible}
+        reserve_by_key: dict[str, dict[str, Any]] = {}
+        for historical in self._recent_editorial_candidates(
+            generated_at=generated_at
+        ):
+            claim_id = str(historical.get("claim_id") or "")
+            if claim_id and claim_id in seen_claims:
+                continue
+
+            candidate = dict(historical)
+            source_slot = str(candidate.get("slot_id") or "secondary")
+            candidate["_continuity_source_slot"] = source_slot
+            candidate["slot_id"] = "secondary"
+            candidate["component_variant"] = "standard"
+            candidate["presentation_role"] = "primary"
+
+            definition = self.composer.component_runtime.registry.component(
+                str(candidate.get("component_id") or "")
+            )
+            if definition is None or "secondary" not in definition.supported_slot_types:
+                continue
+            if not _continuity_source_is_live(candidate, now=generated_at):
+                continue
+            decision = self.composer.freshness_evaluator.evaluate(
+                candidate, now=generated_at
+            )
+            if not decision.eligible:
+                continue
+
+            key = _continuity_identity(candidate)
+            if key in seen_keys or key in reserve_by_key:
+                continue
+            candidate["_continuity_freshness_state"] = decision.state
+            candidate["freshness_state"] = decision.state
+            reserve_by_key[key] = candidate
+
+        reserve = list(reserve_by_key.values())
+        selected: list[dict[str, Any]] = []
+        while reserve and len(selected) < needed:
+            candidate = min(
+                reserve,
+                key=lambda item: _continuity_rank(
+                    item,
+                    visible=[*visible, *selected],
+                ),
+            )
+            reserve.remove(candidate)
+            continuity_key = _continuity_identity(candidate)
+            hidden = dict(_json_object(candidate.get("hidden_detail_fields")))
+            hidden["publication_continuity"] = {
+                "origin": "recent_edition",
+                "continuity_key": continuity_key,
+                "source_edition_id": candidate.get(
+                    "_continuity_source_edition_id"
+                ),
+                "source_edition_generated_at": candidate.get(
+                    "_continuity_source_edition_generated_at"
+                ),
+                "source_slot": candidate.get("_continuity_source_slot"),
+                "retained_data_as_of": candidate.get("data_as_of"),
+            }
+            candidate["hidden_detail_fields"] = hidden
+            candidate["_continuity_fill"] = True
+            candidate["continuity_key"] = continuity_key
+            candidate["priority"] = CONTINUITY_PRIORITY_BASE + len(selected)
+            selected.append(candidate)
+
+        return _dedupe_candidates([*visible, *selected])
 
     # --------------------------------------------------------------- archive
     def snapshot(self, edition_id: str) -> dict[str, Any]:
@@ -753,6 +923,176 @@ def _insert_audit_event(
             "detail": _dumps(detail),
         },
     )
+
+
+def _candidate_from_render_row(row: Any) -> dict[str, Any]:
+    hidden = _json_object(row[9])
+    continuity = _json_object(hidden.get("publication_continuity"))
+    claim_ids = [str(value) for value in (row[2] or [])]
+    candidate: dict[str, Any] = {
+        "slot_id": row[0],
+        "presentation_role": "index_echo" if row[0] == "digest" else "primary",
+        "section_instance_id": str(row[1]) if row[1] else None,
+        "claim_ids": claim_ids,
+        "claim_id": (
+            str(row[21])
+            if row[21]
+            else (claim_ids[0] if claim_ids else None)
+        ),
+        "component_id": row[3],
+        "component_version": row[4],
+        "component_variant": row[5],
+        "headline": row[6],
+        "dek": row[7],
+        "display_fields": _json_object(row[8]),
+        "hidden_detail_fields": hidden,
+        "evidence_bundle_id": str(row[10]) if row[10] else None,
+        "visual_priority": row[11],
+        "mobile_priority": row[12],
+        "generated_by": row[13],
+        "approved_by_verification_run_id": str(row[14]) if row[14] else None,
+        "position": row[15],
+        "data_as_of": row[16].isoformat() if row[16] else None,
+        "assessed_at": row[17].isoformat() if row[17] else None,
+        "materially_updated_at": row[18].isoformat() if row[18] else None,
+        "freshness_state": row[19],
+        "expires_at": row[20].isoformat() if row[20] else None,
+        "claim_status": row[22] or "published",
+        "section_id": row[23] or "default",
+        "claim_type": row[24] or "source_fact",
+        "issued_at": row[25].isoformat() if row[25] else None,
+        "valid_until": row[26].isoformat() if row[26] else None,
+        "claim_updated_at": row[27].isoformat() if row[27] else None,
+        "subject_type": row[28],
+        "subject_id": str(row[29]) if row[29] else None,
+        "source_id": str(row[30]) if row[30] else None,
+        "external_event_id": str(row[31]) if row[31] else None,
+        "source_status": row[32],
+        "topic_id": str(row[33]) if row[33] else None,
+        "topic_status": row[34],
+        "resolution_deadline_at": row[35].isoformat() if row[35] else None,
+    }
+    if continuity:
+        candidate.update(
+            {
+                "_continuity_fill": True,
+                "_continuity_source_edition_id": continuity.get(
+                    "source_edition_id"
+                ),
+                "_continuity_source_edition_generated_at": continuity.get(
+                    "source_edition_generated_at"
+                ),
+                "_continuity_source_slot": continuity.get("source_slot"),
+                "continuity_key": continuity.get("continuity_key"),
+                "priority": CONTINUITY_PRIORITY_BASE + int(row[15] or 0),
+            }
+        )
+    candidate["continuity_key"] = candidate.get(
+        "continuity_key"
+    ) or _continuity_identity(candidate)
+    return candidate
+
+
+def _continuity_identity(item: dict[str, Any]) -> str:
+    explicit = item.get("continuity_key")
+    if explicit:
+        return str(explicit)
+    hidden = _json_object(item.get("hidden_detail_fields"))
+    publication = _json_object(hidden.get("publication"))
+    if publication.get("event_key"):
+        return str(publication["event_key"])
+    source_id = item.get("source_id")
+    event_id = item.get("external_event_id")
+    if source_id and event_id:
+        return f"{source_id}:event:{event_id}"
+    if item.get("topic_id"):
+        return f"topic:{item['topic_id']}"
+    if item.get("subject_type") and item.get("subject_id"):
+        return f"subject:{item['subject_type']}:{item['subject_id']}"
+    if item.get("claim_id"):
+        return f"claim:{item['claim_id']}"
+    headline = " ".join(str(item.get("headline") or "").lower().split())
+    return f"headline:{headline}"
+
+
+def _continuity_source_is_live(
+    item: dict[str, Any], *, now: datetime
+) -> bool:
+    if str(item.get("section_id") or "") != "expectations-moved":
+        return True
+    fields = _json_object(item.get("display_fields"))
+    deadline = _time(
+        item.get("resolution_deadline_at")
+        or fields.get("resolution_deadline")
+        or fields.get("resolution_deadline_at")
+    )
+    if deadline is not None and deadline <= now:
+        return False
+    source_status = str(item.get("source_status") or "").lower()
+    if source_status and source_status not in {"active", "open", "trading"}:
+        return False
+    topic_status = str(item.get("topic_status") or "").lower()
+    return not topic_status or topic_status in {"active", "open"}
+
+
+def _continuity_rank(
+    item: dict[str, Any], *, visible: list[dict[str, Any]]
+) -> tuple[Any, ...]:
+    editorial = [
+        candidate
+        for candidate in visible
+        if candidate.get("slot_id") in EDITORIAL_SLOTS
+    ]
+    secondary = [
+        candidate for candidate in visible if candidate.get("slot_id") == "secondary"
+    ]
+    visible_sections = {
+        str(candidate.get("section_id") or "default") for candidate in editorial
+    }
+    visible_families = {
+        str(candidate.get("component_id") or "").split(".")[0]
+        for candidate in secondary
+    }
+    section = str(item.get("section_id") or "default")
+    family = str(item.get("component_id") or "").split(".")[0]
+    source_slot_rank = {"lead": 0, "secondary": 1, "main": 2}.get(
+        str(item.get("_continuity_source_slot") or "secondary"), 3
+    )
+    anchor = _time(
+        item.get("materially_updated_at")
+        or item.get("data_as_of")
+        or item.get("assessed_at")
+    )
+    recency_rank = -(anchor.timestamp() if anchor is not None else 0.0)
+    return (
+        1 if section in visible_sections else 0,
+        1 if family in visible_families else 0,
+        1 if item.get("_continuity_freshness_state") == "aging" else 0,
+        source_slot_rank,
+        recency_rank,
+        int(item.get("visual_priority") or 100),
+        str(item.get("headline") or ""),
+    )
+
+
+def _continuity_summary(items: list[dict[str, Any]]) -> dict[str, Any]:
+    carried = []
+    for item in items:
+        hidden = _json_object(item.get("hidden_detail_fields"))
+        continuity = _json_object(hidden.get("publication_continuity"))
+        if continuity:
+            carried.append(continuity)
+    return {
+        "carried_items": len(carried),
+        "secondary_target": CONTINUITY_SECONDARY_TARGET,
+        "source_edition_ids": sorted(
+            {
+                str(item["source_edition_id"])
+                for item in carried
+                if item.get("source_edition_id")
+            }
+        ),
+    }
 
 
 def _lead(items: list[dict[str, Any]]) -> dict[str, Any] | None:
