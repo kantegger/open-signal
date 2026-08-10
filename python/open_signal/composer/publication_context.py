@@ -17,11 +17,18 @@ from typing import Any
 
 from sqlalchemy import text
 
+from open_signal.derived.expectation_selection import (
+    ExpectationFact,
+    eligible_expectation_facts,
+    load_expectation_facts,
+    representative_facts,
+    select_expectation_groups,
+)
 from open_signal.derived.series_contract import market_series_snapshot
 from open_signal.research.candidates import CANDIDATE_VERSION
 from open_signal.research.publication import select_public_research_items
 
-CONTEXT_VERSION = "1.3.0"
+CONTEXT_VERSION = "1.4.0"
 CLAIM_LIMIT = 24
 EXPECTATION_LIMIT = 12
 RULE_LIMIT = 8
@@ -34,8 +41,17 @@ class PublicationContextBuilder:
 
     def capture(self, conn: Any, *, captured_at: datetime) -> dict[str, Any]:
         captured_at = _utc(captured_at)
-        claims, claim_total = self._claims(conn, captured_at=captured_at)
-        expectations = self._expectations(conn, captured_at=captured_at)
+        expectation_facts = load_expectation_facts(conn, as_of=captured_at)
+        claims, claim_total = self._claims(
+            conn,
+            captured_at=captured_at,
+            expectation_facts=expectation_facts,
+        )
+        expectations = self._expectations(
+            conn,
+            captured_at=captured_at,
+            facts=expectation_facts,
+        )
         rules = self._rules(conn, captured_at=captured_at)
         research, research_total = self._research(conn, captured_at=captured_at)
         research_fingerprint = _research_fingerprint(research, research_total)
@@ -62,31 +78,92 @@ class PublicationContextBuilder:
         }
 
     def _claims(
-        self, conn: Any, *, captured_at: datetime
+        self,
+        conn: Any,
+        *,
+        captured_at: datetime,
+        expectation_facts: list[ExpectationFact] | None = None,
     ) -> tuple[list[dict[str, Any]], int]:
         rows = conn.execute(
             text(
                 """
-                SELECT c.id, c.section_id, c.claim_type, c.public_statement,
-                       c.structured_proposition, c.confidence,
-                       c.confidence_label, c.epistemic_status, c.status,
-                       c.issued_at, c.updated_at, c.valid_until,
-                       eb.primary_evidence, eb.supporting_evidence,
-                       count(*) OVER () AS total_count
-                FROM claims c
-                LEFT JOIN evidence_bundles eb ON eb.id = c.evidence_bundle_id
-                WHERE c.status IN ('verified', 'published', 'active')
-                  AND c.issued_at <= :captured_at
-                  AND (c.valid_from IS NULL OR c.valid_from <= :captured_at)
-                  AND (c.valid_until IS NULL OR c.valid_until > :captured_at)
-                ORDER BY COALESCE(c.updated_at, c.issued_at) DESC, c.id
+                WITH ranked AS (
+                  SELECT c.id, c.section_id, c.claim_type, c.public_statement,
+                         c.structured_proposition, c.confidence,
+                         c.confidence_label, c.epistemic_status, c.status,
+                         c.issued_at, c.updated_at, c.valid_until,
+                         eb.primary_evidence, eb.supporting_evidence,
+                         subject.subject_type, subject.subject_id,
+                         row_number() OVER (
+                           PARTITION BY concat(
+                             c.section_id, ':',
+                             COALESCE(subject.subject_type, 'claim'), ':',
+                             COALESCE(subject.subject_id::text, c.id::text)
+                           )
+                           ORDER BY COALESCE(c.updated_at, c.issued_at) DESC,
+                                    c.id
+                         ) AS subject_rank
+                  FROM claims c
+                  LEFT JOIN evidence_bundles eb
+                    ON eb.id = c.evidence_bundle_id
+                  LEFT JOIN LATERAL (
+                    SELECT si.subject_type, si.subject_id
+                    FROM section_instances si
+                    WHERE si.claim_id = c.id
+                    ORDER BY si.created_at DESC, si.id
+                    LIMIT 1
+                  ) subject ON true
+                  WHERE c.status IN ('verified', 'published', 'active')
+                    AND c.issued_at <= :captured_at
+                    AND (c.valid_from IS NULL OR c.valid_from <= :captured_at)
+                    AND (c.valid_until IS NULL OR c.valid_until > :captured_at)
+                )
+                SELECT id, section_id, claim_type, public_statement,
+                       structured_proposition, confidence, confidence_label,
+                       epistemic_status, status, issued_at, updated_at,
+                       valid_until, primary_evidence, supporting_evidence,
+                       subject_type, subject_id
+                FROM ranked
+                WHERE subject_rank = 1
+                ORDER BY COALESCE(updated_at, issued_at) DESC, id
                 LIMIT :limit
                 """
             ),
-            {"captured_at": captured_at, "limit": CLAIM_LIMIT},
+            {"captured_at": captured_at, "limit": 5000},
         ).fetchall()
+        visible_rows = rows
+        if expectation_facts is not None:
+            eligible = eligible_expectation_facts(
+                expectation_facts,
+                as_of=captured_at,
+            )
+            selected_event_keys = {
+                group.key
+                for group in select_expectation_groups(
+                    eligible,
+                    as_of=captured_at,
+                    page_size=CLAIM_LIMIT,
+                )
+            }
+            event_by_market = {
+                fact.market_id: fact.event_key
+                for fact in eligible
+                if fact.event_key in selected_event_keys
+            }
+            visible_rows = []
+            used_events: set[str] = set()
+            for row in rows:
+                if row[14] != "source_market":
+                    visible_rows.append(row)
+                    continue
+                event_key = event_by_market.get(str(row[15]))
+                if event_key is None or event_key in used_events:
+                    continue
+                visible_rows.append(row)
+                used_events.add(event_key)
+
         claims: list[dict[str, Any]] = []
-        for row in rows:
+        for row in visible_rows[:CLAIM_LIMIT]:
             proposition = _object(row[4])
             direction, change = _claim_change(proposition)
             primary = _list(row[12])
@@ -110,78 +187,51 @@ class PublicationContextBuilder:
                     "valid_until": _iso(row[11]),
                 }
             )
-        return claims, int(rows[0][14]) if rows else 0
+        return claims, len(visible_rows)
 
     def _expectations(
-        self, conn: Any, *, captured_at: datetime
+        self,
+        conn: Any,
+        *,
+        captured_at: datetime,
+        facts: list[ExpectationFact] | None = None,
     ) -> list[dict[str, Any]]:
-        rows = conn.execute(
-            text(
-                """
-                SELECT ce.id, ce.canonical_question, ce.event_type,
-                       ce.resolution_deadline_at, ce.status, ce.updated_at,
-                       cardinality(ce.source_market_ids),
-                       latest.source_market_id, latest.probability,
-                       latest.observed_at, baseline.probability,
-                       baseline.observed_at, sm.status, s.slug
-                FROM canonical_expectations ce
-                LEFT JOIN LATERAL (
-                  SELECT mo.source_market_id, mo.probability, mo.observed_at
-                  FROM market_observations mo
-                  WHERE mo.source_market_id = ANY(ce.source_market_ids)
-                    AND mo.probability IS NOT NULL
-                    AND mo.observed_at <= :captured_at
-                  ORDER BY mo.observed_at DESC
-                  LIMIT 1
-                ) latest ON true
-                LEFT JOIN LATERAL (
-                  SELECT mo.probability, mo.observed_at
-                  FROM market_observations mo
-                  WHERE mo.source_market_id = latest.source_market_id
-                    AND mo.probability IS NOT NULL
-                    AND mo.observed_at <= :captured_at - interval '24 hours'
-                  ORDER BY mo.observed_at DESC
-                  LIMIT 1
-                ) baseline ON true
-                LEFT JOIN source_markets sm ON sm.id = latest.source_market_id
-                LEFT JOIN sources s ON s.id = sm.source_id
-                WHERE ce.status = 'active'
-                ORDER BY latest.observed_at DESC NULLS LAST, ce.updated_at DESC
-                LIMIT :limit
-                """
-            ),
-            {"captured_at": captured_at, "limit": EXPECTATION_LIMIT},
-        ).fetchall()
+        if facts is None:
+            facts = load_expectation_facts(conn, as_of=captured_at)
+        selected = representative_facts(
+            facts,
+            as_of=captured_at,
+            limit=EXPECTATION_LIMIT,
+        )
         observations: list[dict[str, Any]] = []
-        for row in rows:
-            current = _number(row[8])
-            baseline = _number(row[10])
-            delta = (
-                round((current - baseline) * 100, 2)
-                if current is not None and baseline is not None
-                else None
-            )
+        for fact in selected:
             series_snapshot = self._market_series(
                 conn,
-                source_market_id=row[7],
+                source_market_id=fact.market_id,
                 captured_at=captured_at,
             )
             observations.append(
                 {
-                    "id": str(row[0]),
-                    "title": row[1],
-                    "event_type": row[2],
-                    "resolution_deadline_at": _iso(row[3]),
-                    "status": row[4],
-                    "updated_at": _iso(row[5]),
-                    "source_market_count": int(row[6] or 0),
-                    "source_market_status": row[12],
-                    "source_label": _source_name(row[13]),
-                    "current_probability": current,
-                    "current_observed_at": _iso(row[9]),
-                    "baseline_probability_24h": baseline,
-                    "baseline_observed_at": _iso(row[11]),
-                    "delta_24h_percentage_points": delta,
+                    "id": fact.topic_id,
+                    "title": fact.title,
+                    "event_title": fact.event_title,
+                    "event_key": fact.event_key,
+                    "event_type": fact.event_type,
+                    "resolution_deadline_at": fact.deadline_at.isoformat(),
+                    "status": fact.canonical_status,
+                    "updated_at": _iso(fact.current_observed_at),
+                    "source_market_count": 1,
+                    "source_market_status": fact.market_status,
+                    "source_label": _source_name(fact.source_slug),
+                    "current_probability": fact.current_probability,
+                    "current_observed_at": _iso(fact.current_observed_at),
+                    "baseline_probability_24h": (
+                        fact.baseline_probability_24h
+                    ),
+                    "baseline_observed_at": _iso(fact.baseline_observed_at),
+                    "delta_24h_percentage_points": (
+                        fact.delta_24h_percentage_points
+                    ),
                     "series": series_snapshot["points"],
                     "series_quality": series_snapshot["quality"],
                 }

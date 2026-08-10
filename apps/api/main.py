@@ -6,6 +6,7 @@ mutation endpoints. Run with: uvicorn apps.api.main:app
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -14,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from open_signal.api.database import get_engine
 from open_signal.api.editions import FrontPagePresenter
+from open_signal.api.explore import ExplorePresenter
 from open_signal.api.ops import OpsPresenter
 from open_signal.api.presenters import ClaimPagePresenter
 from open_signal.api.topics import SeoIndexPresenter, TopicPagePresenter
@@ -113,6 +115,27 @@ def get_topic(expectation_id: UUID, response: Response) -> dict:
 def get_seo_index(response: Response, limit: int = 1000) -> dict:
     response.headers["Cache-Control"] = "public, max-age=900, stale-while-revalidate=3600"
     return SeoIndexPresenter(_engine()).build(limit=limit)
+
+
+@app.get("/api/explore")
+def get_explore(
+    response: Response,
+    topic_page: int = 1,
+    signal_page: int = 1,
+    topic_page_size: int = 12,
+    signal_page_size: int = 24,
+    as_of: datetime | None = None,
+) -> dict:
+    response.headers["Cache-Control"] = (
+        "public, max-age=300, stale-while-revalidate=900"
+    )
+    return ExplorePresenter(_engine()).build(
+        as_of=as_of,
+        topic_page=topic_page,
+        signal_page=signal_page,
+        topic_page_size=topic_page_size,
+        signal_page_size=signal_page_size,
+    )
 
 
 # --------------------------------------------------------- operations console

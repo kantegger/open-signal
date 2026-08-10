@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import text
@@ -250,13 +250,15 @@ class DeterministicClaimBuilder:
                        claim_type, public_statement, structured_proposition,
                        confidence, confidence_label, epistemic_status,
                        evidence_bundle_id, evidence_snapshot_hash,
-                       idempotency_key, issued_at, status)
+                       idempotency_key, issued_at, valid_from, valid_until,
+                       status)
                     VALUES
                       (:inst, :desk, :lineage, :model, :charter, :run,
                        :section, :capability, 'derived_observation',
                        :statement, CAST(:prop AS jsonb),
                        :confidence, 'high', 'derived',
-                       :eb, :hash, :key, :issued, 'draft')
+                       :eb, :hash, :key, :issued, :issued, :valid_until,
+                       'draft')
                     RETURNING id
                     """
                 ),
@@ -276,6 +278,7 @@ class DeterministicClaimBuilder:
                     "hash": snapshot_hash,
                     "key": idempotency_key,
                     "issued": now,
+                    "valid_until": now + timedelta(hours=72),
                 },
             ).fetchone()
             claim_id = str(claim_row[0])

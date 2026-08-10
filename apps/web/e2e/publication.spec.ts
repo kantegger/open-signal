@@ -135,10 +135,10 @@ test("uses the full canvas on destination pages and exposes a primary Topic sign
   }
 
   await page.goto("/explore");
-  const firstTopicSignal = page.locator(".topic-directory-signal").first();
-  await expect(firstTopicSignal.getByText("Latest source probability")).toBeVisible();
-  await expect(firstTopicSignal.locator("strong")).toHaveText("85%");
-  await expect(firstTopicSignal.locator(".trend-up")).toContainText("↗ +21pp · 24h");
+  const firstTopicSignal = page.locator(".event-member-list li").first();
+  await expect(firstTopicSignal.getByText("leader", { exact: true })).toBeVisible();
+  await expect(firstTopicSignal.locator("strong")).toHaveText("74%");
+  await expect(firstTopicSignal.locator(".trend-up")).toContainText("↗ +2pp");
 });
 
 test("keeps public information readable and encodes direction semantically", async ({ page }) => {
@@ -234,11 +234,11 @@ test("adapts typography and disclosure to collection size", async ({ page, reque
   expect(sparseTitleSize).toBeGreaterThan(denseTitleSize);
 
   await page.goto("/explore");
-  await expect(page.locator(".topic-directory-grid")).toHaveAttribute("data-density", "balanced");
-  await expect(page.locator(".signal-directory-table")).toHaveAttribute("data-density", "sparse");
-  await expect(page.locator(".signal-directory-table .collection-detail").first()).toBeVisible();
+  await expect(page.locator(".event-directory-grid")).toHaveAttribute("data-density", "dense");
+  await expect(page.locator(".signal-directory-table")).toHaveAttribute("data-density", "dense");
+  await expect(page.locator(".signal-directory-table small").first()).toBeVisible();
 
-  await page.locator(".topic-directory-grid h3 a").first().click();
+  await page.locator(".event-member-list a").first().click();
   await expect(page.locator(".topic-market-grid")).toHaveAttribute("data-density", "sparse");
   await expect(page.getByText("Binary prediction market.", { exact: true })).toBeVisible();
   await expect(page.locator(".topic-signal-table")).toHaveAttribute("data-density", "sparse");
@@ -334,11 +334,35 @@ test("uses real destination pages while Evidence remains an overlay", async ({ p
   await expect(primaryNavigation.locator('a[href*="#"]')).toHaveCount(0);
   await primaryNavigation.getByRole("link", { name: "Explore" }).click();
   await expect(page).toHaveURL(/\/explore$/);
-  await expect(page.getByRole("heading", { name: "Active Topics" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Selected Event Signals" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Recent Signals" })).toBeVisible();
   await page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name: "Method" }).click();
   await expect(page).toHaveURL(/\/method$/);
   await expect(page.getByRole("heading", { name: "How Open Signal makes a public claim" })).toBeVisible();
+});
+
+test("Explore compresses multi-outcome events and paginates each collection independently", async ({ page }) => {
+  await page.goto("/explore");
+
+  const eventCard = page.locator(".event-signal-card").filter({
+    has: page.getByRole("heading", { name: "2026 F1 Drivers' Champion" }),
+  });
+  await expect(eventCard).toBeVisible();
+  await expect(eventCard.locator(".event-member-list li")).toHaveCount(3);
+  await expect(eventCard.getByText("Kimi Antonelli", { exact: true })).toBeVisible();
+  await expect(eventCard.getByText("Lewis Hamilton", { exact: true })).toBeVisible();
+  await expect(eventCard.getByText("+17 source outcomes folded into this event")).toBeVisible();
+  await expect(eventCard.getByText(/Longshot/)).toHaveCount(0);
+
+  await page.getByRole("link", { name: "More events" }).click();
+  await expect(page).toHaveURL(/topic_page=2/);
+  await expect(page.getByRole("heading", { name: "Material event 12" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "More Signals" })).toBeVisible();
+
+  await page.getByRole("link", { name: "More Signals" }).click();
+  await expect(page).toHaveURL(/signal_page=2/);
+  await expect(page.getByText("Verified source signal 25 changed materially.")).toBeVisible();
+  await expect(page).toHaveURL(/topic_page=2/);
 });
 
 test("mobile order prioritizes research and navigation remains usable", async ({ page }) => {

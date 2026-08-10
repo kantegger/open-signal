@@ -266,19 +266,55 @@ class PolymarketAdapter:
                 for market in nested
                 if isinstance(market, dict) and market.get("id") is not None
             ] if isinstance(nested, list) else []
+            compact["marketSummaries"] = [
+                {
+                    key: market.get(key)
+                    for key in (
+                        "id",
+                        "groupItemTitle",
+                        "question",
+                        "active",
+                        "closed",
+                        "archived",
+                        "acceptingOrders",
+                        "outcomePrices",
+                        "volume24hr",
+                        "volume",
+                        "liquidity",
+                        "spread",
+                        "oneDayPriceChange",
+                        "endDate",
+                        "updatedAt",
+                        "negRisk",
+                        "negRiskOther",
+                        "negRiskMarketID",
+                    )
+                    if key in market
+                }
+                for market in nested
+                if isinstance(market, dict) and market.get("id") is not None
+            ] if isinstance(nested, list) else []
             compact_events.append(compact)
         return self._store_raw_records(
             compact_events,
             record_type="event",
             external_id=lambda event: f"event:{event.get('id')}",
+            source_created_at=lambda event: _source_timestamp(event.get("createdAt")),
+            source_updated_at=lambda event: _source_timestamp(event.get("updatedAt")),
         )
 
     def _store_raw_markets(self, markets: list[dict[str, Any]]) -> int:
         """Insert raw records idempotently (unique source_id/external_id/hash)."""
+        normalized = [_with_event_identity(market) for market in markets]
         return self._store_raw_records(
-            markets,
+            normalized,
             record_type="market",
             external_id=lambda market: str(market.get("id")),
+            external_parent_id=lambda market: (
+                f"event:{market.get('eventId')}" if market.get("eventId") else None
+            ),
+            source_created_at=lambda market: _source_timestamp(market.get("createdAt")),
+            source_updated_at=lambda market: _source_timestamp(market.get("updatedAt")),
         )
 
     def _store_raw_records(
@@ -287,6 +323,9 @@ class PolymarketAdapter:
         *,
         record_type: str,
         external_id: Callable[[dict[str, Any]], str],
+        external_parent_id: Callable[[dict[str, Any]], str | None] | None = None,
+        source_created_at: Callable[[dict[str, Any]], datetime | None] | None = None,
+        source_updated_at: Callable[[dict[str, Any]], datetime | None] | None = None,
     ) -> int:
         from sqlalchemy import text
 
@@ -299,14 +338,25 @@ class PolymarketAdapter:
                     text(
                         """
                         INSERT INTO raw_source_records
-                          (source_id, external_id, record_type, mime_type, payload,
+                          (source_id, external_id, external_parent_id,
+                           record_type, mime_type, payload,
                            source_created_at, source_updated_at, content_hash,
                            rights_manifest_id, adapter_version, status)
                         VALUES
-                          (:sid, :ext, :record_type, 'application/json', CAST(:payload AS jsonb),
-                           NULL, NULL, :hash, NULL, :ver, 'active')
+                          (:sid, :ext, :parent, :record_type, 'application/json',
+                           CAST(:payload AS jsonb), :source_created, :source_updated,
+                           :hash, NULL, :ver, 'active')
                         ON CONFLICT (source_id, external_id, content_hash) DO UPDATE SET
                           last_seen_at = now(),
+                          external_parent_id = EXCLUDED.external_parent_id,
+                          source_created_at = COALESCE(
+                            EXCLUDED.source_created_at,
+                            raw_source_records.source_created_at
+                          ),
+                          source_updated_at = COALESCE(
+                            EXCLUDED.source_updated_at,
+                            raw_source_records.source_updated_at
+                          ),
                           adapter_version = EXCLUDED.adapter_version,
                           status = 'active'
                         RETURNING (xmax = 0) AS inserted
@@ -315,8 +365,17 @@ class PolymarketAdapter:
                     {
                         "sid": self.source_id,
                         "ext": external_id(record),
+                        "parent": (
+                            external_parent_id(record) if external_parent_id else None
+                        ),
                         "record_type": record_type,
                         "payload": payload,
+                        "source_created": (
+                            source_created_at(record) if source_created_at else None
+                        ),
+                        "source_updated": (
+                            source_updated_at(record) if source_updated_at else None
+                        ),
                         "hash": content_hash,
                         "ver": self.adapter_version,
                     },
@@ -357,34 +416,125 @@ def select_monitored_markets(
     monitoring-budget decision, not an editorial exclusion: the event envelope
     itself is still stored and can be revisited on the next refresh.
     """
-    retained: dict[str, dict[str, Any]] = {}
+    cohorts: list[tuple[tuple[float, float, float, float], list[dict[str, Any]]]] = []
     for event in events:
         nested = event.get("markets")
         if not isinstance(nested, list):
             continue
         event_markets: list[dict[str, Any]] = []
         for raw_market in nested:
-            if not isinstance(raw_market, dict) or raw_market.get("closed") is True:
+            if (
+                not isinstance(raw_market, dict)
+                or raw_market.get("closed") is True
+                or raw_market.get("archived") is True
+                or raw_market.get("active") is False
+            ):
                 continue
-            market = dict(raw_market)
-            market.setdefault("eventId", event.get("id"))
-            market.setdefault("eventTitle", event.get("title"))
-            market.setdefault("eventSlug", event.get("slug"))
-            if not market.get("tags") and isinstance(event.get("tags"), list):
-                market["tags"] = event["tags"]
+            market = _with_event_identity(raw_market, event=event)
             event_markets.append(market)
-        event_markets.sort(key=_market_activity, reverse=True)
-        for market in event_markets[:markets_per_event]:
-            market_id = str(market.get("id") or "")
-            if market_id:
-                retained[market_id] = market
+        selected = _select_event_monitoring_cohort(
+            event_markets,
+            limit=markets_per_event,
+        )
+        if selected:
+            cohorts.append((max((_market_rank_key(item) for item in selected)), selected))
 
-    ranked = sorted(retained.values(), key=_market_activity, reverse=True)
-    return ranked[:max_markets]
+    # Round-robin the retained event cohorts.  Every event's leading
+    # representative is considered before a second member from any event.
+    cohorts.sort(key=lambda item: item[0], reverse=True)
+    monitored: list[dict[str, Any]] = []
+    maximum_depth = max((len(items) for _, items in cohorts), default=0)
+    for position in range(maximum_depth):
+        for _, items in cohorts:
+            if position < len(items):
+                monitored.append(items[position])
+                if len(monitored) >= max_markets:
+                    return monitored
+    return monitored
 
 
 def _market_activity(market: dict[str, Any]) -> float:
-    for field in ("volume24hr", "volume24h", "volume", "liquidity"):
+    """Return only same-window activity; never substitute lifetime volume."""
+    return _number_field(market, "volume24hr", "volume24h")
+
+
+def _select_event_monitoring_cohort(
+    markets: list[dict[str, Any]],
+    *,
+    limit: int,
+) -> list[dict[str, Any]]:
+    if not markets or limit <= 0:
+        return []
+
+    probability_leaders = sorted(
+        markets,
+        key=lambda market: (_market_probability(market), *_market_rank_key(market)),
+        reverse=True,
+    )[:3]
+    movers = sorted(
+        (market for market in markets if _one_day_move(market) > 0),
+        key=lambda market: (_one_day_move(market), *_market_rank_key(market)),
+        reverse=True,
+    )[:2]
+    activity = max(markets, key=_market_rank_key)
+    other = next(
+        (
+            market
+            for market in markets
+            if market.get("negRiskOther") is True
+            or str(market.get("groupItemTitle") or "").strip().casefold() == "other"
+        ),
+        None,
+    )
+    ranked = sorted(markets, key=_market_rank_key, reverse=True)
+    ordered = [*probability_leaders, *movers, activity]
+    if other is not None:
+        ordered.append(other)
+    ordered.extend(ranked)
+
+    selected: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for market in ordered:
+        market_id = str(market.get("id") or "")
+        if not market_id or market_id in seen:
+            continue
+        selected.append(market)
+        seen.add(market_id)
+        if len(selected) >= limit:
+            break
+    return selected
+
+
+def _market_rank_key(market: dict[str, Any]) -> tuple[float, float, float, float]:
+    return (
+        _market_activity(market),
+        _number_field(market, "volume"),
+        _number_field(market, "liquidity"),
+        _market_probability(market),
+    )
+
+
+def _market_probability(market: dict[str, Any]) -> float:
+    value: Any = market.get("outcomePrices")
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError:
+            return 0.0
+    if not isinstance(value, list) or not value:
+        return 0.0
+    try:
+        return float(value[0])
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _one_day_move(market: dict[str, Any]) -> float:
+    return abs(_signed_number_field(market, "oneDayPriceChange"))
+
+
+def _number_field(market: dict[str, Any], *fields: str) -> float:
+    for field in fields:
         try:
             value = float(market.get(field) or 0)
         except (TypeError, ValueError):
@@ -392,3 +542,50 @@ def _market_activity(market: dict[str, Any]) -> float:
         if value > 0:
             return value
     return 0.0
+
+
+def _signed_number_field(market: dict[str, Any], *fields: str) -> float:
+    for field in fields:
+        try:
+            return float(market.get(field) or 0)
+        except (TypeError, ValueError):
+            continue
+    return 0.0
+
+
+def _with_event_identity(
+    raw_market: dict[str, Any],
+    *,
+    event: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    market = dict(raw_market)
+    nested = market.get("events")
+    nested_event = (
+        nested[0]
+        if isinstance(nested, list)
+        and len(nested) == 1
+        and isinstance(nested[0], dict)
+        else {}
+    )
+    source_event = event or nested_event
+    if not market.get("eventId"):
+        market["eventId"] = source_event.get("id")
+    if not market.get("eventTitle"):
+        market["eventTitle"] = source_event.get("title")
+    if not market.get("eventSlug"):
+        market["eventSlug"] = source_event.get("slug")
+    if not market.get("tags") and isinstance(source_event.get("tags"), list):
+        market["tags"] = source_event["tags"]
+    return market
+
+
+def _source_timestamp(value: Any) -> datetime | None:
+    if isinstance(value, datetime):
+        return value
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed

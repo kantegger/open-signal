@@ -198,6 +198,8 @@ export interface PublicationClaimRecord {
 export interface PublicationExpectationObservation {
   id: string;
   title: string;
+  event_title?: string | null;
+  event_key?: string | null;
   event_type: string;
   resolution_deadline_at: string;
   status: string;
@@ -437,6 +439,84 @@ export interface SeoIndexData {
     correction_count: number;
     trigger_type: string;
   }>;
+}
+
+export interface ExploreData {
+  selection_version: string;
+  ranking_as_of: string;
+  topics: {
+    items: ExploreEventGroup[];
+    page: number;
+    page_size: number;
+    page_count: number;
+    total_count: number;
+    public_inventory_count: number;
+    selected_group_count: number;
+    represented_proposition_count: number;
+    suppressed_proposition_count: number;
+  };
+  signals: {
+    items: ExploreSignal[];
+    page: number;
+    page_size: number;
+    page_count: number;
+    total_count: number;
+    public_record_count: number;
+    current_record_count: number;
+    current_subject_count: number;
+    suppressed_snapshot_count: number;
+  };
+}
+
+export interface ExploreEventGroup {
+  key: string;
+  title: string;
+  event_type: string;
+  external_event_id?: string | null;
+  source_label: string;
+  source_url?: string | null;
+  source_member_count: number;
+  eligible_member_count: number;
+  suppressed_member_count: number;
+  is_exclusive_slate: boolean;
+  selection_reason: string;
+  volume_24h: number;
+  largest_move_24h_percentage_points?: number | null;
+  latest_observed_at: string;
+  resolution_deadline_at: string;
+  members: Array<{
+    topic_id: string;
+    title: string;
+    option_label?: string | null;
+    event_type: string;
+    current_probability?: number | null;
+    baseline_probability_24h?: number | null;
+    delta_24h_percentage_points?: number | null;
+    observed_at?: string | null;
+    resolution_deadline_at: string;
+    selection_reason: string;
+    recent_claim_id?: string | null;
+  }>;
+}
+
+export interface ExploreSignal {
+  id: string;
+  title: string;
+  claim_type: string;
+  desk_id: string;
+  section_id: string;
+  confidence_label?: string | null;
+  epistemic_status?: string | null;
+  status: string;
+  published_at: string;
+  updated_at: string;
+  valid_until?: string | null;
+  subject_type?: string | null;
+  subject_id?: string | null;
+  event_key?: string | null;
+  event_title?: string | null;
+  topic_id?: string | null;
+  selection_reason: string;
 }
 
 export async function fetchCurrentFrontPage(

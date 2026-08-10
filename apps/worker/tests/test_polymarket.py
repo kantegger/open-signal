@@ -274,3 +274,103 @@ def test_event_discovery_caps_each_event_before_global_ranking() -> None:
     assert {market["id"] for market in selected} == {"a-0", "a-1", "b-1", "b-2"}
     assert all(market.get("eventId") for market in selected)
     assert selected[0]["tags"] == [{"slug": "politics"}]
+
+
+def test_event_monitoring_keeps_probability_leader_over_lifetime_longshots() -> None:
+    markets = [
+        {
+            "id": "kimi",
+            "groupItemTitle": "Kimi Antonelli",
+            "outcomePrices": "[\"0.74\", \"0.26\"]",
+            "volume24hr": 6200,
+            "volume": 900_000,
+        }
+    ]
+    markets.extend(
+        {
+            "id": f"tail-{index}",
+            "groupItemTitle": f"Longshot {index}",
+            "outcomePrices": "[\"0.001\", \"0.999\"]",
+            "volume24hr": 0,
+            "volume": 13_000_000 - index,
+        }
+        for index in range(20)
+    )
+
+    selected = select_monitored_markets(
+        [{"id": "f1", "title": "2026 F1 champion", "markets": markets}],
+        max_markets=12,
+        markets_per_event=12,
+    )
+
+    assert "kimi" in {market["id"] for market in selected}
+
+
+def test_global_event_order_never_compares_lifetime_volume_as_24h_activity() -> None:
+    selected = select_monitored_markets(
+        [
+            {
+                "id": "stale-lifetime",
+                "markets": [
+                    {
+                        "id": "stale",
+                        "outcomePrices": [0.8, 0.2],
+                        "volume24hr": 0,
+                        "volume": 100_000_000,
+                    }
+                ],
+            },
+            {
+                "id": "active-now",
+                "markets": [
+                    {
+                        "id": "active",
+                        "outcomePrices": [0.6, 0.4],
+                        "volume24hr": 10_000,
+                        "volume": 20_000,
+                    }
+                ],
+            },
+        ],
+        max_markets=1,
+        markets_per_event=1,
+    )
+
+    assert [market["id"] for market in selected] == ["active"]
+
+
+def test_negative_mover_is_retained_and_empty_event_fields_are_enriched() -> None:
+    event = {
+        "id": "event-move",
+        "title": "Material move test",
+        "slug": "material-move-test",
+        "markets": [
+            {
+                "id": f"leader-{index}",
+                "outcomePrices": [0.8 - index * 0.1, 0.2 + index * 0.1],
+                "volume24hr": 1000 - index,
+            }
+            for index in range(3)
+        ]
+        + [
+            {
+                "id": "negative-mover",
+                "eventId": None,
+                "eventTitle": "",
+                "outcomePrices": [0.05, 0.95],
+                "oneDayPriceChange": -0.04,
+                "volume24hr": 10,
+            }
+        ],
+    }
+
+    selected = select_monitored_markets(
+        [event],
+        max_markets=4,
+        markets_per_event=4,
+    )
+    mover = next(market for market in selected if market["id"] == "negative-mover")
+
+    assert mover["eventId"] == "event-move"
+    assert mover["eventTitle"] == "Material move test"
+    assert mover["eventSlug"] == "material-move-test"
