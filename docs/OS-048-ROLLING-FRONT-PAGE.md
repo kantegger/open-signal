@@ -200,6 +200,15 @@ already useful public facts. Topic pages must label source probability clearly
 and must not manufacture editorial assessment. Legacy Claim URLs remain
 available but canonicalize to the descriptive Signal URL.
 
+The durable SEO index and the Explore presentation are deliberately different
+read models. SEO enumerates stable public truth-object URLs; Explore is a
+bounded, versioned editorial projection. Multi-market source events are shown
+once in Explore with no more than three representative propositions. Current,
+Explore, and Expectations editorial batches share the event identity and
+selection policy in OS-050, while the Claim Ledger and Topic pages retain every
+underlying public record. Neither ingestion recency nor canonical
+`updated_at` is an importance score.
+
 ## Component family inventory
 
 The renderer supports all eight registry families. It renders only fields present

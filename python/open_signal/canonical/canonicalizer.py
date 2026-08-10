@@ -73,6 +73,18 @@ class ExpectationCanonicalizer:
                     text(
                         """
                         UPDATE canonical_expectations SET
+                          updated_at = CASE
+                            WHEN canonical_question IS DISTINCT FROM :q
+                              OR event_type IS DISTINCT FROM :et
+                              OR resolution_deadline_at IS DISTINCT FROM :deadline
+                              OR resolution_rule_summary IS DISTINCT FROM :summary
+                              OR resolution_rule_hash IS DISTINCT FROM :hash
+                              OR source_market_ids IS DISTINCT FROM ARRAY[:m]::uuid[]
+                              OR status IS DISTINCT FROM 'active'
+                              OR canonicalization_version IS DISTINCT FROM :ver
+                            THEN now()
+                            ELSE updated_at
+                          END,
                           canonical_question = :q,
                           event_type = :et,
                           resolution_deadline_at = :deadline,
@@ -80,8 +92,7 @@ class ExpectationCanonicalizer:
                           resolution_rule_hash = :hash,
                           source_market_ids = ARRAY[:m]::uuid[],
                           status = 'active',
-                          canonicalization_version = :ver,
-                          updated_at = now()
+                          canonicalization_version = :ver
                         WHERE id = :id
                         """
                     ),

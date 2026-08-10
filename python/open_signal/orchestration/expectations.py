@@ -41,28 +41,33 @@ class ExpectationsSectionService:
                 text(
                     """
                     SELECT DISTINCT ON (external_id)
-                           id, external_id, payload
+                           id, external_id, payload, last_seen_at
                     FROM raw_source_records
                     WHERE source_id = :source
                       AND record_type = 'market'
                       AND status = 'active'
                       AND last_seen_at >= now() - make_interval(hours => :hours)
-                    ORDER BY external_id, ingested_at DESC
+                    ORDER BY external_id, last_seen_at DESC, ingested_at DESC
                     """
                 ),
                 {"source": source_id, "hours": monitor_window_hours},
             ).fetchall()
 
-        normalized: list[tuple[str, dict[str, Any]]] = []
-        now = datetime.now(timezone.utc)
-        for raw_id, external_id, raw_payload in rows:
+        normalized: list[tuple[str, dict[str, Any], datetime]] = []
+        for raw_id, external_id, raw_payload, last_seen_at in rows:
             market = _object(raw_payload)
             ends_at = _timestamp(market.get("endDate"))
             if ends_at is None:
                 continue
             outcomes = _string_list(market.get("outcomes")) or ["Yes", "No"]
             tokens = _string_list(market.get("clobTokenIds"))
-            status = "closed" if market.get("closed") else "active"
+            status = (
+                "closed"
+                if market.get("closed")
+                or market.get("archived")
+                or market.get("active") is False
+                else "active"
+            )
             statement = insert(source_markets).values(
                 source_id=source_id,
                 external_market_id=str(external_id),
@@ -77,10 +82,14 @@ class ExpectationsSectionService:
                     market.get("rules") or market.get("description")
                 ),
                 liquidity=_number(market.get("liquidity")),
+                volume_24h=_number(
+                    market.get("volume24hr") or market.get("volume24h")
+                ),
                 volume=_number(market.get("volume")),
+                monitoring_last_seen_at=last_seen_at,
                 status=status,
                 raw_source_record_id=raw_id,
-                updated_at=now,
+                updated_at=last_seen_at,
             )
             statement = statement.on_conflict_do_update(
                 index_elements=[
@@ -97,7 +106,11 @@ class ExpectationsSectionService:
                     "ends_at": statement.excluded.ends_at,
                     "rules_text": statement.excluded.rules_text,
                     "liquidity": statement.excluded.liquidity,
+                    "volume_24h": statement.excluded.volume_24h,
                     "volume": statement.excluded.volume,
+                    "monitoring_last_seen_at": (
+                        statement.excluded.monitoring_last_seen_at
+                    ),
                     "status": statement.excluded.status,
                     "raw_source_record_id": statement.excluded.raw_source_record_id,
                     "updated_at": statement.excluded.updated_at,
@@ -106,13 +119,13 @@ class ExpectationsSectionService:
             with self.engine.begin() as conn:
                 market_id = str(conn.execute(statement).scalar_one())
             if status == "active":
-                normalized.append((market_id, market))
+                normalized.append((market_id, market, last_seen_at))
 
         collector = MarketObservationCollector(self.engine)
         observations = 0
         history = {"markets": 0, "batches": 0, "observations": 0, "errors": 0}
         try:
-            for market_id, market in normalized:
+            for market_id, market, _ in normalized:
                 observations += collector._store_observation(
                     market,
                     external_id=market_id,
@@ -124,16 +137,18 @@ class ExpectationsSectionService:
                 )
                 ranked = sorted(
                     normalized,
-                    key=lambda item: _number(
-                        item[1].get("volume24hr")
-                        or item[1].get("volume24h")
-                        or item[1].get("volume")
-                    )
-                    or 0.0,
+                    key=lambda item: (
+                        _number(
+                            item[1].get("volume24hr")
+                            or item[1].get("volume24h")
+                        )
+                        or 0.0,
+                        _number(item[1].get("volume")) or 0.0,
+                    ),
                     reverse=True,
                 )
                 history_targets = []
-                for market_id, market in ranked[:history_limit]:
+                for market_id, market, _ in ranked[:history_limit]:
                     tokens = _string_list(market.get("clobTokenIds"))
                     if tokens:
                         history_targets.append((market_id, tokens[0]))
@@ -149,7 +164,7 @@ class ExpectationsSectionService:
             version="production-1.0.0",
         )
         canonicalized = 0
-        for market_id, market in normalized:
+        for market_id, market, _ in normalized:
             canonical_id = canonicalizer.canonicalize_source_market(
                 market_id,
                 question=str(market.get("question") or "Untitled market"),
@@ -199,20 +214,37 @@ class ExpectationsSectionService:
             rows = conn.execute(
                 text(
                     """
-                    SELECT sm.id, ce.id
-                    FROM source_markets sm
+                    WITH monitored AS (
+                      SELECT sm.*,
+                             max(sm.monitoring_last_seen_at)
+                               OVER (PARTITION BY sm.source_id) AS source_monitoring_at
+                      FROM source_markets sm
+                      WHERE sm.status = 'active'
+                    )
+                    SELECT sm.id, ce.id, sm.source_id, sm.external_event_id
+                    FROM monitored sm
                     JOIN canonical_expectations ce
                       ON ce.source_market_ids @> ARRAY[sm.id]::uuid[]
-                    WHERE sm.status = 'active' AND ce.status = 'active'
-                    ORDER BY sm.updated_at DESC
+                    WHERE ce.status = 'active'
+                      AND ce.resolution_deadline_at > :now
+                      AND (
+                        sm.source_monitoring_at IS NULL
+                        OR (
+                          sm.monitoring_last_seen_at IS NOT NULL
+                          AND sm.monitoring_last_seen_at
+                              >= sm.source_monitoring_at - interval '10 minutes'
+                        )
+                      )
+                    ORDER BY sm.monitoring_last_seen_at DESC NULLS LAST, sm.id
                     LIMIT 500
                     """
-                )
+                ),
+                {"now": now},
             ).fetchall()
 
         detector = CandidateDetector(self.engine, version="production-1.0.0")
-        detected: list[tuple[int, float, str, str, dict[str, Any]]] = []
-        for market_id, canonical_id in rows:
+        detected: list[tuple[int, float, str, str, str, dict[str, Any]]] = []
+        for market_id, canonical_id, source_id, external_event_id in rows:
             output = detector.compute_for_market(str(market_id), now=now)
             calculation_id = detector.record_calculation(str(market_id), output)
             if not output["scanner_eligible"]:
@@ -225,6 +257,11 @@ class ExpectationsSectionService:
                     float(output.get("signal_score") or 0.0),
                     str(market_id),
                     str(canonical_id),
+                    _event_key(
+                        str(source_id),
+                        _optional_text(external_event_id),
+                        str(market_id),
+                    ),
                     output,
                 )
             )
@@ -234,11 +271,13 @@ class ExpectationsSectionService:
         built: list[tuple[str, dict[str, Any]]] = []
         duplicates = 0
         built_by_tier = {"featured": 0, "scanner": 0}
-        for tier_rank, _, market_id, canonical_id, calculation in detected:
+        used_events: set[str] = set()
+        for tier_rank, _, market_id, canonical_id, event_key, calculation in detected:
             tier = "featured" if tier_rank == 0 else "scanner"
             limit = maximum_featured if tier == "featured" else maximum_scanner
-            if built_by_tier[tier] >= limit:
+            if built_by_tier[tier] >= limit or event_key in used_events:
                 continue
+            used_events.add(event_key)
             result = builder.build_from_candidate(
                 source_market_id=market_id,
                 canonical_expectation_id=canonical_id,
@@ -288,6 +327,7 @@ class ExpectationsSectionService:
             "eligible_candidates": len(detected),
             "featured_candidates": sum(1 for item in detected if item[0] == 0),
             "scanner_candidates": sum(1 for item in detected if item[0] == 1),
+            "event_families_considered": len({item[4] for item in detected}),
             "claims_created": len(built),
             "duplicate_claims_skipped": duplicates,
             "claims_verified": len(verified_claim_ids),
@@ -426,3 +466,9 @@ def _truthy(value: Any) -> bool:
     if isinstance(value, bool):
         return value
     return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _event_key(source_id: str, external_event_id: str | None, market_id: str) -> str:
+    if external_event_id:
+        return f"{source_id}:event:{external_event_id}"
+    return f"{source_id}:market:{market_id}"

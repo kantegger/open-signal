@@ -185,12 +185,21 @@ source_markets = Table(
     Column("rules_text", Text),
     Column("rules_hash", Text),
     Column("liquidity", Numeric),
+    Column("volume_24h", Numeric),
     Column("volume", Numeric),
+    Column("monitoring_last_seen_at", _tz),
     Column("status", Text, nullable=False),
     Column("raw_source_record_id", Uuid(), ForeignKey("raw_source_records.id")),
     Column("created_at", _tz, nullable=False, server_default=text("now()")),
     Column("updated_at", _tz, nullable=False, server_default=text("now()")),
     UniqueConstraint("source_id", "external_market_id"),
+    Index("source_markets_event_idx", "source_id", "external_event_id"),
+    Index(
+        "source_markets_monitoring_idx",
+        "source_id",
+        "monitoring_last_seen_at",
+        postgresql_ops={"monitoring_last_seen_at": "DESC"},
+    ),
 )
 
 canonical_expectations = Table(
@@ -213,6 +222,11 @@ canonical_expectations = Table(
     Column("canonicalization_version", Text, nullable=False),
     Column("created_at", _tz, nullable=False, server_default=text("now()")),
     Column("updated_at", _tz, nullable=False, server_default=text("now()")),
+    Index(
+        "canonical_expectations_source_markets_idx",
+        "source_market_ids",
+        postgresql_using="gin",
+    ),
 )
 
 market_observations = Table(
@@ -515,6 +529,12 @@ claims = Table(
         unique=True,
         postgresql_where=text("idempotency_key IS NOT NULL"),
     ),
+    Index(
+        "claims_public_recency_idx",
+        "status",
+        "issued_at",
+        postgresql_ops={"issued_at": "DESC"},
+    ),
 )
 
 claim_versions = Table(
@@ -791,6 +811,12 @@ section_instances = Table(
     Column("claim_id", Uuid()),
     Column("edition_id", Uuid()),
     Column("created_at", _tz, nullable=False, server_default=text("now()")),
+    Index(
+        "section_instances_subject_claim_idx",
+        "subject_type",
+        "subject_id",
+        "claim_id",
+    ),
 )
 
 # Feature flags (OS-031; appendix C omitted this table)

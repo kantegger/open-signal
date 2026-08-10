@@ -3,6 +3,7 @@ import "server-only";
 import {
   ApiError,
   type ClaimPageData,
+  type ExploreData,
   type FrontPageData,
   type JsonRecord,
   type SeoIndexData,
@@ -106,6 +107,23 @@ export async function fetchSeoIndexServer(): Promise<SeoIndexData> {
   return fetchJson<SeoIndexData>(
     `${apiBase()}/api/seo-index?limit=1000`,
     ["seo-index"],
+    INDEX_CACHE_SECONDS,
+  );
+}
+
+export async function fetchExploreServer(params: {
+  topicPage?: number;
+  signalPage?: number;
+  asOf?: string;
+} = {}): Promise<ExploreData> {
+  const query = new URLSearchParams({
+    topic_page: String(params.topicPage ?? 1),
+    signal_page: String(params.signalPage ?? 1),
+  });
+  if (params.asOf) query.set("as_of", params.asOf);
+  return fetchJson<ExploreData>(
+    `${apiBase()}/api/explore?${query.toString()}`,
+    ["explore", `explore:${params.asOf ?? "current"}`],
     INDEX_CACHE_SECONDS,
   );
 }

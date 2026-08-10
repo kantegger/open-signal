@@ -48,6 +48,121 @@ const topicIndexFixtures = [
   baseline_observed_at: topicFixture.markets[0].baseline_observed_at,
 }));
 
+const exploreEventGroups = [
+  {
+    key: "polymarket:event:f1-2026",
+    title: "2026 F1 Drivers' Champion",
+    event_type: "sports",
+    external_event_id: "f1-2026",
+    source_label: "Polymarket Gamma",
+    source_url: "https://polymarket.com/event/2026-f1-drivers-champion",
+    source_member_count: 20,
+    eligible_member_count: 12,
+    suppressed_member_count: 17,
+    is_exclusive_slate: true,
+    selection_reason: "material_repricing",
+    volume_24h: 432000,
+    largest_move_24h_percentage_points: 6,
+    latest_observed_at: topicFixture.topic.updated_at,
+    resolution_deadline_at: topicFixture.topic.resolution_deadline_at,
+    members: [
+      {
+        topic_id: topicFixture.topic.id,
+        title: "Will Kimi Antonelli be the 2026 F1 Drivers' Champion?",
+        option_label: "Kimi Antonelli",
+        event_type: "sports",
+        current_probability: 0.74,
+        baseline_probability_24h: 0.72,
+        delta_24h_percentage_points: 2,
+        observed_at: topicFixture.topic.updated_at,
+        resolution_deadline_at: topicFixture.topic.resolution_deadline_at,
+        selection_reason: "leader",
+        recent_claim_id: claimFixture.claim.id,
+      },
+      {
+        topic_id: "f1111111-1111-4111-8111-111111111111",
+        title: "Will Lewis Hamilton be the 2026 F1 Drivers' Champion?",
+        option_label: "Lewis Hamilton",
+        event_type: "sports",
+        current_probability: 0.1,
+        baseline_probability_24h: 0.04,
+        delta_24h_percentage_points: 6,
+        observed_at: topicFixture.topic.updated_at,
+        resolution_deadline_at: topicFixture.topic.resolution_deadline_at,
+        selection_reason: "largest_material_move",
+        recent_claim_id: null,
+      },
+      {
+        topic_id: "f2222222-2222-4222-8222-222222222222",
+        title: "Will Max Verstappen be the 2026 F1 Drivers' Champion?",
+        option_label: "Max Verstappen",
+        event_type: "sports",
+        current_probability: 0.09,
+        baseline_probability_24h: 0.09,
+        delta_24h_percentage_points: 0,
+        observed_at: topicFixture.topic.updated_at,
+        resolution_deadline_at: topicFixture.topic.resolution_deadline_at,
+        selection_reason: "credible_challenger",
+        recent_claim_id: null,
+      },
+    ],
+  },
+  ...Array.from({ length: 12 }, (_, index) => ({
+    key: `polymarket:event:fixture-${index}`,
+    title: `Material event ${index + 1}`,
+    event_type: index % 2 ? "macroeconomics" : "regulation",
+    external_event_id: `fixture-${index}`,
+    source_label: "Polymarket Gamma",
+    source_url: null,
+    source_member_count: 1,
+    eligible_member_count: 1,
+    suppressed_member_count: 0,
+    is_exclusive_slate: false,
+    selection_reason: "observed_move",
+    volume_24h: 10000 + index,
+    largest_move_24h_percentage_points: index % 2 ? -2 : 2,
+    latest_observed_at: topicFixture.topic.updated_at,
+    resolution_deadline_at: topicFixture.topic.resolution_deadline_at,
+    members: [{
+      topic_id: `a${String(index).padStart(7, "0")}-1111-4111-8111-111111111111`,
+      title: `Will material event ${index + 1} resolve YES?`,
+      option_label: null,
+      event_type: index % 2 ? "macroeconomics" : "regulation",
+      current_probability: 0.5 + index / 100,
+      baseline_probability_24h: 0.48 + index / 100,
+      delta_24h_percentage_points: 2,
+      observed_at: topicFixture.topic.updated_at,
+      resolution_deadline_at: topicFixture.topic.resolution_deadline_at,
+      selection_reason: "largest_material_move",
+      recent_claim_id: null,
+    }],
+  })),
+];
+
+const exploreSignals = Array.from({ length: 25 }, (_, index) => ({
+  id: index === 0
+    ? claimFixture.claim.id
+    : `b${String(index).padStart(7, "0")}-1111-4111-8111-111111111111`,
+  title: index === 0
+    ? claimFixture.claim.public_statement
+    : `Verified source signal ${index + 1} changed materially.`,
+  claim_type: claimFixture.claim.claim_type,
+  desk_id: index % 2 ? "rules-desk" : claimFixture.claim.desk_id,
+  section_id: index % 2 ? "rules-moved" : "expectations-moved",
+  confidence_label: claimFixture.assessment.confidence_label,
+  epistemic_status: claimFixture.assessment.epistemic_status,
+  status: claimFixture.claim.status,
+  published_at: claimFixture.claim.issued_at,
+  updated_at: claimFixture.claim.materially_updated_at,
+  valid_until: claimFixture.claim.valid_until,
+  subject_type: index % 2 ? "canonical_rule" : "source_market",
+  subject_id: null,
+  event_key: index === 0 ? "polymarket:event:f1-2026" : null,
+  event_title: index === 0 ? "2026 F1 Drivers' Champion" : null,
+  topic_id: index === 0 ? topicFixture.topic.id : null,
+  selection_reason: index === 0 ? "event_representative" : "latest_for_subject",
+}));
+
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url ?? "/", `http://127.0.0.1:${port}`);
   response.setHeader("Access-Control-Allow-Origin", "*");
@@ -167,6 +282,45 @@ const server = http.createServer(async (request, response) => {
         correction_count: edition.correction_count,
         trigger_type: edition.trigger_type,
       })),
+    });
+    return;
+  }
+  if (request.method === "GET" && url.pathname === "/api/explore") {
+    const topicPage = Math.max(1, Number(url.searchParams.get("topic_page") ?? "1"));
+    const signalPage = Math.max(1, Number(url.searchParams.get("signal_page") ?? "1"));
+    const topicPageSize = 12;
+    const signalPageSize = 24;
+    json(response, 200, {
+      selection_version: "expectation-selection-1.0.0",
+      ranking_as_of: "2026-08-10T00:45:00+00:00",
+      topics: {
+        items: exploreEventGroups.slice(
+          (topicPage - 1) * topicPageSize,
+          topicPage * topicPageSize,
+        ),
+        page: topicPage,
+        page_size: topicPageSize,
+        page_count: Math.ceil(exploreEventGroups.length / topicPageSize),
+        total_count: exploreEventGroups.length,
+        public_inventory_count: 551,
+        selected_group_count: exploreEventGroups.length,
+        represented_proposition_count: 15,
+        suppressed_proposition_count: 536,
+      },
+      signals: {
+        items: exploreSignals.slice(
+          (signalPage - 1) * signalPageSize,
+          signalPage * signalPageSize,
+        ),
+        page: signalPage,
+        page_size: signalPageSize,
+        page_count: Math.ceil(exploreSignals.length / signalPageSize),
+        total_count: exploreSignals.length,
+        public_record_count: 141,
+        current_record_count: 63,
+        current_subject_count: 25,
+        suppressed_snapshot_count: 38,
+      },
     });
     return;
   }

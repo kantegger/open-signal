@@ -144,7 +144,8 @@ def test_full_pipeline(builder, engine) -> None:
     with engine.connect() as conn:
         claim = conn.execute(
             text(
-                "SELECT claim_type, desk_id, status, confidence FROM claims WHERE id = :id"
+                "SELECT claim_type, desk_id, status, confidence, valid_from, "
+                "valid_until FROM claims WHERE id = :id"
             ),
             {"id": result["claim_id"]},
         ).fetchone()
@@ -161,6 +162,8 @@ def test_full_pipeline(builder, engine) -> None:
     assert claim[1] == DESK_ID
     assert claim[2] == "draft"
     assert float(claim[3]) == 0.9
+    assert claim[4] == now
+    assert claim[5] == now + timedelta(hours=72)
     assert si[0] == SECTION_ID
     assert si[1] == CAPABILITY_ID
     assert str(bundle[0]) == result["claim_id"]

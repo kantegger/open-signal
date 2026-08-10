@@ -194,7 +194,7 @@ def test_snapshot_captures_typed_publication_context(writer, engine) -> None:
     stored = writer.edition_json(result["edition_id"])
     context = stored["edition_payload"]["publication_context"]
     assert context["snapshot_bound"] is True
-    assert context["version"] == "1.3.0"
+    assert context["version"] == "1.4.0"
     assert len(context["research_fingerprint"]) == 64
     assert set(context) >= {
         "counts",
@@ -446,7 +446,7 @@ def test_freshness_reconcile_backfills_publication_context(writer, engine) -> No
         for transition in refreshed["transitions"]
     )
     payload = writer.edition_json(refreshed["edition_id"])
-    assert payload["edition_payload"]["publication_context"]["version"] == "1.3.0"
+    assert payload["edition_payload"]["publication_context"]["version"] == "1.4.0"
     _cleanup(engine)
 
 
