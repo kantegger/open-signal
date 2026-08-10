@@ -14,10 +14,12 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute("ALTER TABLE source_markets ADD COLUMN volume_24h numeric")
+    op.execute(
+        "ALTER TABLE source_markets ADD COLUMN IF NOT EXISTS volume_24h numeric"
+    )
     op.execute(
         "ALTER TABLE source_markets "
-        "ADD COLUMN monitoring_last_seen_at timestamptz"
+        "ADD COLUMN IF NOT EXISTS monitoring_last_seen_at timestamptz"
     )
     op.execute(
         """
@@ -34,23 +36,23 @@ def upgrade() -> None:
         """
     )
     op.execute(
-        "CREATE INDEX source_markets_event_idx "
+        "CREATE INDEX IF NOT EXISTS source_markets_event_idx "
         "ON source_markets (source_id, external_event_id)"
     )
     op.execute(
-        "CREATE INDEX source_markets_monitoring_idx "
+        "CREATE INDEX IF NOT EXISTS source_markets_monitoring_idx "
         "ON source_markets (source_id, monitoring_last_seen_at DESC)"
     )
     op.execute(
-        "CREATE INDEX canonical_expectations_source_markets_idx "
+        "CREATE INDEX IF NOT EXISTS canonical_expectations_source_markets_idx "
         "ON canonical_expectations USING gin (source_market_ids)"
     )
     op.execute(
-        "CREATE INDEX claims_public_recency_idx "
+        "CREATE INDEX IF NOT EXISTS claims_public_recency_idx "
         "ON claims (status, issued_at DESC)"
     )
     op.execute(
-        "CREATE INDEX section_instances_subject_claim_idx "
+        "CREATE INDEX IF NOT EXISTS section_instances_subject_claim_idx "
         "ON section_instances (subject_type, subject_id, claim_id)"
     )
 
