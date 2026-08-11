@@ -21,8 +21,12 @@ from open_signal.composer.publication_context import (
     CONTEXT_VERSION,
     PublicationContextBuilder,
 )
+from open_signal.derived.public_interest import (
+    decision_from_render_candidate,
+    load_editorial_scope_policy,
+)
 
-COMPOSER_VERSION = "os-051"
+COMPOSER_VERSION = "os-052"
 PUBLICATION_CHANNEL = "front-page"
 SPARSE_THRESHOLD = 3
 PUBLIC_STATUSES = {"published", "sparse", "beta", "corrected"}
@@ -107,6 +111,9 @@ class EditionWriter:
                 "supersedes_edition_id": previous_id,
                 "composer_version": COMPOSER_VERSION,
                 "policy_version": self.composer.freshness_evaluator.policy_version,
+                "editorial_scope_policy_version": load_editorial_scope_policy()[
+                    "version"
+                ],
                 "sections": section_ids,
                 "lead": _lead(items),
                 "lead_set": _lead_set(items),
@@ -246,6 +253,8 @@ class EditionWriter:
         active: list[dict[str, Any]] = []
         carried_from_refreshed: list[dict[str, Any]] = []
         for item in self._current_candidates():
+            if not _public_interest_allows_slot(item, now=generated_at):
+                continue
             if item.get("_continuity_fill") and not _continuity_source_is_live(
                 item, now=generated_at
             ):
@@ -331,8 +340,9 @@ class EditionWriter:
                     SELECT pc.policy_version,
                            e.composer_version,
                            e.edition_payload #>> '{publication_context,version}',
-                           e.edition_payload #>>
-                             '{publication_context,research_fingerprint}'
+                            e.edition_payload #>>
+                              '{publication_context,research_fingerprint}',
+                            e.edition_payload ->> 'editorial_scope_policy_version'
                     FROM publication_channels pc
                     LEFT JOIN daily_editions e ON e.id = pc.current_edition_id
                     WHERE pc.id = :channel
@@ -348,7 +358,9 @@ class EditionWriter:
         channel_composer = channel_state[1] if channel_state else None
         context_version = channel_state[2] if channel_state else None
         stored_research_fingerprint = channel_state[3] if channel_state else None
+        stored_scope_policy = channel_state[4] if channel_state else None
         current_policy = self.composer.freshness_evaluator.policy_version
+        current_scope_policy = str(load_editorial_scope_policy()["version"])
         if channel_policy != current_policy:
             transitions.append(
                 {
@@ -383,6 +395,15 @@ class EditionWriter:
                     "from": stored_research_fingerprint,
                     "to": current_research_fingerprint,
                     "reason": "public research screening changed",
+                }
+            )
+        if stored_scope_policy != current_scope_policy:
+            transitions.append(
+                {
+                    "claim_id": None,
+                    "from": stored_scope_policy,
+                    "to": current_scope_policy,
+                    "reason": "editorial scope policy version changed",
                 }
             )
 
@@ -671,6 +692,11 @@ class EditionWriter:
         material as newly observed.
         """
         visible = _dedupe_candidates(candidates)
+        visible = self._fill_lead_continuity_reserve(
+            visible,
+            generated_at=generated_at,
+            section_maturity=section_maturity,
+        )
         preflight = self.composer.compose(
             visible,
             section_maturity=section_maturity,
@@ -708,6 +734,12 @@ class EditionWriter:
             if definition is None or "secondary" not in definition.supported_slot_types:
                 continue
             if not _continuity_source_is_live(candidate, now=generated_at):
+                continue
+            if not _public_interest_allows_slot(
+                candidate,
+                now=generated_at,
+                slot_override="secondary",
+            ):
                 continue
             decision = self.composer.freshness_evaluator.evaluate(
                 candidate, now=generated_at
@@ -754,6 +786,84 @@ class EditionWriter:
             selected.append(candidate)
 
         return _dedupe_candidates([*visible, *selected])
+
+    def _fill_lead_continuity_reserve(
+        self,
+        candidates: list[dict[str, Any]],
+        *,
+        generated_at: datetime,
+        section_maturity: str,
+    ) -> list[dict[str, Any]]:
+        """Keep an important recent Hero instead of promoting fresh trivia."""
+
+        visible = _dedupe_candidates(candidates)
+        preflight = self.composer.compose(
+            visible,
+            section_maturity=section_maturity,
+            now=generated_at,
+        )
+        if preflight["slots"].get("lead"):
+            return visible
+
+        seen_claims = {
+            str(item.get("claim_id")) for item in visible if item.get("claim_id")
+        }
+        seen_keys = {_continuity_identity(item) for item in visible}
+        for historical in self._recent_editorial_candidates(
+            generated_at=generated_at
+        ):
+            if str(historical.get("slot_id") or "") != "lead":
+                continue
+            claim_id = str(historical.get("claim_id") or "")
+            if claim_id and claim_id in seen_claims:
+                continue
+            key = _continuity_identity(historical)
+            if key in seen_keys:
+                continue
+            if not _continuity_source_is_live(historical, now=generated_at):
+                continue
+            if not _public_interest_allows_slot(
+                historical,
+                now=generated_at,
+                slot_override="lead",
+            ):
+                continue
+            freshness = self.composer.freshness_evaluator.evaluate(
+                historical,
+                now=generated_at,
+            )
+            if not freshness.eligible or freshness.demote_from_lead:
+                continue
+            definition = self.composer.component_runtime.registry.component(
+                str(historical.get("component_id") or "")
+            )
+            if definition is None or "lead" not in definition.supported_slot_types:
+                continue
+
+            candidate = dict(historical)
+            hidden = dict(_json_object(candidate.get("hidden_detail_fields")))
+            hidden["publication_continuity"] = {
+                "origin": "recent_edition",
+                "continuity_key": key,
+                "source_edition_id": candidate.get(
+                    "_continuity_source_edition_id"
+                ),
+                "source_edition_generated_at": candidate.get(
+                    "_continuity_source_edition_generated_at"
+                ),
+                "source_slot": "lead",
+                "retained_data_as_of": candidate.get("data_as_of"),
+            }
+            candidate["hidden_detail_fields"] = hidden
+            candidate["slot_id"] = "lead"
+            candidate["component_variant"] = "lead"
+            candidate["presentation_role"] = "primary"
+            candidate["freshness_state"] = freshness.state
+            candidate["_continuity_fill"] = True
+            candidate["continuity_key"] = key
+            candidate["priority"] = CONTINUITY_PRIORITY_BASE - 1
+            return _dedupe_candidates([*visible, candidate])
+        return visible
 
     # --------------------------------------------------------------- archive
     def snapshot(self, edition_id: str) -> dict[str, Any]:
@@ -1033,6 +1143,29 @@ def _continuity_source_is_live(
         return False
     topic_status = str(item.get("topic_status") or "").lower()
     return not topic_status or topic_status in {"active", "open"}
+
+
+def _public_interest_allows_slot(
+    item: dict[str, Any],
+    *,
+    now: datetime,
+    slot_override: str | None = None,
+) -> bool:
+    """Prevent low-value Expectations from surviving through carry-forward."""
+
+    if str(item.get("section_id") or "") != "expectations-moved":
+        return True
+    slot_id = slot_override or str(item.get("slot_id") or "live_feed")
+    required_surface = {
+        "lead": "hero",
+        "secondary": "secondary",
+        "main": "secondary",
+        "live_feed": "live_feed",
+        "digest": "live_feed",
+        "utility": "explore",
+        "archive": "explore",
+    }.get(slot_id, "live_feed")
+    return decision_from_render_candidate(item, as_of=now).allows(required_surface)
 
 
 def _continuity_rank(

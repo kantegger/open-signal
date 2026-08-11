@@ -107,7 +107,11 @@ def test_build_edition_with_lead(writer, engine) -> None:
             },
         ),
     ]
-    result = writer.build_edition(candidates, edition_date=date(2026, 8, 7))
+    result = writer.build_edition(
+        candidates,
+        edition_date=date(2026, 8, 7),
+        generated_at=datetime(2026, 8, 7, 13, tzinfo=UTC),
+    )
     assert result["edition_id"] is not None
     assert result["status"] == "published"
     assert CLAIM_UUIDS[0] in result["claim_ids"]  # c1 -> CLAIM_UUIDS[0]
@@ -123,7 +127,10 @@ def test_sparse_edition(writer, engine) -> None:
     _cleanup(engine)
     # fewer than threshold items -> sparse
     result = writer.build_edition(
-        [_candidate("c1")], edition_date=date(2026, 8, 7), section_maturity="production"
+        [_candidate("c1")],
+        edition_date=date(2026, 8, 7),
+        section_maturity="production",
+        generated_at=datetime(2026, 8, 7, 13, tzinfo=UTC),
     )
     assert result["status"] == "sparse"
     assert writer.edition_json(result["edition_id"])["status"] == "sparse"
@@ -197,7 +204,7 @@ def test_snapshot_captures_typed_publication_context(writer, engine) -> None:
     stored = writer.edition_json(result["edition_id"])
     context = stored["edition_payload"]["publication_context"]
     assert context["snapshot_bound"] is True
-    assert context["version"] == "1.4.0"
+    assert context["version"] == "1.5.0"
     assert len(context["research_fingerprint"]) == 64
     assert set(context) >= {
         "counts",
@@ -551,7 +558,9 @@ def test_render_plans_written(writer, engine) -> None:
 
     _cleanup(engine)
     result = writer.build_edition(
-        [_candidate("c1"), _candidate("c2")], edition_date=date(2026, 8, 7)
+        [_candidate("c1"), _candidate("c2")],
+        edition_date=date(2026, 8, 7),
+        generated_at=datetime(2026, 8, 7, 13, tzinfo=UTC),
     )
     with engine.connect() as conn:
         rows = conn.execute(
@@ -602,7 +611,7 @@ def test_freshness_reconcile_backfills_publication_context(writer, engine) -> No
         for transition in refreshed["transitions"]
     )
     payload = writer.edition_json(refreshed["edition_id"])
-    assert payload["edition_payload"]["publication_context"]["version"] == "1.4.0"
+    assert payload["edition_payload"]["publication_context"]["version"] == "1.5.0"
     _cleanup(engine)
 
 
@@ -632,7 +641,7 @@ def test_freshness_reconcile_applies_new_composer_version(writer, engine) -> Non
         transition["reason"] == "edition composer version changed"
         for transition in refreshed["transitions"]
     )
-    assert writer.edition_json(refreshed["edition_id"])["composer_version"] == "os-051"
+    assert writer.edition_json(refreshed["edition_id"])["composer_version"] == "os-052"
     _cleanup(engine)
 
 

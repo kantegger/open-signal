@@ -1,0 +1,204 @@
+version: "1.0.0"
+
+# This policy answers where a prediction-market observation may appear.  It is
+# intentionally separate from numerical candidate detection: movement can
+# strengthen an eligible signal, but it cannot buy editorial significance.
+surface_order:
+  - "monitor"
+  - "explore"
+  - "live_feed"
+  - "secondary"
+  - "hero"
+
+default:
+  rule_id: "contextual-default"
+  category: "contextual"
+  maximum_surface: "secondary"
+  importance_score: 45
+  reason: "No high-consequence domain was established; keep the observation below Hero."
+
+routine_rules:
+  - id: "routine-temperature"
+    category: "routine_weather"
+    maximum_surface: "explore"
+    importance_score: 5
+    reason: "A routine city temperature threshold is information, not a front-page public signal."
+    match:
+      text_patterns_any:
+        - "\\b(?:highest|lowest|high|low|maximum|minimum) temperature\\b"
+        - "\\btemperature (?:in|at|for) [^?]{2,80}(?:be|reach|above|below)\\b"
+        - "\\b(?:be|reach) -?\\d+(?:\\.\\d+)?(?:°| degrees? )[cf]\\b"
+
+  - id: "routine-weather"
+    category: "routine_weather"
+    maximum_surface: "explore"
+    importance_score: 8
+    reason: "Routine local weather outcomes stay in discovery unless they describe a public hazard."
+    match:
+      requires_tag_and_text: true
+      tags_any:
+        - "weather"
+        - "temperature"
+      text_patterns_any:
+        - "\\b(?:rain|snow|temperature|precipitation|weather)\\b"
+
+  - id: "sports-outcome"
+    category: "sports"
+    maximum_surface: "explore"
+    importance_score: 10
+    reason: "Sports outcomes are monitored source information, outside the public-affairs front page."
+    match:
+      tags_any:
+        - "sports"
+        - "sport"
+        - "f1"
+        - "formula-1"
+        - "nba"
+        - "nfl"
+        - "nhl"
+        - "mlb"
+        - "soccer"
+        - "football"
+        - "tennis"
+        - "golf"
+
+  - id: "entertainment-or-celebrity"
+    category: "entertainment"
+    maximum_surface: "explore"
+    importance_score: 8
+    reason: "Entertainment and celebrity outcomes do not qualify as public-affairs signals."
+    match:
+      tags_any:
+        - "entertainment"
+        - "celebrity"
+        - "movies"
+        - "music"
+        - "awards"
+        - "television"
+
+  - id: "social-count"
+    category: "social_activity"
+    maximum_surface: "explore"
+    importance_score: 5
+    reason: "Post, tweet, or follower counts are routine platform activity rather than public change."
+    match:
+      text_patterns_any:
+        - "\\b(?:post|tweet|follower|subscriber|view)s?\\b[^?]{0,80}\\b(?:between|more than|less than|at least|at most)\\b"
+        - "\\bhow many (?:post|tweet|follower|subscriber|view)s?\\b"
+
+  - id: "short-horizon-crypto-price"
+    category: "routine_market_price"
+    maximum_surface: "explore"
+    importance_score: 12
+    reason: "A short-horizon token price threshold is a trading micro-outcome, not a public signal."
+    match:
+      requires_tag_and_text: true
+      resolution_within_hours: 168
+      tags_any:
+        - "crypto"
+        - "bitcoin"
+        - "ethereum"
+        - "btc"
+        - "eth"
+      text_patterns_any:
+        - "\\b(?:price of )?(?:bitcoin|ethereum|btc|eth)\\b[^?]{0,100}\\b(?:reach|dip|above|below|between|all[- ]time high)\\b"
+
+public_interest_rules:
+  - id: "conflict-and-security"
+    category: "geopolitics_security"
+    maximum_surface: "hero"
+    importance_score: 100
+    reason: "Armed conflict, national security, and international order have broad public consequences."
+    match:
+      tags_any:
+        - "geopolitics"
+        - "military-action"
+        - "military"
+        - "war"
+        - "conflict"
+        - "national-security"
+        - "sanctions"
+      text_patterns_any:
+        - "\\b(?:war|invasion|ceasefire|military|missile|sanction|attack|target|occupation|nuclear)\\b"
+
+  - id: "government-and-elections"
+    category: "governance"
+    maximum_surface: "hero"
+    importance_score: 95
+    reason: "Government, elections, and institutional power are core public-affairs signals."
+    match:
+      tags_any:
+        - "politics"
+        - "elections"
+        - "election"
+        - "government"
+        - "congress"
+        - "senate"
+        - "supreme-court"
+        - "regulation"
+      text_patterns_any:
+        - "\\b(?:election|president|prime minister|parliament|congress|senate|supreme court|government|regulation|law|referendum)\\b"
+
+  - id: "macro-and-monetary-policy"
+    category: "macro_policy"
+    maximum_surface: "hero"
+    importance_score: 90
+    reason: "Monetary, fiscal, trade, and macroeconomic changes affect broad public decisions."
+    match:
+      tags_any:
+        - "economy"
+        - "macroeconomics"
+        - "federal-reserve"
+        - "central-bank"
+        - "interest-rates"
+        - "trade"
+        - "tariffs"
+      text_patterns_any:
+        - "\\b(?:federal reserve|central bank|rate cut|interest rate|inflation|recession|gdp|unemployment|tariff|trade agreement|debt ceiling)\\b"
+
+  - id: "public-health"
+    category: "public_health"
+    maximum_surface: "hero"
+    importance_score: 88
+    reason: "Population-level health outcomes can carry broad and actionable public consequences."
+    match:
+      tags_any:
+        - "public-health"
+        - "pandemic"
+        - "fda"
+        - "who"
+        - "health-policy"
+      text_patterns_any:
+        - "\\b(?:pandemic|public health|world health organization|fda approval|disease outbreak|vaccine authorization)\\b"
+
+  - id: "science-technology-and-systems"
+    category: "science_technology_systems"
+    maximum_surface: "secondary"
+    importance_score: 72
+    reason: "Science, technology, and infrastructure signals require context before receiving Hero weight."
+    match:
+      tags_any:
+        - "science"
+        - "technology"
+        - "artificial-intelligence"
+        - "ai"
+        - "space"
+        - "infrastructure"
+        - "cybersecurity"
+        - "energy"
+
+  - id: "severe-weather-hazard"
+    category: "public_hazard"
+    maximum_surface: "secondary"
+    importance_score: 75
+    reason: "Severe-weather hazards may matter publicly, but a prediction-market source alone does not justify Hero treatment."
+    match:
+      text_patterns_any:
+        - "\\b(?:hurricane|typhoon|cyclone|tornado|wildfire|flood|storm surge|heat emergency|evacuation)\\b"
+
+near_resolution_convergence:
+  within_hours: 6
+  extreme_probability: 0.15
+  maximum_surface: "secondary"
+  importance_penalty: 20
+  reason: "A move toward an extreme probability near settlement is likely resolution convergence, not a new Hero-level signal."

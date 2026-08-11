@@ -121,6 +121,7 @@ def test_compute_delta_and_eligible(detector, engine) -> None:
     assert output["direction"] == 1
     assert output["persistence"] > 0.9
     assert output["eligible"] is True
+    assert output["distance_to_resolution_days"] is not None
 
 
 def test_candidate_rejected_when_below_threshold(detector, engine) -> None:

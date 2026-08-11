@@ -57,11 +57,16 @@ class CandidateDetector:
                 ),
                 {"m": source_market_id},
             ).fetchall()
+            deadline = conn.execute(
+                text("SELECT ends_at FROM source_markets WHERE id = :m"),
+                {"m": source_market_id},
+            ).scalar_one_or_none()
 
         return self.compute_from_series(
             source_market_id,
             [(r[0], r[1], r[2], r[3], r[4]) for r in rows],
             now=now,
+            resolution_deadline_at=deadline,
         )
 
     def compute_from_series(
@@ -69,6 +74,7 @@ class CandidateDetector:
         subject_id: str,
         series: list[tuple[Any, ...]],
         now: datetime | None = None,
+        resolution_deadline_at: datetime | None = None,
     ) -> dict[str, Any]:
         """series rows: (probability, observed_at, best_bid, best_ask, flags)"""
         now = now or datetime.now(timezone.utc)
@@ -96,6 +102,11 @@ class CandidateDetector:
         flags = _latest_flags(series)
         data_quality = "ok" if not (set(flags) & DATA_QUALITY_BAD) else ",".join(sorted(set(flags) & DATA_QUALITY_BAD))
         data_completeness = round(len(h24) / max(1, 24 * 12), 4)  # ~5-min buckets
+        distance_to_resolution_days = (
+            round((resolution_deadline_at - now).total_seconds() / 86_400, 4)
+            if resolution_deadline_at is not None
+            else None
+        )
 
         # §32.5 eligibility is the featured-story threshold.  The scanner
         # threshold feeds compact, observation-only surfaces; it does not
@@ -129,11 +140,12 @@ class CandidateDetector:
             "delta_1h": round(delta_1h, 4),
             "delta_24h": round(delta_24h, 4),
             "delta_7d": round(delta_7d, 4),
+            "current_probability": current,
             "direction": direction,
             "persistence": persistence,
             "acceleration": acceleration,
             "reversal": reversal,
-            "distance_to_resolution_days": None,
+            "distance_to_resolution_days": distance_to_resolution_days,
             "data_quality": data_quality,
             "data_completeness": data_completeness,
             "series_size": len(series),

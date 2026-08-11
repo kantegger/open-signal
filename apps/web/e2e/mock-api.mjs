@@ -291,7 +291,7 @@ const server = http.createServer(async (request, response) => {
     const topicPageSize = 12;
     const signalPageSize = 24;
     json(response, 200, {
-      selection_version: "expectation-selection-1.0.0",
+      selection_version: "expectation-selection-1.1.0",
       ranking_as_of: "2026-08-10T00:45:00+00:00",
       topics: {
         items: exploreEventGroups.slice(

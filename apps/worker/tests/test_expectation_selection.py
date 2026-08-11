@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 from open_signal.derived.expectation_selection import (
@@ -126,6 +127,63 @@ def test_markets_without_event_identity_remain_independent_topics() -> None:
         "source-id:market:one",
         "source-id:market:two",
     }
+
+
+def test_public_interest_orders_public_affairs_before_sports() -> None:
+    as_of = datetime(2026, 8, 10, 8, tzinfo=UTC)
+    sports = _fact(
+        market_id="sports",
+        probability=0.8,
+        baseline=0.3,
+        volume_24h=100_000,
+        option="Driver",
+        as_of=as_of,
+    )
+    election = replace(
+        _fact(
+            market_id="election",
+            probability=0.55,
+            baseline=0.50,
+            volume_24h=6000,
+            option=None,
+            as_of=as_of,
+            external_event_id="election-event",
+        ),
+        title="Will the governing party win the national election?",
+        event_type="elections",
+        event_title="National election",
+        event_slug="national-election",
+        tags=("Politics", "Elections"),
+    )
+
+    groups = select_expectation_groups([sports, election], as_of=as_of)
+
+    assert [group.key for group in groups] == [
+        election.event_key,
+        sports.event_key,
+    ]
+    assert groups[0].editorial_scope.maximum_surface == "hero"
+    assert groups[1].editorial_scope.maximum_surface == "explore"
+
+
+def test_current_surface_excludes_explore_only_groups() -> None:
+    as_of = datetime(2026, 8, 10, 8, tzinfo=UTC)
+    sports = _fact(
+        market_id="sports",
+        probability=0.8,
+        baseline=0.3,
+        volume_24h=100_000,
+        option="Driver",
+        as_of=as_of,
+    )
+
+    groups = select_expectation_groups(
+        [sports],
+        as_of=as_of,
+        minimum_surface="live_feed",
+    )
+
+    assert groups == []
 
 
 def _fact(
