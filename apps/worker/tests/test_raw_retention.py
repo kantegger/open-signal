@@ -1,4 +1,4 @@
-"""Raw payload report-only retention and cold-storage safety boundary."""
+"""Raw payload retention report, archive boundary, and bounded purge."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from open_signal.retention import (
+    RawRetentionExecutor,
     RawRetentionPlanner,
     RawRetentionPolicy,
     build_archive_object,
@@ -28,6 +29,11 @@ def engine():
     try:
         yield engine
     finally:
+        # Test-only reset for the append-only audit table. Production row
+        # mutation remains prohibited; TRUNCATE is used only on the isolated
+        # Neon test branch so later legacy cleanup fixtures can delete raws.
+        with engine.begin() as conn:
+            conn.execute(text("TRUNCATE raw_payload_purge_events"))
         engine.dispose()
 
 
@@ -63,6 +69,7 @@ def _insert_raw(
     external_id: str,
     payload: dict,
     seen_at: datetime,
+    record_type: str = "fixture",
 ) -> str:
     with engine.begin() as conn:
         return str(
@@ -74,7 +81,7 @@ def _insert_raw(
                        first_seen_at, last_seen_at, ingested_at, content_hash,
                        adapter_version, status)
                     VALUES
-                      (:source, :external, 'fixture', 'application/json',
+                      (:source, :external, :record_type, 'application/json',
                        CAST(:payload AS jsonb), :seen, :seen, :seen, :hash,
                        'retention-test', 'active')
                     RETURNING id
@@ -84,6 +91,7 @@ def _insert_raw(
                     "source": source_id,
                     "external": external_id,
                     "payload": json.dumps(payload),
+                    "record_type": record_type,
                     "seen": seen_at,
                     "hash": _canonical_hash(payload),
                 },
@@ -95,16 +103,16 @@ def _source_report(report: dict, slug: str) -> dict:
     return next(item for item in report["sources"] if item["source_slug"] == slug)
 
 
-def test_policy_is_explicitly_report_only() -> None:
+def test_policy_activates_bounded_purge() -> None:
     policy = RawRetentionPolicy.load()
 
-    assert policy.mode == "report_only"
-    assert policy.hot_days_for("polymarket-gamma") == 7
+    assert policy.mode == "active"
+    assert policy.hot_days_for("polymarket-gamma") == 2
     assert policy.hot_days_for("unknown-source") == 30
-    assert policy.compression == "gzip"
+    assert policy.maximum_rows_per_run == 1000
 
-    with pytest.raises(ValueError, match="report_only"):
-        RawRetentionPolicy(version="bad", mode="execute").validate()
+    with pytest.raises(ValueError, match="report_only or active"):
+        RawRetentionPolicy(version="bad", mode="delete").validate()
 
 
 def test_archive_object_is_deterministic_and_detects_corruption() -> None:
@@ -358,3 +366,150 @@ def test_database_requires_verified_event_before_payload_can_be_cold(engine) -> 
             assert tuple(restored) == ("hot", True, archive.storage_key)
         finally:
             transaction.rollback()
+
+
+def test_executor_purges_only_expired_superseded_payloads(engine) -> None:
+    as_of = datetime(2026, 8, 11, 15, tzinfo=UTC)
+    slug = f"retention-purge-{uuid.uuid4().hex}"
+    source_id = _seed_source(engine, slug)
+    external_id = str(uuid.uuid4())
+    old_id = _insert_raw(
+        engine,
+        source_id=source_id,
+        external_id=external_id,
+        payload={"version": "old"},
+        seen_at=as_of - timedelta(days=10),
+    )
+    current_id = _insert_raw(
+        engine,
+        source_id=source_id,
+        external_id=external_id,
+        payload={"version": "current"},
+        seen_at=as_of - timedelta(hours=1),
+    )
+    policy = RawRetentionPolicy(
+        version="test-purge-v1",
+        mode="active",
+        # Keep unrelated rows left by other isolated integration tests out of
+        # this one-row batch; only this test source uses the seven-day TTL.
+        default_hot_days=36_500,
+        source_hot_days={slug: 7},
+        maximum_rows_per_run=1,
+    )
+
+    result = RawRetentionExecutor(engine, policy).purge(as_of=as_of)
+
+    assert result["purged_rows"] == 1
+    assert result["raw_source_record_ids"] == [old_id]
+    assert result["more_may_be_eligible"] is True
+    with engine.connect() as conn:
+        old = conn.execute(
+            text(
+                "SELECT retention_state, payload, payload_purged_at, "
+                "purge_policy_version FROM raw_source_records WHERE id = :id"
+            ),
+            {"id": old_id},
+        ).one()
+        current = conn.execute(
+            text(
+                "SELECT retention_state, payload IS NOT NULL "
+                "FROM raw_source_records WHERE id = :id"
+            ),
+            {"id": current_id},
+        ).one()
+        event_count = conn.execute(
+            text(
+                "SELECT count(*) FROM raw_payload_purge_events "
+                "WHERE raw_source_record_id = :id"
+            ),
+            {"id": old_id},
+        ).scalar_one()
+    assert old[0] == "purged"
+    assert old[1] is None
+    assert old[2] is not None
+    assert old[3] == "test-purge-v1"
+    assert tuple(current) == ("hot", True)
+    assert event_count == 1
+
+    with pytest.raises(DBAPIError), engine.begin() as conn:
+        conn.execute(
+            text(
+                "UPDATE raw_source_records SET retention_state = 'purged', "
+                "payload = NULL, payload_purged_at = :now, "
+                "purge_policy_version = 'bypass' WHERE id = :id"
+            ),
+            {"id": current_id, "now": as_of},
+        )
+    with pytest.raises(DBAPIError), engine.begin() as conn:
+        conn.execute(
+            text(
+                "DELETE FROM raw_payload_purge_events "
+                "WHERE raw_source_record_id = :id"
+            ),
+            {"id": old_id},
+        )
+
+    # Identical content may reappear. The adapter clears purge metadata and
+    # starts a new hot cycle while the prior audit event remains immutable.
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "UPDATE raw_source_records SET retention_state = 'hot', "
+                "payload = '{\"version\": \"old\"}'::jsonb, "
+                "payload_purged_at = NULL, purge_policy_version = NULL "
+                "WHERE id = :id"
+            ),
+            {"id": old_id},
+        )
+    with engine.connect() as conn:
+        restored = conn.execute(
+            text(
+                "SELECT retention_state, payload IS NOT NULL "
+                "FROM raw_source_records WHERE id = :id"
+            ),
+            {"id": old_id},
+        ).one()
+    assert tuple(restored) == ("hot", True)
+
+
+def test_executor_keeps_current_representation_for_each_record_type(engine) -> None:
+    as_of = datetime(2026, 8, 11, 16, tzinfo=UTC)
+    slug = f"retention-identity-{uuid.uuid4().hex}"
+    source_id = _seed_source(engine, slug)
+    shared_external_id = str(uuid.uuid4())
+    event_id = _insert_raw(
+        engine,
+        source_id=source_id,
+        external_id=shared_external_id,
+        payload={"kind": "event"},
+        seen_at=as_of - timedelta(days=10),
+        record_type="event",
+    )
+    market_id = _insert_raw(
+        engine,
+        source_id=source_id,
+        external_id=shared_external_id,
+        payload={"kind": "market"},
+        seen_at=as_of - timedelta(hours=1),
+        record_type="market",
+    )
+    policy = RawRetentionPolicy(
+        version="test-record-type-identity",
+        mode="active",
+        default_hot_days=36_500,
+        source_hot_days={slug: 7},
+        maximum_rows_per_run=10,
+    )
+
+    result = RawRetentionExecutor(engine, policy).purge(as_of=as_of)
+
+    assert result["purged_rows"] == 0
+    with engine.connect() as conn:
+        states = conn.execute(
+            text(
+                "SELECT id, retention_state, payload IS NOT NULL "
+                "FROM raw_source_records WHERE id IN (:event, :market)"
+            ),
+            {"event": event_id, "market": market_id},
+        ).all()
+    assert {tuple(row[1:]) for row in states} == {("hot", True)}

@@ -349,6 +349,8 @@ class PolymarketAdapter:
                         ON CONFLICT (source_id, external_id, content_hash) DO UPDATE SET
                           payload = EXCLUDED.payload,
                           retention_state = 'hot',
+                          payload_purged_at = NULL,
+                          purge_policy_version = NULL,
                           last_seen_at = now(),
                           external_parent_id = EXCLUDED.external_parent_id,
                           source_created_at = COALESCE(

@@ -1,11 +1,4 @@
-"""Read-only raw payload retention report.
-
-The planner deliberately has no write or delete method.  It classifies the
-latest representation, recent superseded versions, policy-eligible versions,
-rights constraints, and provenance dependencies inside a read-only PostgreSQL
-transaction.  A future archive executor can consume the same policy only after
-R2 verification and restore-path gates have been reviewed.
-"""
+"""Read-only report for the bounded raw payload purge policy."""
 
 from __future__ import annotations
 
@@ -34,7 +27,7 @@ WITH ranked AS (
            r.retention_state,
            {hot_days_case} AS hot_days,
            row_number() OVER (
-               PARTITION BY r.source_id, r.external_id
+               PARTITION BY r.source_id, r.record_type, r.external_id
                ORDER BY r.last_seen_at DESC,
                         r.ingested_at DESC,
                         r.id DESC
@@ -55,6 +48,7 @@ WITH ranked AS (
 ), classified AS (
     SELECT ranked.*,
            CASE
+               WHEN retention_state = 'purged' THEN 'purged'
                WHEN retention_state = 'cold' THEN 'cold'
                WHEN representation_rank = 1 THEN 'current_hot'
                WHEN last_seen_at > :as_of - make_interval(days => hot_days)
@@ -301,18 +295,19 @@ class RawRetentionPlanner:
         if unreviewed:
             warnings.append(
                 f"{unreviewed} rows have no reviewed Rights Manifest; "
-                "private cold storage remains internal-only."
+                "the report keeps that governance gap visible."
             )
         held = report["activation"]["provenance_held_rows"]
         if held:
             warnings.append(
-                f"{held} otherwise eligible rows remain held until every referenced "
-                "read/replay path can hydrate cold payloads."
+                f"{held} otherwise eligible rows have legacy provenance references. "
+                "The purge executor preserves row identity and hashes and relies on "
+                "sealed-v1 bundles for new public evidence."
             )
         if report["activation"]["blocked_by_rights_rows"]:
             warnings.append(
-                "Rows blocked by source rights require legal/operational review; "
-                "they must not be copied to R2 automatically."
+                "Some rows have restrictive source-rights metadata; purging reduces "
+                "stored source content and never copies it to public R2."
             )
         warnings.append(
             "This report measures logical payload bytes, not immediately reclaimable "

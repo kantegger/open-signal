@@ -18,15 +18,12 @@ DEFAULT_POLICY_PATH = (
 
 @dataclass(frozen=True)
 class RawRetentionPolicy:
-    """Policy used only to classify records until execution is activated."""
+    """Policy for reporting and bounded purge of superseded payloads."""
 
     version: str
     mode: str = "report_only"
     default_hot_days: int = 30
     source_hot_days: dict[str, int] = field(default_factory=dict)
-    compression: str = "gzip"
-    object_prefix: str = "raw-payload/v1"
-    recovery_grace_days: int = 7
     maximum_rows_per_run: int = 1000
 
     @classmethod
@@ -35,9 +32,9 @@ class RawRetentionPolicy:
         raw = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
         if not isinstance(raw, dict):
             raise TypeError("retention policy must be a mapping")
-        storage = raw.get("cold_storage")
-        if not isinstance(storage, dict):
-            raise TypeError("retention policy cold_storage must be a mapping")
+        purge = raw.get("purge")
+        if not isinstance(purge, dict):
+            raise TypeError("retention policy purge must be a mapping")
         source_hot_days = raw.get("source_hot_days") or {}
         if not isinstance(source_hot_days, dict):
             raise TypeError("source_hot_days must be a mapping")
@@ -49,23 +46,15 @@ class RawRetentionPolicy:
                 str(slug): _positive_value(days, f"source_hot_days.{slug}")
                 for slug, days in source_hot_days.items()
             },
-            compression=_required_text(storage, "compression"),
-            object_prefix=_required_text(storage, "object_prefix").strip("/"),
-            recovery_grace_days=_positive_int(storage, "recovery_grace_days"),
-            maximum_rows_per_run=_positive_int(storage, "maximum_rows_per_run"),
+            maximum_rows_per_run=_positive_int(purge, "maximum_rows_per_run"),
         )
         policy.validate()
         return policy
 
     def validate(self) -> None:
-        if self.mode != "report_only":
-            raise ValueError("retention policy mode must remain report_only")
-        if self.compression != "gzip":
-            raise ValueError("only deterministic gzip archives are supported")
-        if not self.object_prefix:
-            raise ValueError("object_prefix must not be empty")
+        if self.mode not in {"report_only", "active"}:
+            raise ValueError("retention policy mode must be report_only or active")
         _positive_value(self.default_hot_days, "default_hot_days")
-        _positive_value(self.recovery_grace_days, "recovery_grace_days")
         _positive_value(self.maximum_rows_per_run, "maximum_rows_per_run")
         for slug, days in self.source_hot_days.items():
             if not slug:
@@ -81,10 +70,7 @@ class RawRetentionPolicy:
             "mode": self.mode,
             "default_hot_days": self.default_hot_days,
             "source_hot_days": dict(sorted(self.source_hot_days.items())),
-            "cold_storage": {
-                "compression": self.compression,
-                "object_prefix": self.object_prefix,
-                "recovery_grace_days": self.recovery_grace_days,
+            "purge": {
                 "maximum_rows_per_run": self.maximum_rows_per_run,
             },
         }

@@ -1734,7 +1734,7 @@ dd,
   line-height: 1.05;
 }
 
-.claim-evidence-section header > p:last-child {
+.claim-evidence-section header > p:not(.eyebrow) {
   color: var(--ink-muted);
 }
 
@@ -3219,6 +3219,26 @@ dd,
   padding-block: 10px;
   border-block: 1px solid var(--hairline);
   font-family: var(--font-mono);
+}
+
+.sealed-evidence-link {
+  align-items: center;
+  border: 1px solid var(--hairline-strong);
+  color: var(--blue);
+  display: inline-flex;
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: 700;
+  gap: 8px;
+  letter-spacing: .06em;
+  margin-block-start: 14px;
+  padding: 9px 11px;
+  text-transform: uppercase;
+}
+
+.sealed-evidence-link:hover {
+  border-color: var(--blue);
+  color: var(--paper);
 }
 .archive-filters label { display: grid; min-width: 150px; gap: 4px; }
 .archive-filters label > span {

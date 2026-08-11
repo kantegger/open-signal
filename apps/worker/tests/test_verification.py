@@ -75,10 +75,12 @@ def _create_claim(
                 "INSERT INTO claims (institution_id, desk_id, agent_lineage_id, model_version, "
                 "charter_version, run_id, section_id, capability_id, claim_type, "
                 "public_statement, structured_proposition, confidence, epistemic_status, "
-                "evidence_bundle_id, evidence_snapshot_hash, issued_at, status) "
+                "evidence_bundle_id, evidence_snapshot_hash, evidence_policy_version, "
+                "issued_at, status) "
                 "VALUES ('open-signal', 'os024-desk', 'os024-lineage', 'deepseek-chat', 'os-024', "
                 ":run, 'expectations-moved', 'expectation.probability-change', :type, :statement, "
-                "CAST(:prop AS jsonb), 0.85, 'derived', :eb, :h, now(), 'draft') RETURNING id"
+                "CAST(:prop AS jsonb), 0.85, 'derived', :eb, :h, 'legacy', "
+                "now(), 'draft') RETURNING id"
             ),
             {
                 "run": run,

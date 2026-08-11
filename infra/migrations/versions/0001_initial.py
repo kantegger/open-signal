@@ -35,6 +35,8 @@ _LATER_TABLES = frozenset(
         "audit_events",
         "edition_events",
         "raw_payload_archive_events",
+        "raw_payload_purge_events",
+        "evidence_seals",
         "publication_channels",
     }
 )

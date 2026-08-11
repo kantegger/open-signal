@@ -35,3 +35,4 @@ Thumbs.db
 .reasonix/
 reasonix.toml
 .vercel/
+.open-signal-artifacts/

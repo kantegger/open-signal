@@ -13,7 +13,7 @@ from open_signal.orchestration.research import ResearchSectionService
 from open_signal.orchestration.rules import RulesSectionService
 from open_signal.orchestration.sources import SourceDiscoveryService
 from open_signal.publication.delivery import from_environment
-from open_signal.retention import RawRetentionPlanner
+from open_signal.retention import RawRetentionExecutor, RawRetentionPlanner
 
 
 class ProductionHandlers:
@@ -34,6 +34,10 @@ class ProductionHandlers:
         self.rules = RulesSectionService(engine)
         self.research = ResearchSectionService(engine)
         self.retention = RawRetentionPlanner(engine)
+        self.retention_executor = RawRetentionExecutor(
+            engine,
+            policy=self.retention.policy,
+        )
         self.delivery = from_environment(engine)
 
     def registry(self) -> dict[str, Any]:
@@ -47,6 +51,7 @@ class ProductionHandlers:
             "composer.generate_edition": self.reconcile_publication,
             "publication.deliver_snapshot": self.deliver_publication,
             "retention.report_raw": self.report_raw_retention,
+            "retention.purge_raw": self.purge_raw_retention,
         }
 
     def discover_source(self, job: ClaimedJob) -> dict[str, Any]:
@@ -103,6 +108,21 @@ class ProductionHandlers:
         scheduled_for = job.payload.get("_scheduled_for")
         as_of = datetime.fromisoformat(str(scheduled_for)) if scheduled_for else None
         return self.retention.plan(as_of=as_of)
+
+    def purge_raw_retention(self, job: ClaimedJob) -> dict[str, Any]:
+        mode = str(job.payload.get("mode") or "")
+        if mode != "active":
+            raise ValueError("raw retention purge handler requires active mode")
+        policy_version = str(job.payload.get("policy_version") or "")
+        if policy_version != self.retention_executor.policy.version:
+            raise ValueError(
+                "retention schedule/code policy mismatch: "
+                f"{policy_version!r} != "
+                f"{self.retention_executor.policy.version!r}"
+            )
+        scheduled_for = job.payload.get("_scheduled_for")
+        as_of = datetime.fromisoformat(str(scheduled_for)) if scheduled_for else None
+        return self.retention_executor.purge(as_of=as_of)
 
 
 def _require_section(job: ClaimedJob, expected: str) -> None:

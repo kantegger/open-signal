@@ -56,11 +56,12 @@ class ClaimsLedger:
                        claim_type, public_statement, structured_proposition,
                        confidence, confidence_label, epistemic_status,
                        evidence_bundle_id, evidence_snapshot_hash,
-                       issued_at, status)
+                       evidence_policy_version, issued_at, status)
                     VALUES
                       (:inst, :desk, :lineage, :model, :charter, :run,
                        :section, :capability, :type, :statement, CAST(:prop AS jsonb),
-                       :confidence, :label, :epistemic, :eb, :hash, now(), :status)
+                       :confidence, :label, :epistemic, :eb, :hash,
+                       'sealed-v1', now(), :status)
                     RETURNING id
                     """
                 ),

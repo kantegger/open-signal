@@ -1,18 +1,16 @@
-version: "1.0.0"
-mode: "report_only"
+version: "2.0.0"
+mode: "active"
 
 # These windows classify superseded payloads; the newest representation for
-# every external object remains hot regardless of age.  No policy in this file
-# authorizes a database mutation.
+# every external object remains hot regardless of age. Eligible old payloads
+# are cleared in bounded transactions while their identity and content hash
+# remain in PostgreSQL.
 default_hot_days: 30
 source_hot_days:
-  polymarket-gamma: 7
+  polymarket-gamma: 2
   openalex: 30
   clinicaltrials-gov: 90
   federal-register: 365
 
-cold_storage:
-  compression: "gzip"
-  object_prefix: "raw-payload/v1"
-  recovery_grace_days: 7
+purge:
   maximum_rows_per_run: 1000

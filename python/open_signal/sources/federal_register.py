@@ -133,6 +133,8 @@ class FederalRegisterChain:
                             DO UPDATE SET
                               payload = EXCLUDED.payload,
                               retention_state = 'hot',
+                              payload_purged_at = NULL,
+                              purge_policy_version = NULL,
                               last_seen_at = now(),
                               adapter_version = EXCLUDED.adapter_version
                             RETURNING (xmax = 0) AS inserted

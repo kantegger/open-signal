@@ -122,9 +122,12 @@ raw_source_records = Table(
     Column("payload_compression", Text),
     Column("payload_archived_at", _tz),
     Column("retention_policy_version", Text),
+    Column("payload_purged_at", _tz),
+    Column("purge_policy_version", Text),
     UniqueConstraint("source_id", "external_id", "content_hash"),
     CheckConstraint(
         "(retention_state = 'hot' AND payload IS NOT NULL AND "
+        "payload_purged_at IS NULL AND purge_policy_version IS NULL AND "
         "((payload_storage_key IS NULL AND payload_archive_hash IS NULL AND "
         "payload_uncompressed_bytes IS NULL AND payload_compressed_bytes IS NULL AND "
         "payload_compression IS NULL AND payload_archived_at IS NULL AND "
@@ -137,11 +140,22 @@ raw_source_records = Table(
         "payload_storage_key IS NOT NULL AND payload_archive_hash IS NOT NULL AND "
         "payload_uncompressed_bytes IS NOT NULL AND payload_compressed_bytes IS NOT NULL AND "
         "payload_compression IS NOT NULL AND payload_archived_at IS NOT NULL AND "
-        "retention_policy_version IS NOT NULL)",
+        "retention_policy_version IS NOT NULL AND payload_purged_at IS NULL AND "
+        "purge_policy_version IS NULL) OR "
+        "(retention_state = 'purged' AND payload IS NULL AND "
+        "payload_purged_at IS NOT NULL AND purge_policy_version IS NOT NULL AND "
+        "((payload_storage_key IS NULL AND payload_archive_hash IS NULL AND "
+        "payload_uncompressed_bytes IS NULL AND payload_compressed_bytes IS NULL AND "
+        "payload_compression IS NULL AND payload_archived_at IS NULL AND "
+        "retention_policy_version IS NULL) OR "
+        "(payload_storage_key IS NOT NULL AND payload_archive_hash IS NOT NULL AND "
+        "payload_uncompressed_bytes IS NOT NULL AND payload_compressed_bytes IS NOT NULL AND "
+        "payload_compression IS NOT NULL AND payload_archived_at IS NOT NULL AND "
+        "retention_policy_version IS NOT NULL)))",
         name="raw_source_records_payload_location_check",
     ),
     CheckConstraint(
-        "retention_state IN ('hot', 'cold')",
+        "retention_state IN ('hot', 'cold', 'purged')",
         name="raw_source_records_retention_state_check",
     ),
     CheckConstraint(
@@ -512,6 +526,46 @@ evidence_bundles = Table(
     Column("created_at", _tz, nullable=False, server_default=text("now()")),
 )
 
+evidence_seals = Table(
+    "evidence_seals",
+    metadata,
+    Column("id", Uuid(), primary_key=True, server_default=text("gen_random_uuid()")),
+    Column(
+        "evidence_bundle_id",
+        Uuid(),
+        ForeignKey("evidence_bundles.id", ondelete="RESTRICT"),
+        nullable=False,
+        unique=True,
+    ),
+    Column("snapshot_hash", Text, nullable=False),
+    Column("object_hash", Text, nullable=False, unique=True),
+    Column("storage_key", Text, nullable=False, unique=True),
+    Column("byte_size", BigInteger, nullable=False),
+    Column("content_type", Text, nullable=False),
+    Column("policy_version", Text, nullable=False),
+    Column("actor", Text, nullable=False),
+    Column("detail", JSONB, nullable=False, server_default="{}"),
+    Column("sealed_at", _tz, nullable=False, server_default=text("now()")),
+    CheckConstraint(
+        "snapshot_hash ~ '^[0-9a-f]{64}$' AND object_hash ~ '^[0-9a-f]{64}$'",
+        name="evidence_seals_hash_check",
+    ),
+    CheckConstraint("byte_size > 0", name="evidence_seals_size_check"),
+    CheckConstraint(
+        "content_type = 'application/json; charset=utf-8'",
+        name="evidence_seals_content_type_check",
+    ),
+    CheckConstraint(
+        "storage_key = 'public/evidence/v1/' || object_hash || '.json'",
+        name="evidence_seals_storage_key_check",
+    ),
+    Index(
+        "evidence_seals_sealed_at_idx",
+        "sealed_at",
+        postgresql_ops={"sealed_at": "DESC"},
+    ),
+)
+
 # ---------------------------------------------------------------- C.9
 claim_families = Table(
     "claim_families",
@@ -557,6 +611,7 @@ claims = Table(
     Column("epistemic_status", Text, nullable=False),
     Column("evidence_bundle_id", Uuid(), ForeignKey("evidence_bundles.id"), nullable=False),
     Column("evidence_snapshot_hash", Text, nullable=False),
+    Column("evidence_policy_version", Text, nullable=False, server_default="sealed-v1"),
     Column("idempotency_key", Text),
     Column("issued_at", _tz, nullable=False),
     Column("valid_from", _tz),
@@ -577,6 +632,10 @@ claims = Table(
         "status",
         "issued_at",
         postgresql_ops={"issued_at": "DESC"},
+    ),
+    CheckConstraint(
+        "evidence_policy_version IN ('legacy', 'sealed-v1')",
+        name="claims_evidence_policy_version_check",
     ),
 )
 
@@ -807,6 +866,45 @@ raw_payload_archive_events = Table(
     ),
     Index(
         "raw_payload_archive_events_created_idx",
+        "created_at",
+        postgresql_ops={"created_at": "DESC"},
+    ),
+)
+
+raw_payload_purge_events = Table(
+    "raw_payload_purge_events",
+    metadata,
+    Column("id", Uuid(), primary_key=True, server_default=text("gen_random_uuid()")),
+    Column(
+        "raw_source_record_id",
+        Uuid(),
+        ForeignKey("raw_source_records.id", ondelete="RESTRICT"),
+        nullable=False,
+    ),
+    Column(
+        "source_id",
+        Uuid(),
+        ForeignKey("sources.id", ondelete="RESTRICT"),
+        nullable=False,
+    ),
+    Column("source_content_hash", Text, nullable=False),
+    Column("policy_version", Text, nullable=False),
+    Column("actor", Text, nullable=False),
+    Column("reason", Text, nullable=False),
+    Column("detail", JSONB, nullable=False, server_default="{}"),
+    Column("created_at", _tz, nullable=False, server_default=text("now()")),
+    CheckConstraint(
+        "source_content_hash ~ '^[0-9a-f]{64}$'",
+        name="raw_payload_purge_events_hash_check",
+    ),
+    Index(
+        "raw_payload_purge_events_created_idx",
+        "created_at",
+        postgresql_ops={"created_at": "DESC"},
+    ),
+    Index(
+        "raw_payload_purge_events_record_idx",
+        "raw_source_record_id",
         "created_at",
         postgresql_ops={"created_at": "DESC"},
     ),
