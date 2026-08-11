@@ -16,7 +16,13 @@ from typing import Any
 
 from sqlalchemy import text
 
-SELECTION_VERSION = "expectation-selection-1.0.0"
+from open_signal.derived.public_interest import (
+    EditorialScopeDecision,
+    classify_expectation_scope,
+    surface_rank,
+)
+
+SELECTION_VERSION = "expectation-selection-1.1.0"
 BAD_QUALITY_FLAGS = {"stale", "sparse", "unavailable"}
 HARD_OBSERVATION_AGE = timedelta(hours=72)
 CURRENT_COHORT_TOLERANCE = timedelta(minutes=10)
@@ -60,6 +66,7 @@ class ExpectationFact:
     recent_claim_id: str | None
     recent_claim_at: datetime | None
     raw_payload: dict[str, Any]
+    tags: tuple[str, ...] = ()
 
     @property
     def event_key(self) -> str:
@@ -116,6 +123,7 @@ class ExpectationEventGroup:
     largest_move_pp: float | None
     latest_observed_at: datetime
     nearest_deadline_at: datetime
+    editorial_scope: EditorialScopeDecision
 
     @property
     def suppressed_member_count(self) -> int:
@@ -124,6 +132,8 @@ class ExpectationEventGroup:
     @property
     def sort_key(self) -> tuple[Any, ...]:
         return (
+            -surface_rank(self.editorial_scope.maximum_surface),
+            -self.editorial_scope.importance_score,
             self.priority_class,
             -abs(self.largest_move_pp or 0.0),
             -math.log1p(max(0.0, self.volume_24h)),
@@ -250,6 +260,7 @@ def select_expectation_groups(
     *,
     as_of: datetime,
     page_size: int = 12,
+    minimum_surface: str = "explore",
 ) -> list[ExpectationEventGroup]:
     """Return a stable, event-diverse ordering of public event groups."""
 
@@ -261,7 +272,7 @@ def select_expectation_groups(
     groups: list[ExpectationEventGroup] = []
     for key, members in grouped.items():
         group = _build_group(key, members, as_of=as_of)
-        if group is not None:
+        if group is not None and group.editorial_scope.allows(minimum_surface):
             groups.append(group)
     groups.sort(key=lambda item: item.sort_key)
     return _diversify_in_pages(groups, page_size=max(1, page_size))
@@ -283,8 +294,14 @@ def representative_facts(
     *,
     as_of: datetime,
     limit: int,
+    minimum_surface: str = "explore",
 ) -> list[ExpectationFact]:
-    groups = select_expectation_groups(facts, as_of=as_of, page_size=limit)
+    groups = select_expectation_groups(
+        facts,
+        as_of=as_of,
+        page_size=limit,
+        minimum_surface=minimum_surface,
+    )
     return [group.representative for group in groups[:limit]]
 
 
@@ -343,6 +360,17 @@ def _build_group(
         max(max(1, fact.source_member_count) for fact in facts),
     )
     is_exclusive = any(fact.is_exclusive_slate for fact in facts)
+    editorial_scope = classify_expectation_scope(
+        title=representative.title,
+        event_title=event_title,
+        event_slug=event_slug,
+        event_type=event_type,
+        tags=(tag for fact in facts for tag in fact.tags),
+        deadline_at=representative.deadline_at,
+        current_probability=representative.current_probability,
+        delta_24h=representative.delta_24h_percentage_points,
+        as_of=as_of,
+    )
     return ExpectationEventGroup(
         key=key,
         title=event_title or representative.title,
@@ -361,6 +389,7 @@ def _build_group(
         largest_move_pp=largest_move,
         latest_observed_at=latest_observed_at,
         nearest_deadline_at=nearest_deadline,
+        editorial_scope=editorial_scope,
     )
 
 
@@ -539,9 +568,10 @@ def _diversify_in_pages(
             candidate = min(
                 pool,
                 key=lambda group: (
-                    group.priority_class,
+                    group.sort_key[0],
+                    group.sort_key[1],
                     counts[group.event_type],
-                    *group.sort_key[1:],
+                    *group.sort_key[2:],
                 ),
             )
             remaining.remove(candidate)
@@ -606,7 +636,26 @@ def _fact_from_row(row: Any) -> ExpectationFact:
         recent_claim_id=_text(row["recent_claim_id"]),
         recent_claim_at=_datetime(row["recent_claim_at"]),
         raw_payload=raw,
+        tags=_tag_values(raw, nested_event, event),
     )
+
+
+def _tag_values(*payloads: dict[str, Any]) -> tuple[str, ...]:
+    values: list[str] = []
+    for payload in payloads:
+        tags = payload.get("tags")
+        if not isinstance(tags, list):
+            continue
+        for tag in tags:
+            if isinstance(tag, dict):
+                values.extend(
+                    str(value)
+                    for key in ("slug", "label")
+                    if (value := tag.get(key)) not in (None, "")
+                )
+            elif tag not in (None, ""):
+                values.append(str(tag))
+    return tuple(dict.fromkeys(values))
 
 
 def _event_member_count(event: dict[str, Any]) -> int:

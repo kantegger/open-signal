@@ -222,6 +222,7 @@ def _serialize_group(group: ExpectationEventGroup) -> dict[str, Any]:
         "suppressed_member_count": group.suppressed_member_count,
         "is_exclusive_slate": group.is_exclusive_slate,
         "selection_reason": group.selection_reason,
+        "editorial_scope": group.editorial_scope.as_dict(),
         "volume_24h": group.volume_24h,
         "largest_move_24h_percentage_points": group.largest_move_pp,
         "latest_observed_at": group.latest_observed_at.isoformat(),

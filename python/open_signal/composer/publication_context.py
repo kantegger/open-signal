@@ -28,7 +28,7 @@ from open_signal.derived.series_contract import market_series_snapshot
 from open_signal.research.candidates import CANDIDATE_VERSION
 from open_signal.research.publication import select_public_research_items
 
-CONTEXT_VERSION = "1.4.0"
+CONTEXT_VERSION = "1.5.0"
 CLAIM_LIMIT = 24
 EXPECTATION_LIMIT = 12
 RULE_LIMIT = 8
@@ -143,6 +143,7 @@ class PublicationContextBuilder:
                     eligible,
                     as_of=captured_at,
                     page_size=CLAIM_LIMIT,
+                    minimum_surface="live_feed",
                 )
             }
             event_by_market = {
@@ -202,6 +203,7 @@ class PublicationContextBuilder:
             facts,
             as_of=captured_at,
             limit=EXPECTATION_LIMIT,
+            minimum_surface="live_feed",
         )
         observations: list[dict[str, Any]] = []
         for fact in selected:

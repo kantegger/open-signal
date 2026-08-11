@@ -16,6 +16,16 @@ from open_signal.claims.verification import ClaimVerifier
 from open_signal.composer.edition_writer import EditionWriter
 from open_signal.db.models import source_markets
 from open_signal.derived.candidates import CandidateDetector
+from open_signal.derived.expectation_selection import (
+    ExpectationFact,
+    eligible_expectation_facts,
+    load_expectation_facts,
+)
+from open_signal.derived.public_interest import (
+    EditorialScopeDecision,
+    classify_expectation_scope,
+    surface_rank,
+)
 from open_signal.orchestration.metadata import ensure_runtime_metadata
 from open_signal.sources.market_obs import MarketObservationCollector
 
@@ -211,69 +221,68 @@ class ExpectationsSectionService:
         )
         now = datetime.now(timezone.utc)
         with self.engine.connect() as conn:
-            rows = conn.execute(
-                text(
-                    """
-                    WITH monitored AS (
-                      SELECT sm.*,
-                             max(sm.monitoring_last_seen_at)
-                               OVER (PARTITION BY sm.source_id) AS source_monitoring_at
-                      FROM source_markets sm
-                      WHERE sm.status = 'active'
-                    )
-                    SELECT sm.id, ce.id, sm.source_id, sm.external_event_id
-                    FROM monitored sm
-                    JOIN canonical_expectations ce
-                      ON ce.source_market_ids @> ARRAY[sm.id]::uuid[]
-                    WHERE ce.status = 'active'
-                      AND ce.resolution_deadline_at > :now
-                      AND (
-                        sm.source_monitoring_at IS NULL
-                        OR (
-                          sm.monitoring_last_seen_at IS NOT NULL
-                          AND sm.monitoring_last_seen_at
-                              >= sm.source_monitoring_at - interval '10 minutes'
-                        )
-                      )
-                    ORDER BY sm.monitoring_last_seen_at DESC NULLS LAST, sm.id
-                    LIMIT 500
-                    """
-                ),
-                {"now": now},
-            ).fetchall()
+            facts = eligible_expectation_facts(
+                load_expectation_facts(conn, as_of=now),
+                as_of=now,
+            )[:500]
 
         detector = CandidateDetector(self.engine, version="production-1.0.0")
-        detected: list[tuple[int, float, str, str, str, dict[str, Any]]] = []
-        for market_id, canonical_id, source_id, external_event_id in rows:
-            output = detector.compute_for_market(str(market_id), now=now)
-            calculation_id = detector.record_calculation(str(market_id), output)
+        detected: list[dict[str, Any]] = []
+        scope_suppressed = 0
+        for fact in facts:
+            output = detector.compute_for_market(fact.market_id, now=now)
+            editorial_scope = _editorial_scope(fact, output=output, as_of=now)
+            output["editorial_scope"] = editorial_scope.as_dict()
+            calculation_id = detector.record_calculation(fact.market_id, output)
             if not output["scanner_eligible"]:
                 continue
             output["_calc_record_id"] = calculation_id
+            if not editorial_scope.allows("live_feed"):
+                scope_suppressed += 1
+                continue
             tier = str(output["publication_tier"])
             detected.append(
-                (
-                    0 if tier == "featured" else 1,
-                    float(output.get("signal_score") or 0.0),
-                    str(market_id),
-                    str(canonical_id),
-                    _event_key(
-                        str(source_id),
-                        _optional_text(external_event_id),
-                        str(market_id),
-                    ),
-                    output,
-                )
+                {
+                    "tier": tier,
+                    "tier_rank": 0 if tier == "featured" else 1,
+                    "signal_score": float(output.get("signal_score") or 0.0),
+                    "market_id": fact.market_id,
+                    "canonical_id": fact.topic_id,
+                    "event_key": fact.event_key,
+                    "calculation": output,
+                    "editorial_scope": editorial_scope,
+                    "fact": fact,
+                }
             )
-        detected.sort(key=lambda item: (item[0], -item[1]))
+        detected.sort(
+            key=lambda item: (
+                item["tier_rank"],
+                -surface_rank(item["editorial_scope"].maximum_surface),
+                -item["editorial_scope"].importance_score,
+                -item["signal_score"],
+                item["event_key"],
+            )
+        )
 
         builder = DeterministicClaimBuilder(self.engine)
-        built: list[tuple[str, str, dict[str, Any]]] = []
+        built: list[
+            tuple[
+                str,
+                str,
+                dict[str, Any],
+                EditorialScopeDecision,
+                ExpectationFact,
+            ]
+        ] = []
         duplicates = 0
         built_by_tier = {"featured": 0, "scanner": 0}
         used_events: set[str] = set()
-        for tier_rank, _, market_id, canonical_id, event_key, calculation in detected:
-            tier = "featured" if tier_rank == 0 else "scanner"
+        for item in detected:
+            tier = str(item["tier"])
+            market_id = str(item["market_id"])
+            canonical_id = str(item["canonical_id"])
+            event_key = str(item["event_key"])
+            calculation = item["calculation"]
             limit = maximum_featured if tier == "featured" else maximum_scanner
             if built_by_tier[tier] >= limit or event_key in used_events:
                 continue
@@ -287,7 +296,15 @@ class ExpectationsSectionService:
             if not result["created"]:
                 duplicates += 1
                 continue
-            built.append((tier, event_key, result))
+            built.append(
+                (
+                    tier,
+                    event_key,
+                    result,
+                    item["editorial_scope"],
+                    item["fact"],
+                )
+            )
             built_by_tier[tier] += 1
             if (
                 built_by_tier["featured"] >= maximum_featured
@@ -298,17 +315,47 @@ class ExpectationsSectionService:
         verifier = ClaimVerifier(self.engine)
         candidates: list[dict[str, Any]] = []
         verified_claim_ids: set[str] = set()
-        tier_indices = {"featured": 0, "scanner": 0}
-        for tier, event_key, result in built:
-            index = tier_indices[tier]
-            tier_indices[tier] += 1
-            candidate = self._publication_candidate(result, tier=tier, index=index)
+        hero_used = False
+        featured_nonhero_index = 0
+        scanner_index = 0
+        for tier, event_key, result, editorial_scope, fact in built:
+            use_hero = (
+                tier == "featured"
+                and not hero_used
+                and editorial_scope.allows("hero")
+            )
+            if use_hero:
+                index = 0
+                hero_used = True
+            elif tier == "featured":
+                index = featured_nonhero_index
+                featured_nonhero_index += 1
+            else:
+                index = scanner_index
+                scanner_index += 1
+            candidate = self._publication_candidate(
+                result,
+                tier=tier,
+                index=index,
+                use_hero=use_hero,
+            )
             candidate["continuity_key"] = event_key
             hidden = dict(candidate.get("hidden_detail_fields") or {})
             publication = dict(hidden.get("publication") or {})
             publication["event_key"] = event_key
             hidden["publication"] = publication
+            hidden["public_interest"] = editorial_scope.as_dict()
             candidate["hidden_detail_fields"] = hidden
+            fields = dict(candidate.get("display_fields") or {})
+            fields.update(
+                {
+                    "event_title": fact.event_title,
+                    "event_type": fact.event_type,
+                    "tags": list(fact.tags),
+                    "resolution_deadline_at": fact.deadline_at.isoformat(),
+                }
+            )
+            candidate["display_fields"] = fields
             if verifier.gate_for_composer(result["claim_id"], candidate):
                 candidate["claim_status"] = "verified"
                 candidates.append(candidate)
@@ -329,11 +376,18 @@ class ExpectationsSectionService:
 
         return {
             "section_id": SECTION_ID,
-            "markets_evaluated": len(rows),
+            "markets_evaluated": len(facts),
             "eligible_candidates": len(detected),
-            "featured_candidates": sum(1 for item in detected if item[0] == 0),
-            "scanner_candidates": sum(1 for item in detected if item[0] == 1),
-            "event_families_considered": len({item[4] for item in detected}),
+            "featured_candidates": sum(
+                1 for item in detected if item["tier"] == "featured"
+            ),
+            "scanner_candidates": sum(
+                1 for item in detected if item["tier"] == "scanner"
+            ),
+            "editorial_scope_suppressed": scope_suppressed,
+            "event_families_considered": len(
+                {str(item["event_key"]) for item in detected}
+            ),
             "claims_created": len(built),
             "duplicate_claims_skipped": duplicates,
             "claims_verified": len(verified_claim_ids),
@@ -343,19 +397,22 @@ class ExpectationsSectionService:
 
     @staticmethod
     def _publication_candidate(
-        result: Mapping[str, Any], *, tier: str, index: int
+        result: Mapping[str, Any], *, tier: str, index: int, use_hero: bool = False
     ) -> dict[str, Any]:
         candidate = dict(result["render_candidate"])
         fields = dict(candidate["display_fields"])
         if tier == "featured":
-            slots = ("lead", "secondary", "main", "main")
-            if index == 0:
+            if use_hero:
                 candidate["component_id"] = "signal-hero.expectations"
                 candidate["component_variant"] = "lead"
                 fields["headline"] = candidate["headline"]
                 fields["primary_observation"] = fields["observation"]
-            slot_id = slots[index]
-            priority = 10 + index * 10
+                slot_id = "lead"
+                priority = 10
+            else:
+                slots = ("secondary", "main", "main")
+                slot_id = slots[min(index, len(slots) - 1)]
+                priority = 20 + index * 10
         else:
             candidate["component_id"] = "signal-feed.compact-change"
             candidate["component_variant"] = "compact"
@@ -478,3 +535,22 @@ def _event_key(source_id: str, external_event_id: str | None, market_id: str) ->
     if external_event_id:
         return f"{source_id}:event:{external_event_id}"
     return f"{source_id}:market:{market_id}"
+
+
+def _editorial_scope(
+    fact: ExpectationFact,
+    *,
+    output: Mapping[str, Any],
+    as_of: datetime,
+) -> EditorialScopeDecision:
+    return classify_expectation_scope(
+        title=fact.title,
+        event_title=fact.event_title,
+        event_slug=fact.event_slug,
+        event_type=fact.event_type,
+        tags=fact.tags,
+        deadline_at=fact.deadline_at,
+        current_probability=fact.current_probability,
+        delta_24h=float(output.get("delta_24h") or 0.0),
+        as_of=as_of,
+    )
