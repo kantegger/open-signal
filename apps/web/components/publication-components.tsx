@@ -7,6 +7,7 @@ import { formatDateTime, formatRelativeTime, humanize } from "../lib/i18n";
 import { signalPath, topicPath } from "../lib/urls";
 import { DirectionalStatement } from "./directional-statement";
 import { Icon } from "./icons";
+import { useLocale } from "./locale-provider";
 
 export type OpenEvidence = (claimId: string, trigger: HTMLElement) => void;
 
@@ -43,13 +44,14 @@ export function PlanRenderer({
 }
 
 export function SignalHero({ item, onEvidence }: ComponentProps) {
+  const { locale } = useLocale();
   const fields = item.display_fields;
   const current = probability(fields.current_probability ?? fields.probability);
   const start = probability(fields.start_probability);
   const delta = number(fields.delta_percentage_points) ?? (
     current !== null && start !== null ? current - start : null
   );
-  const series = seriesPoints(fields.series);
+  const series = seriesPoints(fields.series, locale);
   const quality = seriesQuality(fields.series_quality);
   const chartSeries = quality?.coverageStatus === "complete" ? chartableSeries(series) : null;
   const observation = string(fields.primary_observation ?? fields.observation ?? item.dek);
@@ -61,12 +63,12 @@ export function SignalHero({ item, onEvidence }: ComponentProps) {
     <article className={`signal-hero ${sectionClass(item.section_id)}`} data-component-family="signal-hero">
       <div className="hero-primary">
         <div className="hero-kicker">
-          <p className="eyebrow">Lead signal · {sectionName(item.section_id)}</p>
-          {item.topic ? <Link href={topicPath(item.topic.title, item.topic.id)}>Track topic →</Link> : null}
+          <p className="eyebrow">{locale === "zh-Hant" ? "主訊號" : "Lead signal"} · {sectionName(item.section_id, locale)}</p>
+          {item.topic ? <Link href={topicPath(item.topic.title, item.topic.id, locale)}>{locale === "zh-Hant" ? "追蹤主題" : "Track topic"} →</Link> : null}
         </div>
-        <h1>{signalLink(item, item.headline)}</h1>
+        <h1>{signalLink(item, item.headline, locale)}</h1>
         {current !== null ? (
-          <div className="hero-change" aria-label={changeLabel(start, current, delta)}>
+          <div className="hero-change" aria-label={changeLabel(start, current, delta, locale)}>
             {start !== null ? <span>{formatPercent(start)}</span> : null}
             {start !== null ? <span className="change-arrow">→</span> : null}
             <strong>{formatPercent(current)}</strong>
@@ -75,7 +77,7 @@ export function SignalHero({ item, onEvidence }: ComponentProps) {
         ) : null}
 
         {chartSeries && quality ? (
-          <ProbabilityChart points={chartSeries} quality={quality} title={`${item.headline} probability series`} />
+          <ProbabilityChart points={chartSeries} quality={quality} title={`${item.headline} ${locale === "zh-Hant" ? "機率序列" : "probability series"}`} />
         ) : current !== null ? (
           <ProbabilityDirection delta={delta} seriesStatus={quality?.coverageStatus ?? "unverified"} />
         ) : null}
@@ -87,11 +89,11 @@ export function SignalHero({ item, onEvidence }: ComponentProps) {
         data-density={collectionDensity(briefCount, "grid")}
       >
         <section>
-          <p className="eyebrow">Observed</p>
-          <p>{observation || "The verified observation is recorded in the Signal."}</p>
+          <p className="eyebrow">{locale === "zh-Hant" ? "觀測" : "Observed"}</p>
+          <p>{observation || (locale === "zh-Hant" ? "已驗證觀測記錄於訊號中。" : "The verified observation is recorded in the Signal.")}</p>
         </section>
-        {analysis ? <section><p className="eyebrow">Analysis</p><p>{analysis}</p></section> : null}
-        {assessment ? <section><p className="eyebrow">Assessment</p><p>{assessment}</p></section> : null}
+        {analysis ? <section><p className="eyebrow">{locale === "zh-Hant" ? "分析" : "Analysis"}</p><p>{analysis}</p></section> : null}
+        {assessment ? <section><p className="eyebrow">{locale === "zh-Hant" ? "判斷" : "Assessment"}</p><p>{assessment}</p></section> : null}
         <TrustLine item={item} onEvidence={onEvidence} prominent />
       </div>
     </article>
@@ -99,6 +101,7 @@ export function SignalHero({ item, onEvidence }: ComponentProps) {
 }
 
 function SecondarySignal({ item, onEvidence }: ComponentProps) {
+  const { locale } = useLocale();
   const fields = item.display_fields;
   const current = probability(fields.current_probability ?? fields.probability);
   const start = probability(fields.start_probability);
@@ -107,8 +110,8 @@ function SecondarySignal({ item, onEvidence }: ComponentProps) {
   const observation = string(fields.observation ?? fields.analysis ?? item.dek);
   return (
     <article className={`publication-module secondary-signal ${sectionClass(item.section_id)}`} data-component-family={item.component_family}>
-      <p className="eyebrow">Secondary signal · {sectionName(item.section_id)}</p>
-      <h2>{signalLink(item, item.headline)}</h2>
+      <p className="eyebrow">{locale === "zh-Hant" ? "次要訊號" : "Secondary signal"} · {sectionName(item.section_id, locale)}</p>
+      <h2>{signalLink(item, item.headline, locale)}</h2>
       {current !== null ? (
         <p className="secondary-change">
           {start !== null ? <><span>{formatPercent(start)}</span><span>→</span></> : null}
@@ -120,37 +123,38 @@ function SecondarySignal({ item, onEvidence }: ComponentProps) {
           <span>{humanize(previousState || "previous")}</span><span>→</span><strong>{humanize(currentState || "current")}</strong>
         </p>
       ) : null}
-      {observation ? <p className="secondary-observation"><span>Observed</span>{observation}</p> : null}
+      {observation ? <p className="secondary-observation"><span>{locale === "zh-Hant" ? "觀測" : "Observed"}</span>{observation}</p> : null}
       <TrustLine item={item} onEvidence={onEvidence} />
     </article>
   );
 }
 
 export function TimeSeries({ item, onEvidence }: ComponentProps) {
+  const { locale } = useLocale();
   const fields = item.display_fields;
   const current = probability(fields.current_probability ?? fields.probability);
   const start = probability(fields.start_probability);
   const delta = number(fields.delta_percentage_points) ?? (
     current !== null && start !== null ? current - start : null
   );
-  const series = seriesPoints(fields.series);
+  const series = seriesPoints(fields.series, locale);
   const quality = seriesQuality(fields.series_quality);
   const chartSeries = quality?.coverageStatus === "complete" ? chartableSeries(series) : null;
   return (
     <article className={`publication-module time-series-module ${sectionClass(item.section_id)}`} data-component-family="time-series">
-      <ModuleHeading item={item} title="Probability move" />
+      <ModuleHeading item={item} title={locale === "zh-Hant" ? "機率變動" : "Probability move"} />
       <div className="metric-summary">
         {start !== null ? <span>{formatPercent(start)}</span> : null}
         {start !== null && current !== null ? <span className="change-arrow">→</span> : null}
         {current !== null ? <strong>{formatPercent(current)}</strong> : null}
-        {delta !== null ? <small>{signed(delta)} percentage points</small> : null}
+        {delta !== null ? <small>{signed(delta)} {locale === "zh-Hant" ? "個百分點" : "percentage points"}</small> : null}
       </div>
       {chartSeries && quality ? (
-        <ProbabilityChart points={chartSeries} quality={quality} title={`${item.headline} time series`} compact />
+        <ProbabilityChart points={chartSeries} quality={quality} title={`${item.headline} ${locale === "zh-Hant" ? "時間序列" : "time series"}`} compact />
       ) : current !== null ? (
         <ProbabilityDirection delta={delta} seriesStatus={quality?.coverageStatus ?? "unverified"} />
       ) : (
-        <p className="module-copy">{string(fields.observation ?? fields.analysis ?? item.dek) || "Verified change; no chart series was published."}</p>
+        <p className="module-copy">{string(fields.observation ?? fields.analysis ?? item.dek) || (locale === "zh-Hant" ? "已驗證變化；未發布圖表序列。" : "Verified change; no chart series was published.")}</p>
       )}
       <TrustLine item={item} onEvidence={onEvidence} />
     </article>
@@ -158,11 +162,12 @@ export function TimeSeries({ item, onEvidence }: ComponentProps) {
 }
 
 export function StateTransition({ item, onEvidence }: ComponentProps) {
+  const { locale } = useLocale();
   const fields = item.display_fields;
-  const stages = transitionStages(fields);
+  const stages = transitionStages(fields, locale);
   return (
     <article className={`publication-module state-module ${sectionClass(item.section_id)}`} data-component-family="state-transition">
-      <ModuleHeading item={item} title="State transition" />
+      <ModuleHeading item={item} title={locale === "zh-Hant" ? "狀態轉換" : "State transition"} />
       <ol
         className="state-timeline"
         data-count={stages.length}
@@ -179,24 +184,25 @@ export function StateTransition({ item, onEvidence }: ComponentProps) {
           </li>
         ))}
       </ol>
-      {stages.length === 0 ? <p className="module-copy">{string(fields.observation ?? item.dek) || "The authoritative state changed."}</p> : null}
+      {stages.length === 0 ? <p className="module-copy">{string(fields.observation ?? item.dek) || (locale === "zh-Hant" ? "權威狀態已變更。" : "The authoritative state changed.")}</p> : null}
       <TrustLine item={item} onEvidence={onEvidence} />
     </article>
   );
 }
 
 export function DocumentChange({ item, onEvidence }: ComponentProps) {
+  const { locale } = useLocale();
   const fields = item.display_fields;
   const oldText = string(fields.old_text ?? fields.previous_text);
   const newText = string(fields.new_text ?? fields.current_text);
   const summary = string(fields.diff_summary ?? fields.change_summary ?? fields.observation);
   return (
     <article className={`publication-module document-change-module ${sectionClass(item.section_id)}`} data-component-family="document-change">
-      <ModuleHeading item={item} title="Material document change" />
+      <ModuleHeading item={item} title={locale === "zh-Hant" ? "實質文件變更" : "Material document change"} />
       {oldText || newText ? (
         <div className="document-diff">
-          <div><span>Old</span><p>{oldText || "Not published"}</p></div>
-          <div><span>New</span><p>{newText || "Not published"}</p></div>
+          <div><span>{locale === "zh-Hant" ? "舊" : "Old"}</span><p>{oldText || (locale === "zh-Hant" ? "未發布" : "Not published")}</p></div>
+          <div><span>{locale === "zh-Hant" ? "新" : "New"}</span><p>{newText || (locale === "zh-Hant" ? "未發布" : "Not published")}</p></div>
         </div>
       ) : null}
       {summary ? <p className="change-classification"><span>{humanize(string(fields.change_type) || "Material")}</span> — {summary}</p> : null}
@@ -206,24 +212,25 @@ export function DocumentChange({ item, onEvidence }: ComponentProps) {
 }
 
 export function SignalFeedRow({ item, onEvidence }: ComponentProps) {
+  const { locale } = useLocale();
   const fields = item.display_fields;
   const trend = string(fields.trend);
   const changed = string(fields.change_value ?? fields.current_state);
   return (
     <article className={`feed-row ${sectionClass(item.section_id)}`} data-component-family="signal-feed">
-      <time dateTime={item.times.data_as_of ?? undefined}>{formatRelativeTime(item.times.data_as_of ?? item.times.assessed_at)}</time>
+      <time dateTime={item.times.data_as_of ?? undefined}>{formatRelativeTime(item.times.data_as_of ?? item.times.assessed_at, locale)}</time>
       <div className="feed-copy">
-        <span className="section-name">{sectionName(item.section_id)}</span>
+        <span className="section-name">{sectionName(item.section_id, locale)}</span>
         {item.trust.claim_id ? (
-          <Link className="feed-headline" href={signalPath(item.headline, item.trust.claim_id)}><DirectionalStatement text={item.headline} /></Link>
+          <Link className="feed-headline" href={signalPath(item.headline, item.trust.claim_id, locale)}><DirectionalStatement text={item.headline} /></Link>
         ) : <span className="feed-headline"><DirectionalStatement text={item.headline} /></span>}
       </div>
       <span className={`feed-state trend-${trend || "neutral"}`}>
-        {trend === "up" ? "↑ up" : trend === "down" ? "↓ down" : changed || "verified"}
+        {trend === "up" ? locale === "zh-Hant" ? "↑ 上升" : "↑ up" : trend === "down" ? locale === "zh-Hant" ? "↓ 下降" : "↓ down" : changed || (locale === "zh-Hant" ? "已驗證" : "verified")}
       </span>
       {item.trust.claim_id ? (
         <button
-          aria-label={`Open evidence for ${item.headline}`}
+          aria-label={`${locale === "zh-Hant" ? "開啟證據" : "Open evidence for"} ${item.headline}`}
           className="feed-evidence"
           onClick={(event) => onEvidence(item.trust.claim_id!, event.currentTarget)}
           type="button"
@@ -234,9 +241,10 @@ export function SignalFeedRow({ item, onEvidence }: ComponentProps) {
 }
 
 export function SignalFeedCard({ item, onEvidence }: ComponentProps) {
+  const { locale } = useLocale();
   return (
     <article className={`publication-module signal-feed-card ${sectionClass(item.section_id)}`} data-component-family="signal-feed">
-      <ModuleHeading item={item} title={sectionName(item.section_id)} />
+      <ModuleHeading item={item} title={sectionName(item.section_id, locale)} />
       <p className="module-copy">{string(item.display_fields.observation ?? item.display_fields.change_value ?? item.dek) || item.headline}</p>
       <TrustLine item={item} onEvidence={onEvidence} />
     </article>
@@ -244,10 +252,11 @@ export function SignalFeedCard({ item, onEvidence }: ComponentProps) {
 }
 
 export function EvidenceRelationship({ item, onEvidence }: ComponentProps) {
-  const events = evidenceEvents(item.display_fields.events);
+  const { locale } = useLocale();
+  const events = evidenceEvents(item.display_fields.events, locale);
   return (
     <article className={`publication-module evidence-relationship-module ${sectionClass(item.section_id)}`} data-component-family="evidence-relationship">
-      <ModuleHeading item={item} title="Evidence timeline" />
+      <ModuleHeading item={item} title={locale === "zh-Hant" ? "證據時間線" : "Evidence timeline"} />
       {events.length ? (
         <ol
           className="evidence-timeline"
@@ -257,45 +266,47 @@ export function EvidenceRelationship({ item, onEvidence }: ComponentProps) {
           {events.map((event, index) => (
             <li key={`${event.title}-${index}`}>
               <span className="timeline-dot" />
-              <time>{event.date || "Date recorded in evidence"}</time>
+              <time>{event.date || (locale === "zh-Hant" ? "日期記錄於證據" : "Date recorded in evidence")}</time>
               <strong>{event.title}</strong>
               {event.source ? <small>{event.source}</small> : null}
             </li>
           ))}
         </ol>
-      ) : <p className="module-copy">{string(item.display_fields.analysis ?? item.display_fields.observation ?? item.dek) || "A typed relationship is supported by the linked evidence."}</p>}
+      ) : <p className="module-copy">{string(item.display_fields.analysis ?? item.display_fields.observation ?? item.dek) || (locale === "zh-Hant" ? "連結證據支持此類型化關係。" : "A typed relationship is supported by the linked evidence.")}</p>}
       <TrustLine item={item} onEvidence={onEvidence} />
     </article>
   );
 }
 
 export function ResolutionComparison({ item, onEvidence }: ComponentProps) {
+  const { locale } = useLocale();
   const fields = item.display_fields;
   const probabilityValue = probability(fields.final_probability);
   return (
     <article className={`publication-module resolution-module ${sectionClass(item.section_id)}`} data-component-family="resolution-comparison">
-      <ModuleHeading item={item} title="Forecast vs outcome" />
+      <ModuleHeading item={item} title={locale === "zh-Hant" ? "預測與結果" : "Forecast vs outcome"} />
       <div className="resolution-grid">
-        <div><span>Original claim</span><strong>{string(fields.expectation_title ?? fields.original_claim) || item.headline}</strong></div>
-        <div><span>Outcome</span><strong>{string(fields.outcome) || "Resolved"}</strong></div>
-        <div><span>Final probability</span><strong>{probabilityValue !== null ? formatPercent(probabilityValue) : "—"}</strong></div>
-        <div><span>Score</span><strong>{string(fields.error_metric ?? fields.brier_contribution) || "—"}</strong></div>
+        <div><span>{locale === "zh-Hant" ? "原始主張" : "Original claim"}</span><strong>{string(fields.expectation_title ?? fields.original_claim) || item.headline}</strong></div>
+        <div><span>{locale === "zh-Hant" ? "結果" : "Outcome"}</span><strong>{string(fields.outcome) || (locale === "zh-Hant" ? "已結算" : "Resolved")}</strong></div>
+        <div><span>{locale === "zh-Hant" ? "最終機率" : "Final probability"}</span><strong>{probabilityValue !== null ? formatPercent(probabilityValue) : "—"}</strong></div>
+        <div><span>{locale === "zh-Hant" ? "分數" : "Score"}</span><strong>{string(fields.error_metric ?? fields.brier_contribution) || "—"}</strong></div>
       </div>
-      <p className="source-locked"><Icon name="lock" size={15} /> Source locked at resolution.</p>
+      <p className="source-locked"><Icon name="lock" size={15} /> {locale === "zh-Hant" ? "來源在結算時鎖定。" : "Source locked at resolution."}</p>
       <TrustLine item={item} onEvidence={onEvidence} />
     </article>
   );
 }
 
 export function ArchiveSnapshot({ item, onEvidence }: ComponentProps) {
+  const { locale } = useLocale();
   return (
     <article className="publication-module archive-snapshot-module" data-component-family="archive-snapshot">
-      <ModuleHeading item={item} title="Archive snapshot" />
+      <ModuleHeading item={item} title={locale === "zh-Hant" ? "典藏快照" : "Archive snapshot"} />
       <dl className="archive-stats">
-        <div><dt>Edition</dt><dd>{string(item.display_fields.edition_date) || "Recorded"}</dd></div>
-        <div><dt>Primary signal</dt><dd>{string(item.display_fields.primary_signal) || item.headline}</dd></div>
-        <div><dt>Resolved</dt><dd>{string(item.display_fields.resolved_claim_ids) || "—"}</dd></div>
-        <div><dt>Corrections</dt><dd>{string(item.display_fields.correction_count) || "0"}</dd></div>
+        <div><dt>{locale === "zh-Hant" ? "期次" : "Edition"}</dt><dd>{string(item.display_fields.edition_date) || (locale === "zh-Hant" ? "已記錄" : "Recorded")}</dd></div>
+        <div><dt>{locale === "zh-Hant" ? "主要訊號" : "Primary signal"}</dt><dd>{string(item.display_fields.primary_signal) || item.headline}</dd></div>
+        <div><dt>{locale === "zh-Hant" ? "已結算" : "Resolved"}</dt><dd>{string(item.display_fields.resolved_claim_ids) || "—"}</dd></div>
+        <div><dt>{locale === "zh-Hant" ? "修正" : "Corrections"}</dt><dd>{string(item.display_fields.correction_count) || "0"}</dd></div>
       </dl>
       <TrustLine item={item} onEvidence={onEvidence} />
     </article>
@@ -303,9 +314,10 @@ export function ArchiveSnapshot({ item, onEvidence }: ComponentProps) {
 }
 
 export function ConservativeFallback({ item, onEvidence }: ComponentProps) {
+  const { locale } = useLocale();
   return (
     <article className={`publication-module conservative-module ${sectionClass(item.section_id)}`}>
-      <ModuleHeading item={item} title="Verified signal" />
+      <ModuleHeading item={item} title={locale === "zh-Hant" ? "已驗證訊號" : "Verified signal"} />
       <p className="module-copy">{string(item.display_fields.observation ?? item.dek) || item.headline}</p>
       <TrustLine item={item} onEvidence={onEvidence} />
     </article>
@@ -313,16 +325,17 @@ export function ConservativeFallback({ item, onEvidence }: ComponentProps) {
 }
 
 export function TrustLine({ item, onEvidence, prominent = false }: ComponentProps & { prominent?: boolean }) {
+  const { locale } = useLocale();
   const claimId = item.trust.claim_id;
   return (
     <div className={`trust-line${prominent ? " trust-line-prominent" : ""}`}>
-      <span><b>Source</b> {item.trust.source_label}</span>
-      <span><b>Confidence</b> {confidence(item)}</span>
-      <span><b>Evidence</b> {item.trust.evidence_count}</span>
-      <span title={formatDateTime(item.times.data_as_of)}><b>Data as of</b> {formatRelativeTime(item.times.data_as_of)}</span>
-      {item.freshness_state === "aging" ? <span className="aging-label">Aging · still valid</span> : null}
-      {item.topic ? <Link className="record-link" href={topicPath(item.topic.title, item.topic.id)}>Topic</Link> : null}
-      {claimId ? <Link className="record-link" href={signalPath(item.headline, claimId)}>Signal record</Link> : null}
+      <span><b>{locale === "zh-Hant" ? "來源" : "Source"}</b> {item.trust.source_label}</span>
+      <span><b>{locale === "zh-Hant" ? "信心程度" : "Confidence"}</b> {confidence(item, locale)}</span>
+      <span><b>{locale === "zh-Hant" ? "證據" : "Evidence"}</b> {item.trust.evidence_count}</span>
+      <span title={formatDateTime(item.times.data_as_of, locale)}><b>{locale === "zh-Hant" ? "資料截至" : "Data as of"}</b> {formatRelativeTime(item.times.data_as_of, locale)}</span>
+      {item.freshness_state === "aging" ? <span className="aging-label">{locale === "zh-Hant" ? "較舊 · 仍有效" : "Aging · still valid"}</span> : null}
+      {item.topic ? <Link className="record-link" href={topicPath(item.topic.title, item.topic.id, locale)}>{locale === "zh-Hant" ? "主題" : "Topic"}</Link> : null}
+      {claimId ? <Link className="record-link" href={signalPath(item.headline, claimId, locale)}>{locale === "zh-Hant" ? "訊號紀錄" : "Signal record"}</Link> : null}
       {claimId ? (
         <button
           className="evidence-button"
@@ -330,7 +343,7 @@ export function TrustLine({ item, onEvidence, prominent = false }: ComponentProp
           type="button"
         >
           <Icon name="evidence" size={prominent ? 20 : 15} />
-          {prominent ? "View full evidence" : `Claim ${claimId.slice(0, 8)}`}
+          {prominent ? locale === "zh-Hant" ? "查看完整證據" : "View full evidence" : `Claim ${claimId.slice(0, 8)}`}
           <Icon name="arrow" size={prominent ? 20 : 14} />
         </button>
       ) : null}
@@ -339,19 +352,20 @@ export function TrustLine({ item, onEvidence, prominent = false }: ComponentProp
 }
 
 function ModuleHeading({ item, title }: { item: RenderPlanItem; title: string }) {
+  const { locale } = useLocale();
   return (
     <header className="module-heading">
       <p className="eyebrow">{title}</p>
-      <h2>{signalLink(item, item.headline)}</h2>
+      <h2>{signalLink(item, item.headline, locale)}</h2>
       {item.dek ? <p>{item.dek}</p> : null}
     </header>
   );
 }
 
-function signalLink(item: RenderPlanItem, label: string) {
+function signalLink(item: RenderPlanItem, label: string, locale: "en" | "zh-Hant") {
   const claimId = item.trust.claim_id;
   return claimId
-    ? <Link href={signalPath(label, claimId)}><DirectionalStatement text={label} /></Link>
+    ? <Link href={signalPath(label, claimId, locale)}><DirectionalStatement text={label} /></Link>
     : <DirectionalStatement text={label} />;
 }
 
@@ -366,6 +380,7 @@ function ProbabilityChart({
   title: string;
   compact?: boolean;
 }) {
+  const { locale } = useLocale();
   const width = 720;
   const height = compact ? 210 : 280;
   const left = 48;
@@ -419,7 +434,11 @@ function ProbabilityChart({
           </text>
         ))}
       </svg>
-      <figcaption>{`${quality.windowHours / 24}d · ${quality.observationCount} source observations · no interpolation`}</figcaption>
+      <figcaption>
+        {locale === "zh-Hant"
+          ? `${quality.windowHours / 24} 天 · ${quality.observationCount} 筆來源觀測 · 未插值`
+          : `${quality.windowHours / 24}d · ${quality.observationCount} source observations · no interpolation`}
+      </figcaption>
     </figure>
   );
 }
@@ -431,13 +450,18 @@ function ProbabilityDirection({
   delta: number | null;
   seriesStatus: string;
 }) {
+  const { locale } = useLocale();
   const glyph = delta === null ? "—" : Math.abs(delta) < 0.05 ? "→" : delta > 0 ? "↗" : "↘";
   const directionClass = delta === null || Math.abs(delta) < 0.05
     ? "trend-neutral"
     : delta > 0 ? "trend-up" : "trend-down";
   const label = delta === null
-    ? "No historical baseline is available; no curve is shown."
-    : `${signed(delta)} percentage points over 24 hours. Full seven-day series unavailable; no curve is shown.`;
+    ? locale === "zh-Hant"
+      ? "沒有可用的歷史基準，因此不顯示曲線。"
+      : "No historical baseline is available; no curve is shown."
+    : locale === "zh-Hant"
+      ? `24 小時內變動 ${signed(delta)} 個百分點。完整七天序列無法使用，因此不顯示曲線。`
+      : `${signed(delta)} percentage points over 24 hours. Full seven-day series unavailable; no curve is shown.`;
   return (
     <div
       aria-label={label}
@@ -446,8 +470,8 @@ function ProbabilityDirection({
     >
       <span aria-hidden="true">{glyph}</span>
       <p>
-        <strong>{delta === null ? "Current point only" : `${signed(delta)}pp · 24h`}</strong>
-        <small>Direction only · complete 7d history unavailable</small>
+        <strong>{delta === null ? locale === "zh-Hant" ? "僅目前觀測點" : "Current point only" : `${signed(delta)}pp · 24h`}</strong>
+        <small>{locale === "zh-Hant" ? "僅顯示方向 · 缺少完整七天歷史" : "Direction only · complete 7d history unavailable"}</small>
       </p>
     </div>
   );
@@ -464,14 +488,14 @@ interface ChartQuality { coverageStatus: string; observationCount: number; windo
 interface Stage { label: string; date?: string; detail?: string; current: boolean }
 interface TimelineEvent { date?: string; title: string; source?: string }
 
-function seriesPoints(value: unknown): ChartPoint[] {
+function seriesPoints(value: unknown, locale: "en" | "zh-Hant"): ChartPoint[] {
   if (!Array.isArray(value)) return [];
   const points: ChartPoint[] = [];
   for (const [index, raw] of value.entries()) {
     if (Array.isArray(raw)) {
       const numeric = probability(raw[1]);
       if (numeric !== null) points.push({
-        label: shortDate(raw[0]) || String(index + 1),
+        label: shortDate(raw[0], locale) || String(index + 1),
         timestamp: parseTimestamp(raw[0]),
         value: numeric,
       });
@@ -482,7 +506,7 @@ function seriesPoints(value: unknown): ChartPoint[] {
       const numeric = probability(record.value ?? record.probability ?? record.y ?? record.current_probability);
       const rawTimestamp = record.timestamp ?? record.date ?? record.x;
       if (numeric !== null) points.push({
-        label: shortDate(rawTimestamp) || String(index + 1),
+        label: shortDate(rawTimestamp, locale) || String(index + 1),
         timestamp: parseTimestamp(rawTimestamp),
         value: numeric,
       });
@@ -510,14 +534,14 @@ function chartableSeries(points: ChartPoint[]): TemporalChartPoint[] | null {
   return distinct >= 3 && Math.max(...values) - Math.min(...values) >= 0.5 ? temporal : null;
 }
 
-function transitionStages(fields: JsonRecord): Stage[] {
+function transitionStages(fields: JsonRecord, locale: "en" | "zh-Hant"): Stage[] {
   if (Array.isArray(fields.stages)) {
     return fields.stages.flatMap((raw, index) => {
       if (!raw || typeof raw !== "object") return [];
       const record = raw as JsonRecord;
       return [{
-        label: string(record.label ?? record.state ?? record.name) || `Stage ${index + 1}`,
-        date: shortDate(record.date ?? record.at),
+        label: string(record.label ?? record.state ?? record.name) || `${locale === "zh-Hant" ? "階段" : "Stage"} ${index + 1}`,
+        date: shortDate(record.date ?? record.at, locale),
         detail: string(record.detail ?? record.description) || undefined,
         current: Boolean(record.current) || index === (fields.stages as unknown[]).length - 1,
       }];
@@ -526,18 +550,18 @@ function transitionStages(fields: JsonRecord): Stage[] {
   const previous = string(fields.previous_state);
   const current = string(fields.current_state);
   const values: Stage[] = [];
-  if (previous) values.push({ label: humanize(previous), date: shortDate(fields.previous_date), current: false });
-  if (current) values.push({ label: humanize(current), date: shortDate(fields.transition_date ?? fields.effective_at), detail: string(fields.observation) || undefined, current: true });
+  if (previous) values.push({ label: humanize(previous), date: shortDate(fields.previous_date, locale), current: false });
+  if (current) values.push({ label: humanize(current), date: shortDate(fields.transition_date ?? fields.effective_at, locale), detail: string(fields.observation) || undefined, current: true });
   return values;
 }
 
-function evidenceEvents(value: unknown): TimelineEvent[] {
+function evidenceEvents(value: unknown, locale: "en" | "zh-Hant"): TimelineEvent[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((raw) => {
     if (!raw || typeof raw !== "object") return [];
     const record = raw as JsonRecord;
     const title = string(record.title ?? record.event ?? record.description);
-    return title ? [{ date: shortDate(record.date ?? record.at), title, source: string(record.source) || undefined }] : [];
+    return title ? [{ date: shortDate(record.date ?? record.at, locale), title, source: string(record.source) || undefined }] : [];
   });
 }
 
@@ -576,22 +600,30 @@ function signed(value: number): string {
   return `${value > 0 ? "+" : ""}${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}`;
 }
 
-function changeLabel(start: number | null, current: number, delta: number | null): string {
-  if (start === null) return `Current probability ${formatPercent(current)}`;
-  return `Probability changed from ${formatPercent(start)} to ${formatPercent(current)}${delta === null ? "" : `, ${signed(delta)} percentage points`}`;
+function changeLabel(
+  start: number | null,
+  current: number,
+  delta: number | null,
+  locale: "en" | "zh-Hant",
+): string {
+  if (start === null) return locale === "zh-Hant" ? `目前機率 ${formatPercent(current)}` : `Current probability ${formatPercent(current)}`;
+  return locale === "zh-Hant"
+    ? `機率從 ${formatPercent(start)} 變為 ${formatPercent(current)}${delta === null ? "" : `，變動 ${signed(delta)} 個百分點`}`
+    : `Probability changed from ${formatPercent(start)} to ${formatPercent(current)}${delta === null ? "" : `, ${signed(delta)} percentage points`}`;
 }
 
-function confidence(item: RenderPlanItem): string {
+function confidence(item: RenderPlanItem, locale: "en" | "zh-Hant"): string {
   const label = item.trust.confidence_label || item.trust.epistemic_status;
   if (label) return humanize(label);
-  if (item.trust.confidence === null || item.trust.confidence === undefined) return "Not scored";
+  if (item.trust.confidence === null || item.trust.confidence === undefined) return locale === "zh-Hant" ? "未評分" : "Not scored";
+  if (locale === "zh-Hant") return item.trust.confidence >= 0.8 ? "高" : item.trust.confidence >= 0.55 ? "中" : "低";
   return item.trust.confidence >= 0.8 ? "High" : item.trust.confidence >= 0.55 ? "Medium" : "Low";
 }
 
-function sectionName(sectionId: string): string {
-  if (sectionId === "rules-moved") return "Rules";
-  if (sectionId === "research-frontier") return "Research";
-  if (sectionId === "expectations-moved") return "Expectations";
+function sectionName(sectionId: string, locale: "en" | "zh-Hant"): string {
+  if (sectionId === "rules-moved") return locale === "zh-Hant" ? "規則變化" : "Rules";
+  if (sectionId === "research-frontier") return locale === "zh-Hant" ? "研究動向" : "Research";
+  if (sectionId === "expectations-moved") return locale === "zh-Hant" ? "預期變化" : "Expectations";
   return humanize(sectionId);
 }
 
@@ -601,10 +633,10 @@ function sectionClass(sectionId: string): string {
   return "section-expectations";
 }
 
-function shortDate(value: unknown): string {
+function shortDate(value: unknown, locale: "en" | "zh-Hant"): string {
   const raw = string(value);
   if (!raw) return "";
   const date = new Date(raw);
   if (Number.isNaN(date.getTime())) return raw;
-  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(date);
+  return new Intl.DateTimeFormat(locale, { month: "short", day: "numeric" }).format(date);
 }

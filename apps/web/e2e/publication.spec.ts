@@ -15,6 +15,7 @@ test.beforeEach(async ({ request }) => {
   await request.post("http://127.0.0.1:8001/__control/front-fail?count=0");
   await request.post("http://127.0.0.1:8001/__control/front-mode?value=full");
   await revalidate(request, "e2e-full");
+  await revalidate(request, "e2e-full", "zh-Hant");
 });
 
 test("hard retirement recompiles a complete page without empty modules", async ({ page, request }) => {
@@ -408,10 +409,46 @@ test("initial publication failure offers a working retry", async ({ page, reques
   await expect(page.getByRole("heading", { name: "September rate cut became 21 points more likely." })).toBeVisible();
 });
 
-async function revalidate(request: APIRequestContext, editionId: string) {
+test("serves Traditional Chinese as a locale view over the same public truth", async ({ page }) => {
+  await page.goto("/zh-TW/method");
+  await expect(page).toHaveURL(/\/zh-Hant\/method$/);
+  await expect(page.locator("html")).toHaveAttribute("lang", "zh-Hant");
+  await expect(
+    page.getByRole("heading", { name: "Open Signal 如何形成公開主張" }),
+  ).toBeVisible();
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    "href",
+    /\/zh-Hant\/method$/,
+  );
+  await expect(page.locator('link[rel="alternate"][hreflang="en"]')).toHaveAttribute(
+    "href",
+    /\/method$/,
+  );
+
+  await page.goto("/zh-Hant");
+  await expect(page.getByRole("heading", { name: /研究篩選/ })).toBeVisible();
+  await expect(page.getByText(/尚未有通過驗證的繁體中文呈現/)).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "September rate cut became 21 points more likely." }),
+  ).toBeVisible();
+
+  await page.goto("/zh-Hant/explore?topic_page=2");
+  await page
+    .getByRole("navigation", { name: "語言" })
+    .getByRole("link", { name: "EN", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/explore\?topic_page=2$/);
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+});
+
+async function revalidate(
+  request: APIRequestContext,
+  editionId: string,
+  locale: "en" | "zh-Hant" = "en",
+) {
   const response = await request.post("http://127.0.0.1:3000/api/revalidate", {
     headers: { Authorization: "Bearer e2e-revalidation-token" },
-    data: { edition_id: editionId, locale: "en", claim_ids: [] },
+    data: { edition_id: editionId, locale, claim_ids: [] },
   });
   expect(response.ok()).toBeTruthy();
 }

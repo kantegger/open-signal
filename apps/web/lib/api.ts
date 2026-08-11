@@ -17,6 +17,7 @@ export interface ClaimPageData {
     id: string;
     claim_type: string;
     public_statement: string;
+    source_public_statement?: string;
     status: string;
     desk_id: string;
     issued_at: string;

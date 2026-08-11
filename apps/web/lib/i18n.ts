@@ -1,19 +1,74 @@
-export const SUPPORTED_LOCALES = ["en"] as const;
+export const SUPPORTED_LOCALES = ["en", "zh-Hant"] as const;
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 
 export const DEFAULT_LOCALE: SupportedLocale = "en";
+export const TRADITIONAL_CHINESE_LOCALE: SupportedLocale = "zh-Hant";
 
-export const copy = {
+export interface UiCopy {
+  brand: string;
+  beta: string;
+  current: string;
+  explore: string;
+  expectations: string;
+  rules: string;
+  research: string;
+  method: string;
+  archive: string;
+  systemStatus: string;
+  operational: string;
+  unavailable: string;
+  checking: string;
+  composed: string;
+  lastVerified: string;
+  viewEvidence: string;
+  liveFeed: string;
+  recentFirst: string;
+  secondarySignals: string;
+  significantChanges: string;
+  retry: string;
+  skipToPublication: string;
+  primaryNavigation: string;
+  mobileNavigation: string;
+  openNavigation: string;
+  closeNavigation: string;
+  homeLabel: string;
+  language: string;
+  english: string;
+  traditionalChinese: string;
+  originalEnglishNotice: string;
+  notRecorded: string;
+  timeNotRecorded: string;
+  source: string;
+  confidence: string;
+  evidence: string;
+  verified: string;
+  status: string;
+  updated: string;
+  open: string;
+  page: string;
+  of: string;
+  sections: string;
+  claims: string;
+  signal: string;
+  topic: string;
+  edition: string;
+}
+
+export const copy: Record<SupportedLocale, UiCopy> = {
   en: {
     brand: "Open Signal",
     beta: "Public Beta",
     current: "Current",
+    explore: "Explore",
     expectations: "Expectations",
     rules: "Rules",
     research: "Research",
     method: "Method",
     archive: "Archive",
     systemStatus: "System status",
+    operational: "operational",
+    unavailable: "unavailable",
+    checking: "checking",
     composed: "Composed",
     lastVerified: "Last verified update",
     viewEvidence: "View full evidence",
@@ -22,14 +77,125 @@ export const copy = {
     secondarySignals: "Secondary signals",
     significantChanges: "Significant changes",
     retry: "Retry",
+    skipToPublication: "Skip to publication",
+    primaryNavigation: "Primary navigation",
+    mobileNavigation: "Mobile navigation",
+    openNavigation: "Open navigation",
+    closeNavigation: "Close navigation",
+    homeLabel: "Open Signal home",
+    language: "Language",
+    english: "English",
+    traditionalChinese: "繁體中文",
+    originalEnglishNotice:
+      "A verified Traditional Chinese presentation is not available for this record yet. The original English wording is preserved below.",
+    notRecorded: "Not recorded",
+    timeNotRecorded: "time not recorded",
+    source: "Source",
+    confidence: "Confidence",
+    evidence: "Evidence",
+    verified: "Verified",
+    status: "Status",
+    updated: "Updated",
+    open: "Open",
+    page: "Page",
+    of: "of",
+    sections: "Sections",
+    claims: "Claims",
+    signal: "Signal",
+    topic: "Topic",
+    edition: "Edition",
   },
-} as const;
+  "zh-Hant": {
+    brand: "Open Signal",
+    beta: "公開測試版",
+    current: "即時版面",
+    explore: "探索",
+    expectations: "預期變化",
+    rules: "規則變化",
+    research: "研究動向",
+    method: "方法",
+    archive: "典藏",
+    systemStatus: "系統狀態",
+    operational: "運作正常",
+    unavailable: "暫時無法使用",
+    checking: "檢查中",
+    composed: "編製時間",
+    lastVerified: "最近驗證更新",
+    viewEvidence: "查看完整證據",
+    liveFeed: "即時訊號",
+    recentFirst: "最新在前",
+    secondarySignals: "次要訊號",
+    significantChanges: "重大變化",
+    retry: "重試",
+    skipToPublication: "跳至出版內容",
+    primaryNavigation: "主要導覽",
+    mobileNavigation: "行動版導覽",
+    openNavigation: "開啟導覽",
+    closeNavigation: "關閉導覽",
+    homeLabel: "Open Signal 首頁",
+    language: "語言",
+    english: "English",
+    traditionalChinese: "繁體中文",
+    originalEnglishNotice:
+      "此筆紀錄尚未有通過驗證的繁體中文呈現；以下保留不可變的英文原文，數字、日期與狀態均未改寫。",
+    notRecorded: "尚未記錄",
+    timeNotRecorded: "時間尚未記錄",
+    source: "來源",
+    confidence: "信心程度",
+    evidence: "證據",
+    verified: "已驗證",
+    status: "狀態",
+    updated: "更新",
+    open: "仍有效",
+    page: "第",
+    of: "頁，共",
+    sections: "區段",
+    claims: "主張",
+    signal: "訊號",
+    topic: "主題",
+    edition: "期次",
+  },
+};
+
+export function isSupportedLocale(value: unknown): value is SupportedLocale {
+  return typeof value === "string" && SUPPORTED_LOCALES.includes(value as SupportedLocale);
+}
+
+export function normalizeLocale(value: unknown): SupportedLocale {
+  return isSupportedLocale(value) ? value : DEFAULT_LOCALE;
+}
+
+export function localePath(path: string, locale: SupportedLocale): string {
+  const suffixIndex = path.search(/[?#]/u);
+  const pathname = suffixIndex === -1 ? path : path.slice(0, suffixIndex);
+  const suffix = suffixIndex === -1 ? "" : path.slice(suffixIndex);
+  const normalizedPathname = stripLocalePrefix(pathname || "/");
+  if (locale === DEFAULT_LOCALE) return `${normalizedPathname}${suffix}`;
+  const localized = normalizedPathname === "/" ? `/${locale}` : `/${locale}${normalizedPathname}`;
+  return `${localized}${suffix}`;
+}
+
+export function stripLocalePrefix(pathname: string): string {
+  for (const locale of SUPPORTED_LOCALES) {
+    if (locale === DEFAULT_LOCALE) continue;
+    if (pathname === `/${locale}`) return "/";
+    if (pathname.startsWith(`/${locale}/`)) return pathname.slice(locale.length + 1);
+  }
+  return pathname.startsWith("/") ? pathname : `/${pathname}`;
+}
+
+export function languageAlternates(path: string): Record<SupportedLocale, string> {
+  return {
+    en: localePath(path, "en"),
+    "zh-Hant": localePath(path, "zh-Hant"),
+  };
+}
 
 export function formatDateTime(
   iso: string | null | undefined,
   locale: string = DEFAULT_LOCALE,
 ): string {
-  if (!iso) return "Not recorded";
+  if (!iso) return copy[normalizeLocale(locale)].notRecorded;
   const value = new Date(iso);
   if (Number.isNaN(value.getTime())) return iso;
   return new Intl.DateTimeFormat(locale, {
@@ -61,7 +227,7 @@ export function formatRelativeTime(
   iso: string | null | undefined,
   locale: string = DEFAULT_LOCALE,
 ): string {
-  if (!iso) return "time not recorded";
+  if (!iso) return copy[normalizeLocale(locale)].timeNotRecorded;
   const time = new Date(iso).getTime();
   if (Number.isNaN(time)) return iso;
   const seconds = Math.round((time - Date.now()) / 1000);

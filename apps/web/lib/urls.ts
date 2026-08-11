@@ -1,3 +1,5 @@
+import { DEFAULT_LOCALE, localePath, type SupportedLocale } from "./i18n";
+
 const UUID_PATTERN = /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i;
 
 export function slugify(value: string, fallback = "signal"): string {
@@ -11,16 +13,27 @@ export function slugify(value: string, fallback = "signal"): string {
   return slug || fallback;
 }
 
-export function signalPath(title: string, claimId: string): string {
-  return `/signals/${slugify(title)}--${claimId}`;
+export function signalPath(
+  title: string,
+  claimId: string,
+  locale: SupportedLocale = DEFAULT_LOCALE,
+): string {
+  return localePath(`/signals/${slugify(title)}--${claimId}`, locale);
 }
 
-export function topicPath(title: string, topicId: string): string {
-  return `/topics/${slugify(title, "topic")}--${topicId}`;
+export function topicPath(
+  title: string,
+  topicId: string,
+  locale: SupportedLocale = DEFAULT_LOCALE,
+): string {
+  return localePath(`/topics/${slugify(title, "topic")}--${topicId}`, locale);
 }
 
-export function editionPath(editionId: string): string {
-  return `/editions/${editionId}`;
+export function editionPath(
+  editionId: string,
+  locale: SupportedLocale = DEFAULT_LOCALE,
+): string {
+  return localePath(`/editions/${editionId}`, locale);
 }
 
 export function extractUuid(value: string): string | null {
