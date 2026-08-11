@@ -6,6 +6,7 @@ import json
 import os
 import uuid
 from datetime import UTC, date, datetime
+from unittest.mock import patch
 
 import pytest
 from open_signal.api.editions import FrontPagePresenter
@@ -584,21 +585,11 @@ def test_archive_snapshot(writer, engine) -> None:
 
 
 def test_freshness_reconcile_backfills_publication_context(writer, engine) -> None:
-    from sqlalchemy import text
-
     _cleanup(engine)
-    initial = writer.build_edition(
-        [_candidate("c1")],
-        generated_at=datetime(2026, 8, 7, 13, tzinfo=UTC),
-    )
-    with engine.begin() as conn:
-        conn.execute(
-            text(
-                "UPDATE daily_editions "
-                "SET edition_payload = edition_payload - 'publication_context' "
-                "WHERE id = :edition"
-            ),
-            {"edition": initial["edition_id"]},
+    with patch.object(writer.context_builder, "capture", return_value={}):
+        writer.build_edition(
+            [_candidate("c1")],
+            generated_at=datetime(2026, 8, 7, 13, tzinfo=UTC),
         )
 
     refreshed = writer.reconcile_freshness(
@@ -615,22 +606,18 @@ def test_freshness_reconcile_backfills_publication_context(writer, engine) -> No
     _cleanup(engine)
 
 
-def test_freshness_reconcile_applies_new_composer_version(writer, engine) -> None:
-    from sqlalchemy import text
+def test_freshness_reconcile_applies_new_composer_version(
+    writer, engine, monkeypatch
+) -> None:
+    import open_signal.composer.edition_writer as edition_writer_module
 
     _cleanup(engine)
-    initial = writer.build_edition(
+    monkeypatch.setattr(edition_writer_module, "COMPOSER_VERSION", "os-048")
+    writer.build_edition(
         [_candidate("c1")],
         generated_at=datetime(2026, 8, 7, 13, tzinfo=UTC),
     )
-    with engine.begin() as conn:
-        conn.execute(
-            text(
-                "UPDATE daily_editions SET composer_version = 'os-048' "
-                "WHERE id = :edition"
-            ),
-            {"edition": initial["edition_id"]},
-        )
+    monkeypatch.setattr(edition_writer_module, "COMPOSER_VERSION", "os-052")
 
     refreshed = writer.reconcile_freshness(
         generated_at=datetime(2026, 8, 7, 14, tzinfo=UTC)

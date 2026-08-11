@@ -41,6 +41,7 @@ class RulesSectionService:
                     WHERE r.source_id = :source
                       AND r.record_type = 'document'
                       AND r.status = 'active'
+                      AND r.payload IS NOT NULL
                       AND NOT EXISTS (
                         SELECT 1 FROM rule_versions version
                         WHERE r.id = ANY(version.source_document_ids)

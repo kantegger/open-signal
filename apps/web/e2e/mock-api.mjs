@@ -257,6 +257,65 @@ const server = http.createServer(async (request, response) => {
     });
     return;
   }
+  if (request.method === "GET" && url.pathname === "/api/editions") {
+    const items = frontPageFixture.archive.map((edition) => ({
+      id: edition.id,
+      edition_date: edition.edition_date,
+      generated_at: edition.composed_at,
+      status: edition.status,
+      sections: edition.sections,
+      claim_count: edition.claim_count,
+      correction_count: edition.correction_count,
+      trigger_type: edition.trigger_type,
+      first_published_at: edition.composed_at,
+      record_class: "public_permanent",
+      payload_hash: "a".repeat(64),
+      event_count: 1,
+      latest_event_type: "published",
+      latest_event_at: edition.composed_at,
+    }));
+    json(response, 200, {
+      items,
+      next_cursor: null,
+      has_more: false,
+      page_size: 50,
+      total_count: items.length,
+      filters: { year: null, section: null, status: null },
+      facets: {
+        years: [...new Set(items.map((item) => Number(item.edition_date.slice(0, 4))))],
+        sections: [...new Set(items.flatMap((item) => item.sections))],
+        statuses: [...new Set(items.map((item) => item.status))],
+      },
+    });
+    return;
+  }
+  if (request.method === "GET" && /^\/api\/editions\/[^/]+$/.test(url.pathname)) {
+    const editionId = decodeURIComponent(url.pathname.split("/").at(-1));
+    const composedAt = frontPageFixture.snapshot.composed_at;
+    json(response, 200, {
+      id: editionId,
+      edition_date: frontPageFixture.snapshot.edition_date,
+      generated_at: composedAt,
+      status: frontPageFixture.snapshot.status,
+      first_published_at: composedAt,
+      record_class: "public_permanent",
+      payload_hash: "a".repeat(64),
+      events: [
+        {
+          id: "d1111111-1111-4111-8111-111111111111",
+          sequence_no: 1,
+          event_type: "published",
+          actor: "composer/os-052",
+          reason: "scheduled",
+          related_edition_id: null,
+          previous_event_hash: null,
+          event_hash: "b".repeat(64),
+          created_at: composedAt,
+        },
+      ],
+    });
+    return;
+  }
   if (request.method === "GET" && url.pathname === "/api/seo-index") {
     json(response, 200, {
       claims: [{

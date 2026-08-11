@@ -9,6 +9,7 @@ same transaction.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import uuid
 from datetime import date, datetime, timedelta, timezone
@@ -132,13 +133,15 @@ class EditionWriter:
                        included_claim_ids, composer_version, component_versions,
                        generation_cost_usd, correction_count, edition_payload,
                        trigger_type, supersedes_edition_id, freshness_summary,
-                       published_at, policy_version)
+                       published_at, first_published_at, record_class,
+                       policy_version)
                     VALUES
                       (:date, :generated, :status, :sections, :claims,
                        :version, CAST(:components AS jsonb), 0, 0,
                        CAST(:payload AS jsonb), :trigger, :supersedes,
-                       CAST(:freshness AS jsonb), :published, :policy)
-                    RETURNING id
+                       CAST(:freshness AS jsonb), :published, :published,
+                       'public_permanent', :policy)
+                    RETURNING id, payload_hash
                     """
                 ),
                 {
@@ -158,6 +161,7 @@ class EditionWriter:
                 },
             ).fetchone()
             edition_id = str(edition_row[0])
+            payload_hash = str(edition_row[1])
 
             for slot_id in SLOT_ORDER:
                 for position, item in enumerate(plan["slots"].get(slot_id, [])):
@@ -185,6 +189,33 @@ class EditionWriter:
                     "policy_version": self.composer.freshness_evaluator.policy_version,
                 },
             )
+            _insert_edition_event(
+                conn,
+                edition_id=edition_id,
+                event_type="published",
+                actor=f"composer/{COMPOSER_VERSION}",
+                reason=trigger_type,
+                related_edition_id=previous_id,
+                detail={
+                    "channel": PUBLICATION_CHANNEL,
+                    "status": status,
+                    "payload_hash": payload_hash,
+                    "section_ids": section_ids,
+                    "claim_count": len(included_claim_ids),
+                },
+                created_at=generated_at,
+            )
+            if previous_id:
+                _insert_edition_event(
+                    conn,
+                    edition_id=previous_id,
+                    event_type="superseded",
+                    actor=f"composer/{COMPOSER_VERSION}",
+                    reason=trigger_type,
+                    related_edition_id=edition_id,
+                    detail={"channel": PUBLICATION_CHANNEL},
+                    created_at=generated_at,
+                )
 
             # This pointer change is the final statement in the transaction.
             # Readers therefore see either the complete old snapshot or the
@@ -508,11 +539,21 @@ class EditionWriter:
                     "included_claim_ids, composer_version, component_versions, "
                     "generation_cost_usd, correction_count, edition_payload, "
                     "trigger_type, supersedes_edition_id, freshness_summary, "
-                    "published_at, policy_version "
+                    "published_at, policy_version, first_published_at, "
+                    "record_class, payload_hash "
                     "FROM daily_editions WHERE id = :id"
                 ),
                 {"id": edition_id},
             ).fetchone()
+            events = conn.execute(
+                text(
+                    "SELECT id, sequence_no, event_type, actor, reason, related_edition_id, "
+                    "detail, previous_event_hash, event_hash, created_at "
+                    "FROM edition_events WHERE edition_id = :id "
+                    "ORDER BY sequence_no"
+                ),
+                {"id": edition_id},
+            ).fetchall()
         if row is None:
             return None
         return {
@@ -532,6 +573,24 @@ class EditionWriter:
             "freshness_summary": _json_object(row[12]),
             "published_at": row[13].isoformat() if row[13] else None,
             "policy_version": row[14],
+            "first_published_at": row[15].isoformat() if row[15] else None,
+            "record_class": row[16],
+            "payload_hash": row[17],
+            "events": [
+                {
+                    "id": str(event[0]),
+                    "sequence_no": int(event[1]),
+                    "event_type": event[2],
+                    "actor": event[3],
+                    "reason": event[4],
+                    "related_edition_id": str(event[5]) if event[5] else None,
+                    "detail": _json_object(event[6]),
+                    "previous_event_hash": event[7],
+                    "event_hash": event[8],
+                    "created_at": event[9].isoformat(),
+                }
+                for event in events
+            ],
         }
 
     def current_edition_id(self) -> str | None:
@@ -926,13 +985,15 @@ class EditionWriter:
                        included_claim_ids, composer_version, component_versions,
                        generation_cost_usd, correction_count, edition_payload,
                        trigger_type, supersedes_edition_id, freshness_summary,
-                       published_at, policy_version)
+                       published_at, first_published_at, record_class,
+                       policy_version)
                     VALUES
                       (:date, :generated, 'corrected', :sections, :claims,
                        :version, CAST(:components AS jsonb), 0, :corrections,
                        CAST(:payload AS jsonb), :trigger, :supersedes,
-                       CAST(:freshness AS jsonb), :published, :policy)
-                    RETURNING id
+                       CAST(:freshness AS jsonb), :published, :published,
+                       'public_permanent', :policy)
+                    RETURNING id, payload_hash
                     """
                 ),
                 {
@@ -952,6 +1013,7 @@ class EditionWriter:
                 },
             ).fetchone()
             new_id = str(row[0])
+            payload_hash = str(row[1])
             conn.execute(
                 text(
                     """
@@ -988,6 +1050,41 @@ class EditionWriter:
                     "policy_version": source["policy_version"],
                 },
             )
+            _insert_edition_event(
+                conn,
+                edition_id=new_id,
+                event_type="published",
+                actor=actor,
+                reason=trigger_type,
+                related_edition_id=edition_id,
+                detail={
+                    "channel": PUBLICATION_CHANNEL,
+                    "status": "corrected",
+                    "payload_hash": payload_hash,
+                },
+                created_at=generated_at,
+            )
+            _insert_edition_event(
+                conn,
+                edition_id=new_id,
+                event_type="corrected",
+                actor=actor,
+                reason=reason,
+                related_edition_id=edition_id,
+                detail={"trigger_type": trigger_type},
+                created_at=generated_at,
+            )
+            if previous_id:
+                _insert_edition_event(
+                    conn,
+                    edition_id=previous_id,
+                    event_type="superseded",
+                    actor=actor,
+                    reason=trigger_type,
+                    related_edition_id=new_id,
+                    detail={"channel": PUBLICATION_CHANNEL},
+                    created_at=generated_at,
+                )
             conn.execute(
                 text(
                     """
@@ -1031,6 +1128,78 @@ def _insert_audit_event(
             "actor": actor,
             "target": target,
             "detail": _dumps(detail),
+        },
+    )
+
+
+def _insert_edition_event(
+    conn: Any,
+    *,
+    edition_id: str,
+    event_type: str,
+    actor: str,
+    reason: str | None,
+    related_edition_id: str | None,
+    detail: dict[str, Any],
+    created_at: datetime,
+) -> None:
+    """Append one hash-linked lifecycle event for an immutable Edition."""
+    conn.execute(
+        text("SELECT id FROM daily_editions WHERE id = :id FOR UPDATE"),
+        {"id": uuid.UUID(edition_id)},
+    )
+    previous = conn.execute(
+        text(
+            "SELECT sequence_no, event_hash FROM edition_events "
+            "WHERE edition_id = :id ORDER BY sequence_no DESC LIMIT 1"
+        ),
+        {"id": uuid.UUID(edition_id)},
+    ).fetchone()
+    sequence_no = int(previous[0]) + 1 if previous else 1
+    previous_hash = str(previous[1]) if previous else None
+    body = {
+        "edition_id": edition_id,
+        "sequence_no": sequence_no,
+        "event_type": event_type,
+        "actor": actor,
+        "reason": reason,
+        "related_edition_id": related_edition_id,
+        "detail": detail,
+        "previous_event_hash": previous_hash,
+        "created_at": _utc(created_at).isoformat(),
+    }
+    event_hash = hashlib.sha256(
+        json.dumps(
+            body,
+            default=str,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    conn.execute(
+        text(
+            """
+            INSERT INTO edition_events
+              (edition_id, sequence_no, event_type, actor, reason,
+               related_edition_id,
+               detail, previous_event_hash, event_hash, created_at)
+            VALUES
+              (:edition, :sequence_no, :event_type, :actor, :reason, :related,
+               CAST(:detail AS jsonb), :previous_hash, :event_hash, :created)
+            """
+        ),
+        {
+            "edition": uuid.UUID(edition_id),
+            "sequence_no": sequence_no,
+            "event_type": event_type,
+            "actor": actor,
+            "reason": reason,
+            "related": _uuid_or_none(related_edition_id),
+            "detail": _dumps(detail),
+            "previous_hash": previous_hash,
+            "event_hash": event_hash,
+            "created": _utc(created_at),
         },
     )
 

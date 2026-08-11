@@ -1,4 +1,4 @@
-version: "2.0.0"
+version: "2.1.0"
 
 # Production is launched by one hourly platform Cron. Every occurrence is
 # still bucketed independently so slower desks run only on their own cadence.
@@ -136,3 +136,16 @@ schedules:
     payload:
       reason: "snapshot_delivery"
       locale: "en"
+
+  # Deliberately read-only. This classifies storage pressure once per day and
+  # cannot upload, clear payloads, or delete rows.
+  - id: "raw-retention-report"
+    job_type: "retention.report_raw"
+    queue_name: "analysis"
+    cadence_seconds: 86400
+    phase_offset_seconds: 1800
+    priority: 95
+    maximum_attempts: 1
+    payload:
+      mode: "report_only"
+      policy_version: "1.0.0"

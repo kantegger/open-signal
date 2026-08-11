@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,7 @@ from open_signal.orchestration.research import ResearchSectionService
 from open_signal.orchestration.rules import RulesSectionService
 from open_signal.orchestration.sources import SourceDiscoveryService
 from open_signal.publication.delivery import from_environment
+from open_signal.retention import RawRetentionPlanner
 
 
 class ProductionHandlers:
@@ -31,6 +33,7 @@ class ProductionHandlers:
         self.expectations = ExpectationsSectionService(engine)
         self.rules = RulesSectionService(engine)
         self.research = ResearchSectionService(engine)
+        self.retention = RawRetentionPlanner(engine)
         self.delivery = from_environment(engine)
 
     def registry(self) -> dict[str, Any]:
@@ -43,6 +46,7 @@ class ProductionHandlers:
             "agent.investigate": self.investigate,
             "composer.generate_edition": self.reconcile_publication,
             "publication.deliver_snapshot": self.deliver_publication,
+            "retention.report_raw": self.report_raw_retention,
         }
 
     def discover_source(self, job: ClaimedJob) -> dict[str, Any]:
@@ -85,6 +89,20 @@ class ProductionHandlers:
         if self.delivery is None:
             return {"status": "disabled"}
         return self.delivery.deliver(locale=str(job.payload.get("locale") or "en"))
+
+    def report_raw_retention(self, job: ClaimedJob) -> dict[str, Any]:
+        mode = str(job.payload.get("mode") or "")
+        if mode != "report_only":
+            raise ValueError("raw retention handler accepts report_only mode only")
+        policy_version = str(job.payload.get("policy_version") or "")
+        if policy_version != self.retention.policy.version:
+            raise ValueError(
+                "retention schedule/code policy mismatch: "
+                f"{policy_version!r} != {self.retention.policy.version!r}"
+            )
+        scheduled_for = job.payload.get("_scheduled_for")
+        as_of = datetime.fromisoformat(str(scheduled_for)) if scheduled_for else None
+        return self.retention.plan(as_of=as_of)
 
 
 def _require_section(job: ClaimedJob, expected: str) -> None:

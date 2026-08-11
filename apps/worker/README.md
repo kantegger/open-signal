@@ -28,3 +28,12 @@ through `OPEN_SIGNAL_SCHEDULED_AT` so a delayed or duplicate invocation still
 uses the intended deterministic Job buckets. Longer desk cadences remain in the
 machine-readable schedule registry and are idempotently skipped between due
 boundaries.
+
+The retention schedule runs once per day in report-only mode. It classifies
+superseded raw payloads and logs logical byte counts, rights state and provenance
+holds. It has no upload, update or delete path. Run the same read-only report on
+demand with:
+
+```powershell
+python scripts/report_raw_retention.py
+```

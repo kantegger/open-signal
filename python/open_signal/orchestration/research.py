@@ -219,6 +219,7 @@ class ResearchSectionService:
                     WHERE source_id = :source
                       AND record_type = :record_type
                       AND status = 'active'
+                      AND payload IS NOT NULL
                     ORDER BY external_id, last_seen_at DESC, ingested_at DESC
                     """
                 ),

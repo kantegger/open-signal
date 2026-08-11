@@ -15,6 +15,7 @@ from sqlalchemy import (
     ARRAY,
     BigInteger,
     Boolean,
+    CheckConstraint,
     Column,
     Date,
     DateTime,
@@ -102,7 +103,7 @@ raw_source_records = Table(
     Column("external_parent_id", Text),
     Column("record_type", Text, nullable=False),
     Column("mime_type", Text, nullable=False),
-    Column("payload", JSONB, nullable=False),
+    Column("payload", JSONB),
     Column("source_created_at", _tz),
     Column("source_updated_at", _tz),
     Column("first_seen_at", _tz, nullable=False, server_default=text("now()")),
@@ -113,7 +114,49 @@ raw_source_records = Table(
     Column("rights_manifest_id", Uuid(), ForeignKey("rights_manifests.id")),
     Column("adapter_version", Text, nullable=False),
     Column("status", Text, nullable=False, server_default="active"),
+    Column("retention_state", Text, nullable=False, server_default="hot"),
+    Column("payload_storage_key", Text),
+    Column("payload_archive_hash", Text),
+    Column("payload_uncompressed_bytes", BigInteger),
+    Column("payload_compressed_bytes", BigInteger),
+    Column("payload_compression", Text),
+    Column("payload_archived_at", _tz),
+    Column("retention_policy_version", Text),
     UniqueConstraint("source_id", "external_id", "content_hash"),
+    CheckConstraint(
+        "(retention_state = 'hot' AND payload IS NOT NULL AND "
+        "((payload_storage_key IS NULL AND payload_archive_hash IS NULL AND "
+        "payload_uncompressed_bytes IS NULL AND payload_compressed_bytes IS NULL AND "
+        "payload_compression IS NULL AND payload_archived_at IS NULL AND "
+        "retention_policy_version IS NULL) OR "
+        "(payload_storage_key IS NOT NULL AND payload_archive_hash IS NOT NULL AND "
+        "payload_uncompressed_bytes IS NOT NULL AND payload_compressed_bytes IS NOT NULL AND "
+        "payload_compression IS NOT NULL AND payload_archived_at IS NOT NULL AND "
+        "retention_policy_version IS NOT NULL))) OR "
+        "(retention_state = 'cold' AND payload IS NULL AND "
+        "payload_storage_key IS NOT NULL AND payload_archive_hash IS NOT NULL AND "
+        "payload_uncompressed_bytes IS NOT NULL AND payload_compressed_bytes IS NOT NULL AND "
+        "payload_compression IS NOT NULL AND payload_archived_at IS NOT NULL AND "
+        "retention_policy_version IS NOT NULL)",
+        name="raw_source_records_payload_location_check",
+    ),
+    CheckConstraint(
+        "retention_state IN ('hot', 'cold')",
+        name="raw_source_records_retention_state_check",
+    ),
+    CheckConstraint(
+        "payload_archive_hash IS NULL OR payload_archive_hash ~ '^[0-9a-f]{64}$'",
+        name="raw_source_records_archive_hash_check",
+    ),
+    CheckConstraint(
+        "payload_compression IS NULL OR payload_compression = 'gzip'",
+        name="raw_source_records_compression_check",
+    ),
+    CheckConstraint(
+        "(payload_uncompressed_bytes IS NULL OR payload_uncompressed_bytes >= 0) AND "
+        "(payload_compressed_bytes IS NULL OR payload_compressed_bytes >= 0)",
+        name="raw_source_records_archive_size_check",
+    ),
     Index("raw_source_records_source_external_idx", "source_id", "external_id"),
     Index("raw_source_records_updated_idx", "source_updated_at", postgresql_ops={"source_updated_at": "DESC"}),
 )
@@ -707,8 +750,66 @@ daily_editions = Table(
     Column("supersedes_edition_id", Uuid()),
     Column("freshness_summary", JSONB, nullable=False, server_default="{}"),
     Column("published_at", _tz),
+    Column("first_published_at", _tz),
+    Column("record_class", Text, nullable=False, server_default="operational_ttl"),
+    Column("payload_hash", Text, nullable=False),
     Column("policy_version", Text, nullable=False, server_default="0.1.0"),
+    CheckConstraint(
+        "record_class IN ('public_permanent', 'operational_ttl')",
+        name="daily_editions_record_class_check",
+    ),
+    CheckConstraint(
+        "(record_class = 'public_permanent' AND first_published_at IS NOT NULL) "
+        "OR (record_class = 'operational_ttl' AND first_published_at IS NULL)",
+        name="daily_editions_public_class_check",
+    ),
+    CheckConstraint(
+        "payload_hash ~ '^[0-9a-f]{64}$'",
+        name="daily_editions_payload_hash_check",
+    ),
     UniqueConstraint("edition_date", "generated_at"),
+)
+
+raw_payload_archive_events = Table(
+    "raw_payload_archive_events",
+    metadata,
+    Column("id", Uuid(), primary_key=True, server_default=text("gen_random_uuid()")),
+    Column(
+        "raw_source_record_id",
+        Uuid(),
+        ForeignKey("raw_source_records.id", ondelete="RESTRICT"),
+        nullable=False,
+        unique=True,
+    ),
+    Column("source_id", Uuid(), ForeignKey("sources.id", ondelete="RESTRICT"), nullable=False),
+    Column("storage_key", Text, nullable=False),
+    Column("archive_hash", Text, nullable=False),
+    Column("source_content_hash", Text, nullable=False),
+    Column("uncompressed_bytes", BigInteger, nullable=False),
+    Column("compressed_bytes", BigInteger, nullable=False),
+    Column("compression", Text, nullable=False),
+    Column("policy_version", Text, nullable=False),
+    Column("actor", Text, nullable=False),
+    Column("detail", JSONB, nullable=False, server_default="{}"),
+    Column("created_at", _tz, nullable=False, server_default=text("now()")),
+    CheckConstraint(
+        "archive_hash ~ '^[0-9a-f]{64}$' AND "
+        "source_content_hash ~ '^[0-9a-f]{64}$'",
+        name="raw_payload_archive_events_hash_check",
+    ),
+    CheckConstraint(
+        "uncompressed_bytes >= 0 AND compressed_bytes >= 0",
+        name="raw_payload_archive_events_size_check",
+    ),
+    CheckConstraint(
+        "compression = 'gzip'",
+        name="raw_payload_archive_events_compression_check",
+    ),
+    Index(
+        "raw_payload_archive_events_created_idx",
+        "created_at",
+        postgresql_ops={"created_at": "DESC"},
+    ),
 )
 
 render_plans = Table(
@@ -738,6 +839,43 @@ render_plans = Table(
     Column("freshness_state", Text, nullable=False, server_default="current"),
     Column("expires_at", _tz),
     Index("render_plans_edition_slot_position_uidx", "edition_id", "slot_id", "position", unique=True),
+)
+
+edition_events = Table(
+    "edition_events",
+    metadata,
+    Column("id", Uuid(), primary_key=True, server_default=text("gen_random_uuid()")),
+    Column(
+        "edition_id",
+        Uuid(),
+        ForeignKey("daily_editions.id", ondelete="RESTRICT"),
+        nullable=False,
+    ),
+    Column("sequence_no", BigInteger, nullable=False),
+    Column("event_type", Text, nullable=False),
+    Column("actor", Text, nullable=False),
+    Column("reason", Text),
+    Column(
+        "related_edition_id",
+        Uuid(),
+        ForeignKey("daily_editions.id", ondelete="RESTRICT"),
+    ),
+    Column("detail", JSONB, nullable=False, server_default="{}"),
+    Column("previous_event_hash", Text),
+    Column("event_hash", Text, nullable=False, unique=True),
+    Column("created_at", _tz, nullable=False, server_default=text("now()")),
+    CheckConstraint(
+        "event_type IN ('published', 'corrected', 'withdrawn', "
+        "'superseded', 'storage_migrated')",
+        name="edition_events_type_check",
+    ),
+    CheckConstraint(
+        "event_hash ~ '^[0-9a-f]{64}$' AND (previous_event_hash IS NULL OR "
+        "previous_event_hash ~ '^[0-9a-f]{64}$')",
+        name="edition_events_hash_check",
+    ),
+    UniqueConstraint("edition_id", "sequence_no", name="edition_events_sequence_unique"),
+    Index("edition_events_edition_sequence_idx", "edition_id", "sequence_no"),
 )
 
 publication_channels = Table(

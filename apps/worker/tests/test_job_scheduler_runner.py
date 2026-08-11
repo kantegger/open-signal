@@ -117,6 +117,21 @@ def test_research_schedule_revision_matches_candidate_contract() -> None:
     assert schedule.payload["candidate_version"] == CANDIDATE_VERSION
 
 
+def test_retention_schedule_is_report_only() -> None:
+    schedule = next(
+        item
+        for item in Registry.load().job_schedules()
+        if item.id == "raw-retention-report"
+    )
+
+    assert schedule.job_type == "retention.report_raw"
+    assert schedule.cadence_seconds == 86400
+    assert schedule.payload == {
+        "mode": "report_only",
+        "policy_version": "1.0.0",
+    }
+
+
 def test_worker_drains_dependency_stages_in_order() -> None:
     queue = FakeQueue()
     queue.pending["source"] = [

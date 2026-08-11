@@ -27,8 +27,8 @@ def test_load_counts(registry: Registry) -> None:
     assert len(registry.templates()) == 3
     assert len(registry.freshness_policies()) == 7
     assert registry.freshness_policy_version == "1.0.0"
-    assert len(registry.job_schedules()) == 11
-    assert registry.job_schedule_version == "2.0.0"
+    assert len(registry.job_schedules()) == 12
+    assert registry.job_schedule_version == "2.1.0"
 
 
 def test_validation_passes(registry: Registry) -> None:

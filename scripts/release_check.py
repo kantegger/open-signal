@@ -15,7 +15,7 @@ from typing import Any
 from sqlalchemy import create_engine, text
 
 RESULT = dict[str, Any]
-MIGRATION_HEAD = "0011"
+MIGRATION_HEAD = "0013"
 MIN_OPS_TOKEN_LENGTH = 32
 
 

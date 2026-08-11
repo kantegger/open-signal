@@ -8,9 +8,6 @@ from typing import Any
 from sqlalchemy import text
 
 PUBLIC_CLAIM_STATUSES = ("verified", "published", "active")
-PUBLIC_EDITION_STATUSES = ("published", "sparse", "beta", "corrected")
-
-
 class TopicPagePresenter:
     """Assemble one long-lived Canonical Expectation page."""
 
@@ -233,12 +230,11 @@ class SeoIndexPresenter:
                            included_section_ids, included_claim_ids,
                            correction_count, trigger_type
                     FROM daily_editions
-                    WHERE status = ANY(CAST(:statuses AS text[]))
+                    WHERE first_published_at IS NOT NULL
                     ORDER BY generated_at DESC
                     LIMIT 250
                     """
-                ),
-                {"statuses": list(PUBLIC_EDITION_STATUSES)},
+                )
             ).fetchall()
         return {
             "claims": [

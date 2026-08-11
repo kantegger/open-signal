@@ -3,6 +3,8 @@ import "server-only";
 import {
   ApiError,
   type ClaimPageData,
+  type EditionArchiveData,
+  type EditionRecordData,
   type ExploreData,
   type FrontPageData,
   type JsonRecord,
@@ -107,6 +109,38 @@ export async function fetchSeoIndexServer(): Promise<SeoIndexData> {
   return fetchJson<SeoIndexData>(
     `${apiBase()}/api/seo-index?limit=1000`,
     ["seo-index"],
+    INDEX_CACHE_SECONDS,
+  );
+}
+
+export async function fetchEditionRecordServer(
+  editionId: string,
+): Promise<EditionRecordData> {
+  return fetchJson<EditionRecordData>(
+    `${apiBase()}/api/editions/${encodeURIComponent(editionId)}`,
+    [`edition-record:${editionId}`],
+    300,
+  );
+}
+
+export async function fetchEditionArchiveServer(params: {
+  cursor?: string;
+  year?: number;
+  section?: string;
+  status?: string;
+  limit?: number;
+} = {}): Promise<EditionArchiveData> {
+  const query = new URLSearchParams({ limit: String(params.limit ?? 50) });
+  if (params.cursor) query.set("cursor", params.cursor);
+  if (params.year) query.set("year", String(params.year));
+  if (params.section) query.set("section", params.section);
+  if (params.status) query.set("status", params.status);
+  return fetchJson<EditionArchiveData>(
+    `${apiBase()}/api/editions?${query.toString()}`,
+    [
+      "edition-archive",
+      `edition-archive:${params.year ?? "all"}:${params.section ?? "all"}:${params.status ?? "all"}`,
+    ],
     INDEX_CACHE_SECONDS,
   );
 }
