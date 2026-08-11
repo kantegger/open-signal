@@ -4,21 +4,30 @@ import { cache } from "react";
 import { FrontPage } from "../../../components/front-page";
 import { JsonLd } from "../../../components/json-ld";
 import { ApiError } from "../../../lib/api";
-import { fetchEditionFrontPageServer } from "../../../lib/server-api";
+import {
+  fetchEditionFrontPageServer,
+  fetchEditionRecordServer,
+} from "../../../lib/server-api";
 import { absoluteUrl } from "../../../lib/site";
 import { editionPath, extractUuid, signalPath } from "../../../lib/urls";
 
 export const revalidate = 86_400;
 
 type Props = { params: Promise<{ id: string }> };
-const getEdition = cache((editionId: string) => fetchEditionFrontPageServer(editionId));
+const getEdition = cache(async (editionId: string) => {
+  const [page, record] = await Promise.all([
+    fetchEditionFrontPageServer(editionId),
+    fetchEditionRecordServer(editionId).catch(() => null),
+  ]);
+  return { page, record };
+});
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const editionId = extractUuid(id);
   if (!editionId) return { title: "Edition not found", robots: { index: false } };
   try {
-    const page = await getEdition(editionId);
+    const { page } = await getEdition(editionId);
     const title = `Open Signal edition · ${page.snapshot.edition_date}`;
     const claimCount = new Set(page.slots.flatMap((slot) => slot.items.flatMap((item) => item.claim_ids))).size;
     const description = `${claimCount} verified public signals across ${page.sections.length} active Sections, preserved as an immutable Open Signal edition.`;
@@ -39,13 +48,14 @@ export default async function EditionPage({ params }: Props) {
   const editionId = extractUuid(id);
   if (!editionId) notFound();
 
-  let page;
+  let edition;
   try {
-    page = await getEdition(editionId);
+    edition = await getEdition(editionId);
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) notFound();
     throw error;
   }
+  const { page, record } = edition;
 
   const uniqueSignals = new Map<string, string>();
   for (const slot of page.slots) {
@@ -78,7 +88,16 @@ export default async function EditionPage({ params }: Props) {
           },
         }}
       />
-      <FrontPage initialData={page} live={false} />
+      <FrontPage
+        editionRecord={record ? {
+          first_published_at: record.first_published_at,
+          payload_hash: record.payload_hash,
+          record_class: record.record_class,
+          events: record.events,
+        } : undefined}
+        initialData={page}
+        live={false}
+      />
     </>
   );
 }

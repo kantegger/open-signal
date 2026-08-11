@@ -441,6 +441,62 @@ export interface SeoIndexData {
   }>;
 }
 
+export interface EditionArchiveItem {
+  id: string;
+  edition_date: string;
+  generated_at: string;
+  status: string;
+  sections: string[];
+  claim_count: number;
+  correction_count: number;
+  trigger_type: string;
+  first_published_at: string;
+  record_class: "public_permanent" | "operational_ttl";
+  payload_hash: string;
+  event_count: number;
+  latest_event_type?: string | null;
+  latest_event_at?: string | null;
+}
+
+export interface EditionArchiveData {
+  items: EditionArchiveItem[];
+  next_cursor?: string | null;
+  has_more: boolean;
+  page_size: number;
+  total_count: number;
+  filters: {
+    year?: number | null;
+    section?: string | null;
+    status?: string | null;
+  };
+  facets: {
+    years: number[];
+    sections: string[];
+    statuses: string[];
+  };
+}
+
+export interface EditionRecordData {
+  id: string;
+  edition_date: string;
+  generated_at: string;
+  status: string;
+  first_published_at: string;
+  record_class: "public_permanent";
+  payload_hash: string;
+  events: Array<{
+    id: string;
+    sequence_no: number;
+    event_type: string;
+    actor: string;
+    reason?: string | null;
+    related_edition_id?: string | null;
+    previous_event_hash?: string | null;
+    event_hash: string;
+    created_at: string;
+  }>;
+}
+
 export interface ExploreData {
   selection_version: string;
   ranking_as_of: string;

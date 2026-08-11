@@ -2,14 +2,206 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
 import json
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
+from uuid import UUID
 
 from open_signal.composer.edition_writer import PUBLICATION_CHANNEL, SLOT_ORDER
 from open_signal.composer.publication_context import empty_publication_context
 from open_signal.sources.registry import Registry
 from sqlalchemy import text
+
+
+class EditionArchivePresenter:
+    """Keyset-paginated index of every Edition that has ever been public."""
+
+    def __init__(self, engine: Any) -> None:
+        self.engine = engine
+
+    def build(
+        self,
+        *,
+        cursor: str | None = None,
+        limit: int = 50,
+        year: int | None = None,
+        section: str | None = None,
+        status: str | None = None,
+    ) -> dict[str, Any]:
+        bounded_limit = max(1, min(int(limit), 100))
+        if year is not None and not 2000 <= year <= 2100:
+            raise ValueError("year must be between 2000 and 2100")
+        section = (section.strip() or None) if section else None
+        status = (status.strip() or None) if status else None
+        if section and len(section) > 80:
+            raise ValueError("section filter is too long")
+
+        clauses = ["e.first_published_at IS NOT NULL"]
+        params: dict[str, Any] = {"row_limit": bounded_limit + 1}
+        if year is not None:
+            clauses.append("e.edition_date >= :year_start")
+            clauses.append("e.edition_date < :year_end")
+            params["year_start"] = date(year, 1, 1)
+            params["year_end"] = date(year + 1, 1, 1)
+        if section:
+            clauses.append(":section = ANY(e.included_section_ids)")
+            params["section"] = section
+        if status:
+            clauses.append("e.status = :status")
+            params["status"] = status
+
+        filter_clause = " AND ".join(clauses)
+        page_clause = ""
+        if cursor:
+            cursor_time, cursor_id = _decode_archive_cursor(cursor)
+            page_clause = (
+                " AND (e.generated_at < :cursor_time OR "
+                "(e.generated_at = :cursor_time AND e.id < :cursor_id))"
+            )
+            params["cursor_time"] = cursor_time
+            params["cursor_id"] = cursor_id
+
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                text(
+                    f"""
+                    SELECT e.id, e.edition_date, e.generated_at, e.status,
+                           e.included_section_ids,
+                           cardinality(e.included_claim_ids),
+                           e.correction_count, e.trigger_type,
+                           e.first_published_at, e.record_class, e.payload_hash,
+                           lifecycle.event_count,
+                           lifecycle.latest_event_type,
+                           lifecycle.latest_event_at
+                    FROM daily_editions e
+                    LEFT JOIN LATERAL (
+                      SELECT count(*) AS event_count,
+                             (array_agg(
+                               ev.event_type ORDER BY ev.sequence_no DESC
+                             ))[1] AS latest_event_type,
+                             (array_agg(
+                               ev.created_at ORDER BY ev.sequence_no DESC
+                             ))[1] AS latest_event_at
+                      FROM edition_events ev
+                      WHERE ev.edition_id = e.id
+                    ) lifecycle ON true
+                    WHERE {filter_clause}{page_clause}
+                    ORDER BY e.generated_at DESC, e.id DESC
+                    LIMIT :row_limit
+                    """
+                ),
+                params,
+            ).fetchall()
+            total_count = conn.execute(
+                text(
+                    f"SELECT count(*) FROM daily_editions e "
+                    f"WHERE {filter_clause}"
+                ),
+                params,
+            ).scalar_one()
+            facets = conn.execute(
+                text(
+                    """
+                    SELECT
+                      ARRAY(
+                        SELECT DISTINCT EXTRACT(YEAR FROM edition_date)::int
+                        FROM daily_editions
+                        WHERE first_published_at IS NOT NULL
+                        ORDER BY 1 DESC
+                      ),
+                      ARRAY(
+                        SELECT DISTINCT section_id
+                        FROM daily_editions
+                        CROSS JOIN LATERAL
+                          unnest(included_section_ids) AS sections(section_id)
+                        WHERE first_published_at IS NOT NULL
+                        ORDER BY 1
+                      ),
+                      ARRAY(
+                        SELECT DISTINCT status
+                        FROM daily_editions
+                        WHERE first_published_at IS NOT NULL
+                        ORDER BY 1
+                      )
+                    """
+                )
+            ).one()
+
+        has_more = len(rows) > bounded_limit
+        visible_rows = rows[:bounded_limit]
+        next_cursor = None
+        if has_more and visible_rows:
+            last = visible_rows[-1]
+            next_cursor = _encode_archive_cursor(last[2], last[0])
+
+        return {
+            "items": [
+                {
+                    "id": str(row[0]),
+                    "edition_date": row[1].isoformat(),
+                    "generated_at": _iso(row[2]),
+                    "status": row[3],
+                    "sections": list(row[4] or []),
+                    "claim_count": int(row[5] or 0),
+                    "correction_count": int(row[6] or 0),
+                    "trigger_type": row[7],
+                    "first_published_at": _iso(row[8]),
+                    "record_class": row[9],
+                    "payload_hash": row[10],
+                    "event_count": int(row[11] or 0),
+                    "latest_event_type": row[12],
+                    "latest_event_at": _iso(row[13]),
+                }
+                for row in visible_rows
+            ],
+            "next_cursor": next_cursor,
+            "has_more": has_more,
+            "page_size": bounded_limit,
+            "total_count": int(total_count),
+            "filters": {
+                "year": year,
+                "section": section,
+                "status": status,
+            },
+            "facets": {
+                "years": list(facets[0] or []),
+                "sections": list(facets[1] or []),
+                "statuses": list(facets[2] or []),
+            },
+        }
+
+
+def _encode_archive_cursor(generated_at: datetime, edition_id: UUID) -> str:
+    payload = json.dumps(
+        {"generated_at": generated_at.isoformat(), "id": str(edition_id)},
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=")
+
+
+def _decode_archive_cursor(cursor: str) -> tuple[datetime, UUID]:
+    try:
+        if not cursor or len(cursor) > 512:
+            raise ValueError
+        padded = cursor + "=" * (-len(cursor) % 4)
+        payload = json.loads(base64.b64decode(padded, altchars=b"-_", validate=True))
+        generated_at = datetime.fromisoformat(str(payload["generated_at"]))
+        edition_id = UUID(str(payload["id"]))
+        if generated_at.tzinfo is None:
+            raise ValueError
+        return generated_at, edition_id
+    except (
+        binascii.Error,
+        KeyError,
+        TypeError,
+        UnicodeDecodeError,
+        ValueError,
+        json.JSONDecodeError,
+    ) as exc:
+        raise ValueError("invalid archive cursor") from exc
 
 
 class FrontPagePresenter:
@@ -50,7 +242,7 @@ class FrontPagePresenter:
                         LEFT JOIN publication_channels pc
                           ON pc.id = :channel
                         WHERE e.id = :edition
-                          AND e.status IN ('published', 'sparse', 'beta', 'corrected')
+                          AND e.first_published_at IS NOT NULL
                         """
                     ),
                     {"channel": PUBLICATION_CHANNEL, "edition": edition_id},
@@ -83,7 +275,7 @@ class FrontPagePresenter:
                                    published_at, policy_version, edition_payload,
                                    NULL, generated_at, false
                             FROM daily_editions
-                            WHERE status IN ('published', 'sparse', 'beta', 'corrected')
+                            WHERE first_published_at IS NOT NULL
                             ORDER BY generated_at DESC LIMIT 1
                             """
                         )
@@ -140,7 +332,7 @@ class FrontPagePresenter:
                            included_section_ids, included_claim_ids,
                            correction_count, trigger_type
                     FROM daily_editions
-                    WHERE status IN ('published', 'sparse', 'beta', 'corrected')
+                    WHERE first_published_at IS NOT NULL
                     ORDER BY generated_at DESC
                     LIMIT 12
                     """

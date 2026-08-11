@@ -321,6 +321,9 @@ test("publishes crawlable Signal, Topic, and Edition routes", async ({ page }) =
   await page.locator(".edition-directory-row:not(.edition-directory-head) a").first().click();
   await expect(page).toHaveURL(/\/editions\/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/);
   await expect(page.getByRole("heading", { name: /Edition/ })).toBeVisible();
+  const integrity = page.getByRole("region", { name: "Edition integrity and lifecycle" });
+  await expect(integrity.getByText("Public Permanent")).toBeVisible();
+  await expect(integrity.getByText("aaaaaaaaaaaaaaaa…")).toBeVisible();
 });
 
 test("uses real destination pages while Evidence remains an overlay", async ({ page }) => {

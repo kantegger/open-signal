@@ -238,6 +238,7 @@ def _normalize(engine: Any, now: datetime) -> dict[str, Any]:
             text(
                 "SELECT id, external_id, payload FROM raw_source_records "
                 "WHERE source_id = :sid AND record_type = 'market' "
+                "AND payload IS NOT NULL "
                 "ORDER BY id"
             ),
             {"sid": source_uuid},

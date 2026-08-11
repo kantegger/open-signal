@@ -5,6 +5,7 @@ import Link from "next/link";
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   FrontPageData,
+  EditionRecordData,
   PublicationClaimRecord,
   PublicationContext,
   PublicationExpectationObservation,
@@ -33,10 +34,15 @@ interface Selection {
 type TopicIndexItem = SeoIndexData["topics"][number];
 
 export function FrontPage({
+  editionRecord,
   initialData,
   initialTopics = [],
   live = true,
 }: {
+  editionRecord?: Pick<
+    EditionRecordData,
+    "first_published_at" | "payload_hash" | "record_class" | "events"
+  >;
   initialData: FrontPageData | null;
   initialTopics?: TopicIndexItem[];
   live?: boolean;
@@ -156,7 +162,13 @@ export function FrontPage({
           </button>
         </div>
       ) : null}
-      <Publication compact={live} data={data} onEvidence={openEvidence} topics={initialTopics} />
+      <Publication
+        compact={live}
+        data={data}
+        editionRecord={editionRecord}
+        onEvidence={openEvidence}
+        topics={initialTopics}
+      />
       {selection ? (
         <EvidenceSheet claimId={selection.claimId} onClose={closeEvidence} />
       ) : null}
@@ -167,11 +179,16 @@ export function FrontPage({
 function Publication({
   compact,
   data,
+  editionRecord,
   onEvidence,
   topics,
 }: {
   compact: boolean;
   data: FrontPageData;
+  editionRecord?: Pick<
+    EditionRecordData,
+    "first_published_at" | "payload_hash" | "record_class" | "events"
+  >;
   onEvidence: OpenEvidence;
   topics: TopicIndexItem[];
 }) {
@@ -212,6 +229,10 @@ function Publication({
             <div><dt>{copy.en.lastVerified}</dt><dd>{formatRelativeTime(lastMaterialUpdate)}</dd></div>
           </dl>
         </header>
+      ) : null}
+
+      {!compact && editionRecord ? (
+        <EditionIntegrity record={editionRecord} />
       ) : null}
 
       <dl className={`coverage-strip${compact ? " coverage-current" : ""}`} aria-label="Publication coverage">
@@ -352,6 +373,44 @@ function Publication({
         </>
       )}
     </article>
+  );
+}
+
+function EditionIntegrity({
+  record,
+}: {
+  record: Pick<
+    EditionRecordData,
+    "first_published_at" | "payload_hash" | "record_class" | "events"
+  >;
+}) {
+  const latest = record.events.at(-1);
+  return (
+    <section className="edition-integrity" aria-label="Edition integrity and lifecycle">
+      <dl>
+        <div><dt>Record class</dt><dd>{humanize(record.record_class)}</dd></div>
+        <div><dt>First published</dt><dd>{formatDateTime(record.first_published_at)}</dd></div>
+        <div><dt>Payload SHA-256</dt><dd title={record.payload_hash}>{record.payload_hash.slice(0, 16)}…</dd></div>
+        <div><dt>Lifecycle</dt><dd>{humanize(latest?.event_type ?? "published")} · {record.events.length} events</dd></div>
+      </dl>
+      {record.events.length > 1 ? (
+        <ol aria-label="Edition lifecycle events">
+          {record.events.map((event) => (
+            <li key={event.id}>
+              <span>{event.sequence_no.toString().padStart(2, "0")}</span>
+              <strong>{humanize(event.event_type)}</strong>
+              <time>{formatDateTime(event.created_at)}</time>
+              {event.reason ? <em>{event.reason}</em> : null}
+              {event.related_edition_id ? (
+                <Link href={editionPath(event.related_edition_id)}>
+                  {event.related_edition_id.slice(0, 8)} →
+                </Link>
+              ) : null}
+            </li>
+          ))}
+        </ol>
+      ) : null}
+    </section>
   );
 }
 

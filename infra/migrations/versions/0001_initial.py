@@ -17,7 +17,7 @@ from sqlalchemy.schema import CreateIndex, CreateTable
 REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT / "python"))
 
-from open_signal.db import models  # noqa: E402
+from open_signal.db import models
 
 revision = "0001"
 down_revision = None
@@ -25,6 +25,19 @@ branch_labels = None
 depends_on = None
 
 _dialect = postgresql.dialect()
+
+_LATER_TABLES = frozenset(
+    {
+        "source_cursors",
+        "calculation_records",
+        "section_instances",
+        "feature_flags",
+        "audit_events",
+        "edition_events",
+        "raw_payload_archive_events",
+        "publication_channels",
+    }
+)
 
 
 def upgrade() -> None:
@@ -57,14 +70,6 @@ def upgrade() -> None:
     # NOTE: 0001 creates only the 36 appendix-C tables; later revisions add
     # their own tables (source_cursors, calculation_records, section_instances,
     # feature_flags, audit_events).
-    _LATER_TABLES = frozenset({
-        "source_cursors",
-        "calculation_records",
-        "section_instances",
-        "feature_flags",
-        "audit_events",
-        "publication_channels",
-    })
     for table in models.metadata.sorted_tables:
         if table.name in _LATER_TABLES:
             continue
@@ -119,7 +124,24 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # The circular foreign keys are emitted after table creation, so they must
+    # be removed before SQLAlchemy's dependency order can safely drop tables.
+    for table_name, constraint_name in (
+        ("claims", "claims_current_version_fk"),
+        ("claims", "claims_bundle_fk"),
+        ("claims", "claims_family_fk"),
+        ("claim_bundles", "claim_bundles_headline_fk"),
+        ("claims", "claims_resolution_contract_fk"),
+        ("canonical_rules", "canonical_rules_current_version_fk"),
+        ("resolution_contracts", "resolution_contracts_template_fk"),
+    ):
+        op.execute(
+            f'ALTER TABLE "{table_name}" '
+            f'DROP CONSTRAINT IF EXISTS "{constraint_name}"'
+        )
     for table in reversed(models.metadata.sorted_tables):
+        if table.name in _LATER_TABLES:
+            continue
         op.drop_table(table.name)
     op.execute("DROP FUNCTION IF EXISTS prevent_mutation()")
     op.execute("DROP FUNCTION IF EXISTS set_updated_at()")

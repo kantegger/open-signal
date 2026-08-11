@@ -129,7 +129,13 @@ class FederalRegisterChain:
                                CAST(:payload AS jsonb),
                                CAST(:pub AS timestamptz), NULL, :hash,
                                'federal-register-v1', 'active')
-                            ON CONFLICT (source_id, external_id, content_hash) DO NOTHING
+                            ON CONFLICT (source_id, external_id, content_hash)
+                            DO UPDATE SET
+                              payload = EXCLUDED.payload,
+                              retention_state = 'hot',
+                              last_seen_at = now(),
+                              adapter_version = EXCLUDED.adapter_version
+                            RETURNING (xmax = 0) AS inserted
                             """
                         ),
                         {
@@ -140,7 +146,7 @@ class FederalRegisterChain:
                             "hash": content_hash,
                         },
                     )
-                    stored += result.rowcount
+                    stored += int(bool(result.scalar_one()))
         return {"documents": stored, "pages": pages}
 
     # ----------------------------------------------------------------- artifact

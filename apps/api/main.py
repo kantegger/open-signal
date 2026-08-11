@@ -10,11 +10,11 @@ from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Response, Security
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Response, Security
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from open_signal.api.database import get_engine
-from open_signal.api.editions import FrontPagePresenter
+from open_signal.api.editions import EditionArchivePresenter, FrontPagePresenter
 from open_signal.api.explore import ExplorePresenter
 from open_signal.api.ops import OpsPresenter
 from open_signal.api.presenters import ClaimPagePresenter
@@ -77,12 +77,40 @@ def get_current_front_page(
     return page
 
 
+@app.get("/api/editions")
+def list_editions(
+    response: Response,
+    cursor: str | None = Query(default=None, max_length=512),
+    limit: int = Query(default=50, ge=1, le=100),
+    year: int | None = Query(default=None, ge=2000, le=2100),
+    section: str | None = Query(default=None, max_length=80),
+    status: str | None = Query(default=None, max_length=40),
+) -> dict:
+    try:
+        page = EditionArchivePresenter(_engine()).build(
+            cursor=cursor,
+            limit=limit,
+            year=year,
+            section=section,
+            status=status,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    response.headers["Cache-Control"] = (
+        "public, max-age=300, stale-while-revalidate=900"
+    )
+    return page
+
+
 @app.get("/api/editions/{edition_id}")
-def get_edition(edition_id: str) -> dict:
+def get_edition(edition_id: UUID, response: Response) -> dict:
     writer = EditionWriter(_engine())
-    payload = writer.edition_json(edition_id)
-    if payload is None:
+    payload = writer.edition_json(str(edition_id))
+    if payload is None or payload.get("first_published_at") is None:
         raise HTTPException(status_code=404, detail="edition not found")
+    response.headers["Cache-Control"] = (
+        "public, max-age=300, stale-while-revalidate=900"
+    )
     return payload
 
 

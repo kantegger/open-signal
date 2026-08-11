@@ -347,6 +347,8 @@ class PolymarketAdapter:
                            CAST(:payload AS jsonb), :source_created, :source_updated,
                            :hash, NULL, :ver, 'active')
                         ON CONFLICT (source_id, external_id, content_hash) DO UPDATE SET
+                          payload = EXCLUDED.payload,
+                          retention_state = 'hot',
                           last_seen_at = now(),
                           external_parent_id = EXCLUDED.external_parent_id,
                           source_created_at = COALESCE(

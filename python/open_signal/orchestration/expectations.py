@@ -56,6 +56,7 @@ class ExpectationsSectionService:
                     WHERE source_id = :source
                       AND record_type = 'market'
                       AND status = 'active'
+                      AND payload IS NOT NULL
                       AND last_seen_at >= now() - make_interval(hours => :hours)
                     ORDER BY external_id, last_seen_at DESC, ingested_at DESC
                     """

@@ -105,6 +105,8 @@ class ClinicalTrialsChain:
                            'clinicaltrials-v2', 'active')
                         ON CONFLICT (source_id, external_id, content_hash)
                         DO UPDATE SET
+                          payload = EXCLUDED.payload,
+                          retention_state = 'hot',
                           transport_metadata = jsonb_set(
                             COALESCE(raw_source_records.transport_metadata, '{}'::jsonb)
                               || EXCLUDED.transport_metadata,
