@@ -472,6 +472,73 @@ def test_executor_purges_only_expired_superseded_payloads(engine) -> None:
     assert tuple(restored) == ("hot", True)
 
 
+def test_executor_purges_multiple_payloads_as_one_batch(engine) -> None:
+    as_of = datetime(2026, 8, 11, 15, 30, tzinfo=UTC)
+    slug = f"retention-purge-batch-{uuid.uuid4().hex}"
+    source_id = _seed_source(engine, slug)
+    old_ids: list[str] = []
+    current_ids: list[str] = []
+    for index in range(3):
+        external_id = str(uuid.uuid4())
+        old_ids.append(
+            _insert_raw(
+                engine,
+                source_id=source_id,
+                external_id=external_id,
+                payload={"version": "old", "index": index},
+                seen_at=as_of - timedelta(days=10, minutes=index),
+            )
+        )
+        current_ids.append(
+            _insert_raw(
+                engine,
+                source_id=source_id,
+                external_id=external_id,
+                payload={"version": "current", "index": index},
+                seen_at=as_of - timedelta(hours=1),
+            )
+        )
+    policy = RawRetentionPolicy(
+        version="test-purge-batch-v1",
+        mode="active",
+        default_hot_days=36_500,
+        source_hot_days={slug: 7},
+        maximum_rows_per_run=3,
+    )
+
+    result = RawRetentionExecutor(engine, policy).purge(as_of=as_of)
+
+    assert result["purged_rows"] == 3
+    assert set(result["raw_source_record_ids"]) == set(old_ids)
+    with engine.connect() as conn:
+        purged = conn.execute(
+            text(
+                "SELECT count(*) FROM raw_source_records "
+                "WHERE id = ANY(CAST(:ids AS uuid[])) "
+                "AND retention_state = 'purged' AND payload IS NULL"
+            ),
+            {"ids": old_ids},
+        ).scalar_one()
+        current = conn.execute(
+            text(
+                "SELECT count(*) FROM raw_source_records "
+                "WHERE id = ANY(CAST(:ids AS uuid[])) "
+                "AND retention_state = 'hot' AND payload IS NOT NULL"
+            ),
+            {"ids": current_ids},
+        ).scalar_one()
+        audit_events = conn.execute(
+            text(
+                "SELECT count(*) FROM raw_payload_purge_events "
+                "WHERE raw_source_record_id = ANY(CAST(:ids AS uuid[]))"
+            ),
+            {"ids": old_ids},
+        ).scalar_one()
+    assert purged == 3
+    assert current == 3
+    assert audit_events == 3
+
+
 def test_executor_keeps_current_representation_for_each_record_type(engine) -> None:
     as_of = datetime(2026, 8, 11, 16, tzinfo=UTC)
     slug = f"retention-identity-{uuid.uuid4().hex}"
