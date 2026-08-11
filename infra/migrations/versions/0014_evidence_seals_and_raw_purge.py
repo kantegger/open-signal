@@ -21,10 +21,29 @@ def upgrade() -> None:
     # Keep the transitional database default on legacy so this expand migration
     # can land before the new writers without breaking the still-running
     # release. New writers opt in explicitly; migration 0015 flips the default
-    # only after those writers are deployed.
+    # only after those writers are deployed. SET DEFAULT is required for the
+    # from-scratch path because migration 0001 compiles current metadata.
     op.execute(
-        "ALTER TABLE claims ADD CONSTRAINT claims_evidence_policy_version_check "
-        "CHECK (evidence_policy_version IN ('legacy', 'sealed-v1'))"
+        "ALTER TABLE claims ALTER COLUMN evidence_policy_version "
+        "SET DEFAULT 'legacy'"
+    )
+    op.execute(
+        """
+        DO $migration$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint
+                WHERE conname = 'claims_evidence_policy_version_check'
+                  AND conrelid = 'claims'::regclass
+            ) THEN
+                ALTER TABLE claims ADD CONSTRAINT
+                claims_evidence_policy_version_check CHECK (
+                    evidence_policy_version IN ('legacy', 'sealed-v1')
+                );
+            END IF;
+        END
+        $migration$
+        """
     )
     op.execute(
         """
@@ -188,11 +207,11 @@ def upgrade() -> None:
 
     op.execute(
         "ALTER TABLE raw_source_records "
-        "ADD COLUMN payload_purged_at timestamptz"
+        "ADD COLUMN IF NOT EXISTS payload_purged_at timestamptz"
     )
     op.execute(
         "ALTER TABLE raw_source_records "
-        "ADD COLUMN purge_policy_version text"
+        "ADD COLUMN IF NOT EXISTS purge_policy_version text"
     )
     # The same provider may reuse an external ID across object kinds (for
     # example a Polymarket event and market). Retention identity therefore
@@ -459,7 +478,8 @@ def downgrade() -> None:
     op.execute("DROP INDEX IF EXISTS evidence_seals_sealed_at_idx")
     op.execute("DROP TABLE evidence_seals")
     op.execute(
-        "ALTER TABLE claims DROP CONSTRAINT claims_evidence_policy_version_check"
+        "ALTER TABLE claims DROP CONSTRAINT IF EXISTS "
+        "claims_evidence_policy_version_check"
     )
     op.execute("ALTER TABLE claims DROP COLUMN evidence_policy_version")
 
