@@ -300,6 +300,12 @@ The permanent page preserves the same hierarchy and complete public record.
 - Claims remain locale-neutral truth objects. Localized presentations are
   versioned, carry translation provenance, and may never silently alter numbers,
   dates, confidence, or Claim status.
+- English remains at unprefixed URLs. Traditional Chinese uses `/zh-Hant` and
+  the same permanent Claim, Topic, Signal, and Edition identifiers; `zh-TW` and
+  `zh-HK` are aliases, not separate content stores.
+- Localization happens after verification and before snapshot delivery. Source
+  evidence and typed propositions remain untouched; incomplete localization
+  falls back visibly to the immutable English presentation.
 
 ## Acceptance criteria
 
@@ -330,3 +336,6 @@ The permanent page preserves the same hierarchy and complete public record.
   browser tests.
 - Signal, Topic, and Edition routes expose canonical metadata, structured data,
   and sitemap entries without creating a parallel truth store.
+- English and Traditional Chinese routes expose reciprocal `hreflang` entries,
+  locale-correct structured data, and immutable R2 snapshots with translation
+  provenance. Switching languages preserves the current durable route.

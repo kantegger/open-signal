@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ApiError } from "../../../../lib/api";
+import { normalizeLocale } from "../../../../lib/i18n";
 import { fetchCurrentFrontPageServer } from "../../../../lib/server-api";
 
 export async function GET(request: NextRequest) {
@@ -23,5 +24,5 @@ export async function GET(request: NextRequest) {
 }
 
 function supportedLocale(value: string | null): string {
-  return value === "en" ? value : "en";
+  return normalizeLocale(value);
 }

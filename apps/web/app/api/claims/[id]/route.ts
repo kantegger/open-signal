@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ApiError } from "../../../../lib/api";
+import { normalizeLocale } from "../../../../lib/i18n";
 import { fetchClaimServer } from "../../../../lib/server-api";
 
 export async function GET(
@@ -7,7 +8,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const locale = request.nextUrl.searchParams.get("locale") === "en" ? "en" : "en";
+  const locale = normalizeLocale(request.nextUrl.searchParams.get("locale"));
   try {
     const page = await fetchClaimServer(id, locale);
     const updated = page.claim.materially_updated_at ?? page.claim.issued_at;

@@ -194,7 +194,10 @@ const server = http.createServer(async (request, response) => {
       json(response, 503, { detail: "fixture publication service unavailable" });
       return;
     }
-    const etag = `"fixture-front-page:${frontPageMode}:en"`;
+    const requestedLocale = url.searchParams.get("locale") === "zh-Hant"
+      ? "zh-Hant"
+      : "en";
+    const etag = `"fixture-front-page:${frontPageMode}:${requestedLocale}"`;
     if (request.headers["if-none-match"] === etag) {
       response.writeHead(304, { ETag: etag }).end();
       return;
@@ -236,12 +239,32 @@ const server = http.createServer(async (request, response) => {
                 },
               }
         : frontPageFixture;
-    json(response, 200, fixture);
+    json(response, 200, {
+      ...fixture,
+      locale: {
+        requested: requestedLocale,
+        published: "en",
+        fallback_used: requestedLocale !== "en",
+        translation_provenance: null,
+      },
+    });
     return;
   }
   if (request.method === "GET" && url.pathname.startsWith("/api/claims/")) {
     const claimId = decodeURIComponent(url.pathname.split("/").at(-1) ?? claimFixture.claim.id);
-    json(response, 200, { ...claimFixture, claim: { ...claimFixture.claim, id: claimId } });
+    const requestedLocale = url.searchParams.get("locale") === "zh-Hant"
+      ? "zh-Hant"
+      : "en";
+    json(response, 200, {
+      ...claimFixture,
+      claim: { ...claimFixture.claim, id: claimId },
+      locale: {
+        requested: requestedLocale,
+        published: "en",
+        fallback_used: requestedLocale !== "en",
+        translation_provenance: null,
+      },
+    });
     return;
   }
   if (request.method === "GET" && url.pathname.startsWith("/api/topics/")) {
@@ -251,9 +274,18 @@ const server = http.createServer(async (request, response) => {
   }
   if (request.method === "GET" && /^\/api\/editions\/[^/]+\/front-page$/.test(url.pathname)) {
     const editionId = decodeURIComponent(url.pathname.split("/")[3] ?? frontPageFixture.snapshot.id);
+    const requestedLocale = url.searchParams.get("locale") === "zh-Hant"
+      ? "zh-Hant"
+      : "en";
     json(response, 200, {
       ...frontPageFixture,
       snapshot: { ...frontPageFixture.snapshot, id: editionId, is_current: false },
+      locale: {
+        requested: requestedLocale,
+        published: "en",
+        fallback_used: requestedLocale !== "en",
+        translation_provenance: null,
+      },
     });
     return;
   }

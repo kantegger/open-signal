@@ -28,7 +28,7 @@ and the front-page pointer moves last. Vercel is notified only after that move.
 
 | Surface | Resource |
 |---|---|
-| Web | `https://open-signal-web.vercel.app` |
+| Web | `https://os.yhleo.com` (`open-signal-web.vercel.app` fallback) |
 | Read-only API | `https://open-signal-api.vercel.app` |
 | R2 bucket | `open-signal-publications` (APAC) |
 | R2 beta read origin | `https://pub-663344cb96044648a00527ba459d1a03.r2.dev` |
@@ -73,7 +73,7 @@ add locales without rebuilding client code.
 | Secret | Purpose |
 |---|---|
 | `OPEN_SIGNAL_DATABASE_URL` | Neon production connection |
-| `DEEPSEEK_API_KEY` | Charter Agent calls |
+| `DEEPSEEK_API_KEY` | Charter Agent calls and publication-time localization |
 | `OPEN_SIGNAL_R2_ENDPOINT_URL` | Account-scoped R2 S3 endpoint |
 | `OPEN_SIGNAL_R2_ACCESS_KEY_ID` | Bucket-scoped Object Read & Write key |
 | `OPEN_SIGNAL_R2_SECRET_ACCESS_KEY` | Bucket-scoped secret |
@@ -113,6 +113,7 @@ different editorial cadences:
 | ClinicalTrials | every 12 hours |
 | Research / OpenAlex | daily |
 | Freshness retirement check | hourly |
+| English + Traditional Chinese snapshot delivery | hourly |
 
 No schedule manufactures content. A Section keeps its last verified output
 until new verified meaning arrives or the freshness policy ages/demotes/retires
@@ -149,6 +150,8 @@ Invoke-RestMethod https://open-signal-api.vercel.app/health
 
 Invoke-RestMethod https://open-signal-web.vercel.app/api/publication/current
 
+Invoke-RestMethod 'https://os.yhleo.com/api/publication/current?locale=zh-Hant'
+
 $token = [Environment]::GetEnvironmentVariable(
   "OPEN_SIGNAL_OPS_TOKEN",
   "User"
@@ -158,9 +161,16 @@ Invoke-RestMethod `
   -Headers @{ Authorization = ("Bearer " + $token) }
 ```
 
-After the first scheduled delivery, verify that the R2 current pointer exists
-at `public/publications/channels/front-page/en.json`, then confirm that the web
-snapshot ID matches the operations endpoint.
+After the first scheduled delivery, verify that both R2 current pointers exist:
+
+- `public/publications/channels/front-page/en.json`
+- `public/publications/channels/front-page/zh-Hant.json`
+
+The two pointers must reference the same Edition ID. The Traditional Chinese
+manifest additionally references the immutable localization bundle and records
+its translator/version provenance and token usage. Confirm the English web
+snapshot ID matches the operations endpoint, then open `/zh-Hant` and confirm
+that its locale reports `published=zh-Hant` and `fallback_used=false`.
 
 ## Rollback
 
@@ -172,4 +182,8 @@ snapshot ID matches the operations endpoint.
   public pointer retain an auditable transition.
 - If snapshot delivery fails, the last complete R2 pointer remains public and
   the failed Job is retried. The API fallback remains available.
+- Locale delivery jobs fail independently. A localization failure cannot block
+  English publication or advance a partial Traditional Chinese pointer; readers
+  keep seeing the last complete localized snapshot (or an explicitly labelled
+  English fallback before the first localized delivery succeeds).
 

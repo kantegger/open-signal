@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 
 import httpx
 import pytest
 from open_signal.publication.delivery import PublicationDelivery
+from open_signal.publication.localization import LocalizationBatch
 from open_signal.sources.artifact_store import ArtifactStore
 
 
@@ -94,7 +96,34 @@ class Client:
         return Response(self.error)
 
 
-def delivery(store, client, *, claim_page=None, front_page=None):
+class Localizer:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def localize_many(self, payloads, *, locale):
+        self.calls += 1
+        localized = deepcopy(payloads)
+        localized[0]["localized"] = locale
+        for payload in localized[1:]:
+            payload["localized"] = locale
+        return LocalizationBatch(
+            payloads=localized,
+            provenance="test/localizer:v1",
+            prompt_tokens=10,
+            completion_tokens=5,
+            estimated_cost_usd=0.001,
+            translated_string_count=3,
+        )
+
+
+def delivery(
+    store,
+    client,
+    *,
+    claim_page=None,
+    front_page=None,
+    localizer=None,
+):
     return PublicationDelivery(
         object(),
         store,
@@ -103,6 +132,7 @@ def delivery(store, client, *, claim_page=None, front_page=None):
         client=client,
         front_page=front_page or FrontPage(),
         claim_page=claim_page or ClaimPage(),
+        localizer=localizer,
     )
 
 
@@ -182,3 +212,60 @@ def test_claim_projection_updates_without_rewriting_edition_snapshot() -> None:
     assert json.loads(store.get(current_key))["version"] == "v2"
     assert json.loads(store.get(edition_two_key))["version"] == "v2"
     assert store.get(edition_one_key) == edition_one
+
+
+def test_traditional_chinese_delivery_seals_localization_before_pointer() -> None:
+    store = MemoryStore()
+    client = Client()
+    localizer = Localizer()
+
+    result = delivery(store, client, localizer=localizer).deliver(locale="zh-Hant")
+
+    assert result["status"] == "delivered"
+    assert localizer.calls == 1
+    localization_key = (
+        "public/publications/editions/edition-1/localization.zh-Hant.json"
+    )
+    pointer_key = "public/publications/channels/front-page/zh-Hant.json"
+    manifest_key = (
+        "public/publications/editions/edition-1/manifest.zh-Hant.json"
+    )
+    assert store.put_order.index(localization_key) < store.put_order.index(pointer_key)
+    assert json.loads(store.get(pointer_key))["locale"] == "zh-Hant"
+    manifest = json.loads(store.get(manifest_key))
+    assert manifest["localization"]["key"] == localization_key
+    assert manifest["localization"]["provenance"] == "test/localizer:v1"
+    page = json.loads(
+        store.get(
+            "public/publications/editions/edition-1/front-page.zh-Hant.json"
+        )
+    )
+    assert page["localized"] == "zh-Hant"
+    assert client.calls[0]["json"]["locale"] == "zh-Hant"
+
+
+def test_localized_notification_retry_reuses_sealed_translation() -> None:
+    store = MemoryStore()
+    localizer = Localizer()
+
+    with pytest.raises(httpx.HTTPStatusError):
+        delivery(store, Client(error=True), localizer=localizer).deliver(
+            locale="zh-Hant"
+        )
+
+    result = delivery(store, Client(), localizer=localizer).deliver(
+        locale="zh-Hant"
+    )
+
+    assert result["status"] == "delivered"
+    assert localizer.calls == 1
+
+
+def test_non_english_delivery_requires_localizer() -> None:
+    with pytest.raises(RuntimeError, match="localizer is not configured"):
+        delivery(MemoryStore(), Client()).deliver(locale="zh-Hant")
+
+
+def test_delivery_rejects_unknown_locale() -> None:
+    with pytest.raises(ValueError, match="unsupported publication locale"):
+        delivery(MemoryStore(), Client()).deliver(locale="ja")

@@ -16,10 +16,11 @@ import type {
 } from "../lib/api";
 import { fetchCurrentFrontPage } from "../lib/api";
 import { collectionDensity } from "../lib/collection-density";
-import { copy, formatDateTime, formatRelativeTime, humanize } from "../lib/i18n";
+import { formatDateTime, formatRelativeTime, humanize, localePath } from "../lib/i18n";
 import { editionPath, signalPath, topicPath } from "../lib/urls";
 import { DirectionalStatement } from "./directional-statement";
 import { Icon } from "./icons";
+import { useLocale } from "./locale-provider";
 import { PlanRenderer, SignalFeedRow, type OpenEvidence } from "./publication-components";
 import { SiteShell } from "./site-shell";
 
@@ -47,6 +48,7 @@ export function FrontPage({
   initialTopics?: TopicIndexItem[];
   live?: boolean;
 }) {
+  const { locale, text } = useLocale();
   const [data, setData] = useState<FrontPageData | null>(initialData);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
@@ -75,21 +77,27 @@ export function FrontPage({
 
   const applyRefreshError = useCallback((reason: unknown) => {
     if (reason instanceof DOMException && reason.name === "AbortError") return;
-    setError(reason instanceof Error ? reason.message : "The publication service did not respond.");
-  }, []);
+    setError(
+      reason instanceof Error
+        ? reason.message
+        : locale === "zh-Hant"
+          ? "出版服務沒有回應。"
+          : "The publication service did not respond.",
+    );
+  }, [locale]);
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
     if (loadingRef.current) return;
     loadingRef.current = true;
     try {
-      const result = await fetchCurrentFrontPage(signal, etagRef.current);
+      const result = await fetchCurrentFrontPage(signal, etagRef.current, locale);
       applyRefresh(result);
     } catch (reason) {
       applyRefreshError(reason);
     } finally {
       loadingRef.current = false;
     }
-  }, [applyRefresh, applyRefreshError]);
+  }, [applyRefresh, applyRefreshError, locale]);
 
   const retry = useCallback(async () => {
     setRetrying(true);
@@ -105,7 +113,7 @@ export function FrontPage({
     let cancelled = false;
     if (!initialData && !loadingRef.current) {
       loadingRef.current = true;
-      initialRequestRef.current ??= fetchCurrentFrontPage(undefined, etagRef.current);
+      initialRequestRef.current ??= fetchCurrentFrontPage(undefined, etagRef.current, locale);
       void initialRequestRef.current
         .then((result) => {
           if (!cancelled) applyRefresh(result);
@@ -130,7 +138,7 @@ export function FrontPage({
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [applyRefresh, applyRefreshError, initialData, live, refresh]);
+  }, [applyRefresh, applyRefreshError, initialData, live, locale, refresh]);
 
   const openEvidence: OpenEvidence = useCallback((claimId, trigger) => {
     setSelection({ claimId, trigger });
@@ -156,11 +164,20 @@ export function FrontPage({
     <SiteShell active={live ? "current" : "archive"} systemState={data.system_state.status}>
       {error ? (
         <div className="publication-warning" role="status">
-          <span>The latest check failed. This is the last verified snapshot.</span>
+          <span>
+            {locale === "zh-Hant"
+              ? "最近一次檢查失敗；目前顯示的是上一個已驗證快照。"
+              : "The latest check failed. This is the last verified snapshot."}
+          </span>
           <button disabled={retrying} onClick={() => void retry()} type="button">
-            <Icon name="refresh" size={15} /> {retrying ? "Checking…" : "Check again"}
+            <Icon name="refresh" size={15} /> {retrying ? text.checking : locale === "zh-Hant" ? "再次檢查" : "Check again"}
           </button>
         </div>
+      ) : null}
+      {locale === "zh-Hant" && data.locale.fallback_used ? (
+        <p className="translation-fallback-notice" role="note">
+          {text.originalEnglishNotice}
+        </p>
       ) : null}
       <Publication
         compact={live}
@@ -192,6 +209,7 @@ function Publication({
   onEvidence: OpenEvidence;
   topics: TopicIndexItem[];
 }) {
+  const { locale, text } = useLocale();
   const slots = useMemo(() => new Map(data.slots.map((slot) => [slot.type, slot])), [data.slots]);
   const lead = slot(slots, "lead");
   const secondary = slot(slots, "secondary");
@@ -221,12 +239,12 @@ function Publication({
       {!compact ? (
         <header className="edition-header">
           <div>
-            <p className="eyebrow">Immutable archive edition</p>
-            <h1>{`Edition · ${data.snapshot.edition_date}`}</h1>
+            <p className="eyebrow">{locale === "zh-Hant" ? "不可變的典藏期次" : "Immutable archive edition"}</p>
+            <h1>{`${text.edition} · ${data.snapshot.edition_date}`}</h1>
           </div>
           <dl className="edition-times">
-            <div><dt>{copy.en.composed}</dt><dd>{formatDateTime(data.snapshot.composed_at)}</dd></div>
-            <div><dt>{copy.en.lastVerified}</dt><dd>{formatRelativeTime(lastMaterialUpdate)}</dd></div>
+            <div><dt>{text.composed}</dt><dd>{formatDateTime(data.snapshot.composed_at, locale)}</dd></div>
+            <div><dt>{text.lastVerified}</dt><dd>{formatRelativeTime(lastMaterialUpdate, locale)}</dd></div>
           </dl>
         </header>
       ) : null}
@@ -235,31 +253,31 @@ function Publication({
         <EditionIntegrity record={editionRecord} />
       ) : null}
 
-      <dl className={`coverage-strip${compact ? " coverage-current" : ""}`} aria-label="Publication coverage">
+      <dl className={`coverage-strip${compact ? " coverage-current" : ""}`} aria-label={locale === "zh-Hant" ? "出版涵蓋範圍" : "Publication coverage"}>
         {compact ? (
           <>
-            <div className="coverage-live"><dt>Publication state</dt><dd><span className={`status-dot status-${data.system_state.status}`} /> Live</dd></div>
-            <div><dt>Active Sections</dt><dd>{data.sections.length}</dd></div>
-            <div><dt>Verified Claims</dt><dd>{context.counts.verified_claims || uniqueClaims}</dd></div>
-            <div><dt>Source Observations</dt><dd>{observationCount || monitoredTopics.length}</dd></div>
-            <div><dt>Research Screening</dt><dd>{context.counts.research_screening}</dd></div>
-            <div><dt>Records · 24h</dt><dd>{context.counts.source_records_24h}</dd></div>
-            <div><dt>Snapshot captured</dt><dd>{formatRelativeTime(context.captured_at ?? data.snapshot.composed_at)}</dd></div>
+            <div className="coverage-live"><dt>{locale === "zh-Hant" ? "出版狀態" : "Publication state"}</dt><dd><span className={`status-dot status-${data.system_state.status}`} /> {locale === "zh-Hant" ? "即時" : "Live"}</dd></div>
+            <div><dt>{locale === "zh-Hant" ? "有效區段" : "Active Sections"}</dt><dd>{data.sections.length}</dd></div>
+            <div><dt>{locale === "zh-Hant" ? "已驗證主張" : "Verified Claims"}</dt><dd>{context.counts.verified_claims || uniqueClaims}</dd></div>
+            <div><dt>{locale === "zh-Hant" ? "來源觀測" : "Source Observations"}</dt><dd>{observationCount || monitoredTopics.length}</dd></div>
+            <div><dt>{locale === "zh-Hant" ? "研究篩選" : "Research Screening"}</dt><dd>{context.counts.research_screening}</dd></div>
+            <div><dt>{locale === "zh-Hant" ? "24 小時紀錄" : "Records · 24h"}</dt><dd>{context.counts.source_records_24h}</dd></div>
+            <div><dt>{locale === "zh-Hant" ? "快照擷取" : "Snapshot captured"}</dt><dd>{formatRelativeTime(context.captured_at ?? data.snapshot.composed_at, locale)}</dd></div>
           </>
         ) : (
           <>
-            <div><dt>Active Sections</dt><dd>{data.sections.length}</dd></div>
-            <div><dt>Verified signals</dt><dd>{uniqueClaims}</dd></div>
-            <div><dt>Live changes</dt><dd>{liveFeed.items.length}</dd></div>
-            <div><dt>Last material update</dt><dd>{formatRelativeTime(lastMaterialUpdate)}</dd></div>
-            <div><dt>Snapshot</dt><dd>{data.snapshot.id.slice(0, 8)}</dd></div>
+            <div><dt>{locale === "zh-Hant" ? "有效區段" : "Active Sections"}</dt><dd>{data.sections.length}</dd></div>
+            <div><dt>{locale === "zh-Hant" ? "已驗證訊號" : "Verified signals"}</dt><dd>{uniqueClaims}</dd></div>
+            <div><dt>{locale === "zh-Hant" ? "即時變化" : "Live changes"}</dt><dd>{liveFeed.items.length}</dd></div>
+            <div><dt>{locale === "zh-Hant" ? "最近實質更新" : "Last material update"}</dt><dd>{formatRelativeTime(lastMaterialUpdate, locale)}</dd></div>
+            <div><dt>{locale === "zh-Hant" ? "快照" : "Snapshot"}</dt><dd>{data.snapshot.id.slice(0, 8)}</dd></div>
           </>
         )}
       </dl>
 
       <div className={`dashboard-top${compact ? " current-dashboard-top" : ""}${secondary.items.length || hasLiveTape ? " has-side" : ""}`}>
         <div className="dashboard-lead-column">
-          <section className="slot-region lead-region" aria-label="Lead signal">
+          <section className="slot-region lead-region" aria-label={locale === "zh-Hant" ? "主訊號" : "Lead signal"}>
             {lead.items.length ? (
               lead.items.map((item) => <PlanRenderer item={item} key={item.id} onEvidence={onEvidence} />)
             ) : (
@@ -282,7 +300,7 @@ function Publication({
           <div className="dashboard-side">
             {secondary.items.length ? (
               <section className="slot-region secondary-region" aria-labelledby="secondary-title">
-                <RegionHeader id="secondary-title" title={copy.en.secondarySignals} note={`${secondary.items.length} verified`} />
+                <RegionHeader id="secondary-title" title={text.secondarySignals} note={`${secondary.items.length} ${text.verified}`} />
                 <div
                   className="secondary-grid"
                   data-count={secondary.items.length}
@@ -320,7 +338,7 @@ function Publication({
           <div className="dashboard-workspace">
             {digest.items.length ? (
               <section className="slot-region digest-region" aria-labelledby="digest-title">
-                <RegionHeader id="digest-title" title={copy.en.significantChanges} note="Verified changes impacting monitored signals" />
+                <RegionHeader id="digest-title" title={text.significantChanges} note={locale === "zh-Hant" ? "影響受監測訊號的已驗證變化" : "Verified changes impacting monitored signals"} />
                 <DigestTable items={digest.items} onEvidence={onEvidence} />
               </section>
             ) : null}
@@ -328,7 +346,7 @@ function Publication({
             {main.items.length ? (
               <section
                 className="slot-region main-region"
-                aria-label="Analysis modules"
+                aria-label={locale === "zh-Hant" ? "分析模組" : "Analysis modules"}
                 data-count={main.items.length}
                 data-density={collectionDensity(main.items.length, "grid")}
               >
@@ -339,7 +357,7 @@ function Publication({
             {utility.items.length ? (
               <section
                 className="slot-region utility-region"
-                aria-label="Upcoming and resolved signal utilities"
+                aria-label={locale === "zh-Hant" ? "即將發生與已結算訊號工具" : "Upcoming and resolved signal utilities"}
                 data-count={utility.items.length}
                 data-density={collectionDensity(utility.items.length, "grid")}
               >
@@ -360,14 +378,14 @@ function Publication({
 
           <footer className="publication-footer">
             <div>
-              <p className="eyebrow">Method at composition</p>
+              <p className="eyebrow">{locale === "zh-Hant" ? "編製時採用的方法" : "Method at composition"}</p>
               <p>{data.method.summary}</p>
-              <span>Composer {data.method.composer_version} · policy {data.method.policy_version}</span>
+              <span>{locale === "zh-Hant" ? "編譯器" : "Composer"} {data.method.composer_version} · {locale === "zh-Hant" ? "政策" : "policy"} {data.method.policy_version}</span>
             </div>
             <div>
-              <p className="eyebrow">System state</p>
+              <p className="eyebrow">{locale === "zh-Hant" ? "系統狀態" : "System state"}</p>
               <strong><span className={`status-dot status-${data.system_state.status}`} /> {humanize(data.system_state.status)}</strong>
-              <span>Last checked {formatRelativeTime(data.system_state.last_checked_at)}</span>
+              <span>{locale === "zh-Hant" ? "最近檢查" : "Last checked"} {formatRelativeTime(data.system_state.last_checked_at, locale)}</span>
             </div>
           </footer>
         </>
@@ -384,25 +402,26 @@ function EditionIntegrity({
     "first_published_at" | "payload_hash" | "record_class" | "events"
   >;
 }) {
+  const { locale } = useLocale();
   const latest = record.events.at(-1);
   return (
-    <section className="edition-integrity" aria-label="Edition integrity and lifecycle">
+    <section className="edition-integrity" aria-label={locale === "zh-Hant" ? "期次完整性與生命週期" : "Edition integrity and lifecycle"}>
       <dl>
-        <div><dt>Record class</dt><dd>{humanize(record.record_class)}</dd></div>
-        <div><dt>First published</dt><dd>{formatDateTime(record.first_published_at)}</dd></div>
+        <div><dt>{locale === "zh-Hant" ? "紀錄類別" : "Record class"}</dt><dd>{humanize(record.record_class)}</dd></div>
+        <div><dt>{locale === "zh-Hant" ? "首次發布" : "First published"}</dt><dd>{formatDateTime(record.first_published_at, locale)}</dd></div>
         <div><dt>Payload SHA-256</dt><dd title={record.payload_hash}>{record.payload_hash.slice(0, 16)}…</dd></div>
-        <div><dt>Lifecycle</dt><dd>{humanize(latest?.event_type ?? "published")} · {record.events.length} events</dd></div>
+        <div><dt>{locale === "zh-Hant" ? "生命週期" : "Lifecycle"}</dt><dd>{humanize(latest?.event_type ?? "published")} · {record.events.length} {locale === "zh-Hant" ? "個事件" : "events"}</dd></div>
       </dl>
       {record.events.length > 1 ? (
-        <ol aria-label="Edition lifecycle events">
+        <ol aria-label={locale === "zh-Hant" ? "期次生命週期事件" : "Edition lifecycle events"}>
           {record.events.map((event) => (
             <li key={event.id}>
               <span>{event.sequence_no.toString().padStart(2, "0")}</span>
               <strong>{humanize(event.event_type)}</strong>
-              <time>{formatDateTime(event.created_at)}</time>
+              <time>{formatDateTime(event.created_at, locale)}</time>
               {event.reason ? <em>{event.reason}</em> : null}
               {event.related_edition_id ? (
-                <Link href={editionPath(event.related_edition_id)}>
+                <Link href={editionPath(event.related_edition_id, locale)}>
                   {event.related_edition_id.slice(0, 8)} →
                 </Link>
               ) : null}
@@ -421,9 +440,10 @@ function LiveFeed({
   items: RenderPlanItem[];
   onEvidence: OpenEvidence;
 }) {
+  const { text } = useLocale();
   return (
     <section className="slot-region live-feed-region" aria-labelledby="live-feed-title">
-      <RegionHeader id="live-feed-title" title={copy.en.liveFeed} note={copy.en.recentFirst} />
+      <RegionHeader id="live-feed-title" title={text.liveFeed} note={text.recentFirst} />
       <div
         className="feed-list"
         data-count={items.length}
@@ -442,6 +462,7 @@ function SignalPulse({
   claims: PublicationClaimRecord[];
   observations: PublicationExpectationObservation[];
 }) {
+  const { locale } = useLocale();
   const measured = observations.filter((observation) => (
     observation.delta_24h_percentage_points != null
   ));
@@ -464,52 +485,52 @@ function SignalPulse({
     <section className="signal-pulse" aria-labelledby="signal-pulse-title">
       <RegionHeader
         id="signal-pulse-title"
-        title="↕ Signal pulse"
-        note="Derived context · not a new Claim"
+        title={locale === "zh-Hant" ? "↕ 訊號脈動" : "↕ Signal pulse"}
+        note={locale === "zh-Hant" ? "衍生脈絡 · 並非新主張" : "Derived context · not a new Claim"}
       />
       <div className="signal-pulse-grid">
         <article>
-          <span>24h breadth</span>
+          <span>{locale === "zh-Hant" ? "24 小時廣度" : "24h breadth"}</span>
           <strong className="signal-pulse-breadth">
             <b className="trend-up">↗ {rising}</b>
             <b className="trend-down">↘ {falling}</b>
             <b className="trend-neutral">— {observations.length - rising - falling}</b>
           </strong>
-          <small>up · down · flat or without a comparable baseline</small>
+          <small>{locale === "zh-Hant" ? "上升 · 下降 · 持平或缺少可比較基準" : "up · down · flat or without a comparable baseline"}</small>
         </article>
         <article>
-          <span>Largest observed move</span>
+          <span>{locale === "zh-Hant" ? "最大觀測變化" : "Largest observed move"}</span>
           {largestMove ? (
             <>
               <strong className={deltaClass(largestMove.delta_24h_percentage_points)}>
                 {trendGlyph(largestMove.delta_24h_percentage_points)} {formatDelta(largestMove.delta_24h_percentage_points!)}
                 <small>{formatProbability(largestMove.current_probability)}</small>
               </strong>
-              <Link href={topicPath(largestMove.title, largestMove.id)}>{largestMove.title}</Link>
+              <Link href={topicPath(largestMove.title, largestMove.id, locale)}>{largestMove.title}</Link>
             </>
           ) : (
-            <><strong>—</strong><small>No complete 24h comparison is available.</small></>
+            <><strong>—</strong><small>{locale === "zh-Hant" ? "目前沒有完整的 24 小時比較。" : "No complete 24h comparison is available."}</small></>
           )}
         </article>
         <article>
-          <span>Nearest resolution</span>
+          <span>{locale === "zh-Hant" ? "最近結算期限" : "Nearest resolution"}</span>
           {nearestResolution ? (
             <>
-              <strong>{formatRelativeTime(nearestResolution.resolution_deadline_at)}</strong>
-              <Link href={topicPath(nearestResolution.title, nearestResolution.id)}>{nearestResolution.title}</Link>
+              <strong>{formatRelativeTime(nearestResolution.resolution_deadline_at, locale)}</strong>
+              <Link href={topicPath(nearestResolution.title, nearestResolution.id, locale)}>{nearestResolution.title}</Link>
             </>
           ) : (
-            <><strong>—</strong><small>No active deadline is attached.</small></>
+            <><strong>—</strong><small>{locale === "zh-Hant" ? "沒有附帶有效期限。" : "No active deadline is attached."}</small></>
           )}
         </article>
         <article>
-          <span>Judgment base</span>
-          <strong>{claims.length} verified <small>· {evidenceReferences} evidence refs</small></strong>
+          <span>{locale === "zh-Hant" ? "判斷基礎" : "Judgment base"}</span>
+          <strong>{claims.length} {locale === "zh-Hant" ? "筆已驗證" : "verified"} <small>· {evidenceReferences} {locale === "zh-Hant" ? "筆證據參照" : "evidence refs"}</small></strong>
           {latestClaim ? (
-            <Link href={signalPath(latestClaim.statement, latestClaim.id)}>
-              Latest · {formatRelativeTime(latestClaim.updated_at ?? latestClaim.issued_at)}
+            <Link href={signalPath(latestClaim.statement, latestClaim.id, locale)}>
+              {locale === "zh-Hant" ? "最新" : "Latest"} · {formatRelativeTime(latestClaim.updated_at ?? latestClaim.issued_at, locale)}
             </Link>
-          ) : <small>No current Claim record.</small>}
+          ) : <small>{locale === "zh-Hant" ? "目前沒有主張紀錄。" : "No current Claim record."}</small>}
         </article>
       </div>
     </section>
@@ -525,6 +546,7 @@ function LiveSignalTape({
   observations: PublicationExpectationObservation[];
   onEvidence: OpenEvidence;
 }) {
+  const { locale } = useLocale();
   const verified = uniquePlans(items).slice(0, 4);
   const observationsById = new Map(observations.map((observation) => [observation.id, observation]));
   const representedTopics = new Set(
@@ -538,8 +560,10 @@ function LiveSignalTape({
     <section className="topic-monitor" aria-labelledby="topic-monitor-title">
       <RegionHeader
         id="topic-monitor-title"
-        title="↗ Live signal tape"
-        note={`${verified.length} verified · ${observations.length} monitored Topics · deduplicated`}
+        title={locale === "zh-Hant" ? "↗ 即時訊號帶" : "↗ Live signal tape"}
+        note={locale === "zh-Hant"
+          ? `${verified.length} 筆已驗證 · ${observations.length} 個受監測主題 · 已去重`
+          : `${verified.length} verified · ${observations.length} monitored Topics · deduplicated`}
       />
       <div
         className="topic-monitor-list live-signal-list"
@@ -569,6 +593,7 @@ function VerifiedTapeRow({
   observation?: PublicationExpectationObservation;
   onEvidence: OpenEvidence;
 }) {
+  const { locale } = useLocale();
   const fields = item.display_fields;
   const current = numericField(fields.current_probability ?? fields.probability)
     ?? observation?.current_probability;
@@ -585,15 +610,15 @@ function VerifiedTapeRow({
     ? `${formatDelta(delta)} · 24h`
     : current != null && change
       ? change
-      : `${item.trust.evidence_count} evidence`;
+      : `${item.trust.evidence_count} ${locale === "zh-Hant" ? "筆證據" : "evidence"}`;
   const record = item.trust.claim_id
-    ? <Link href={signalPath(item.headline, item.trust.claim_id)}><DirectionalStatement text={item.headline} /></Link>
+    ? <Link href={signalPath(item.headline, item.trust.claim_id, locale)}><DirectionalStatement text={item.headline} /></Link>
     : <span>{item.headline}</span>;
 
   return (
     <article className={`tape-row tape-row-verified ${sectionClass(item.section_id)}`}>
       <div className="topic-monitor-identity">
-        <span><b>Verified</b> · {sectionName(item.section_id)}</span>
+        <span><b>{locale === "zh-Hant" ? "已驗證" : "Verified"}</b> · {sectionName(item.section_id, locale)}</span>
         {record}
       </div>
       <div className="topic-monitor-state">
@@ -610,16 +635,16 @@ function VerifiedTapeRow({
           className={`sparkline-fallback ${deltaClass(directionalValue)}`}
         >
           <span aria-hidden="true">{trendGlyph(directionalValue)}</span>
-          <small>{directionalValue == null ? "no series" : "direction only"}</small>
+          <small>{directionalValue == null ? locale === "zh-Hant" ? "無序列" : "no series" : locale === "zh-Hant" ? "僅方向" : "direction only"}</small>
         </span>
       )}
       <div className="topic-monitor-time">
-        <time>{formatRelativeTime(item.times.data_as_of ?? item.times.assessed_at)}</time>
-        {item.topic ? <span>⏱ {formatRelativeTime(item.topic.resolution_deadline_at)}</span> : <span>Claim record</span>}
+        <time>{formatRelativeTime(item.times.data_as_of ?? item.times.assessed_at, locale)}</time>
+        {item.topic ? <span>⏱ {formatRelativeTime(item.topic.resolution_deadline_at, locale)}</span> : <span>{locale === "zh-Hant" ? "Claim 紀錄" : "Claim record"}</span>}
       </div>
       {item.trust.claim_id ? (
         <button
-          aria-label={`Open evidence for ${item.headline}`}
+          aria-label={`${locale === "zh-Hant" ? "開啟證據" : "Open evidence for"} ${item.headline}`}
           className="tape-action"
           onClick={(event) => onEvidence(item.trust.claim_id!, event.currentTarget)}
           type="button"
@@ -636,30 +661,31 @@ function ObservedTapeRow({
 }: {
   observation: PublicationExpectationObservation;
 }) {
+  const { locale } = useLocale();
   return (
     <article className="tape-row tape-row-observed section-expectations">
       <div className="topic-monitor-identity">
-        <span>Source · {humanize(observation.event_type)}</span>
-        <Link href={topicPath(observation.title, observation.id)}>{observation.title}</Link>
+        <span>{locale === "zh-Hant" ? "來源" : "Source"} · {humanize(observation.event_type)}</span>
+        <Link href={topicPath(observation.title, observation.id, locale)}>{observation.title}</Link>
       </div>
       <div className="topic-monitor-state">
         <strong>{formatProbability(observation.current_probability)}</strong>
         <span className={deltaClass(observation.delta_24h_percentage_points)}>
           {trendGlyph(observation.delta_24h_percentage_points)}{" "}
           {observation.delta_24h_percentage_points == null
-            ? "baseline —"
+            ? locale === "zh-Hant" ? "基準 —" : "baseline —"
             : `${formatDelta(observation.delta_24h_percentage_points)} · 24h`}
         </span>
       </div>
       <MiniSparkline observation={observation} />
       <div className="topic-monitor-time">
-        <time>{formatRelativeTime(observation.current_observed_at ?? observation.updated_at)}</time>
-        <span>⏱ {formatRelativeTime(observation.resolution_deadline_at)}</span>
+        <time>{formatRelativeTime(observation.current_observed_at ?? observation.updated_at, locale)}</time>
+        <span>⏱ {formatRelativeTime(observation.resolution_deadline_at, locale)}</span>
       </div>
       <Link
         aria-label={`Open Topic: ${observation.title}`}
         className="tape-action"
-        href={topicPath(observation.title, observation.id)}
+        href={topicPath(observation.title, observation.id, locale)}
       >
         <Icon name="arrow" size={14} />
       </Link>
@@ -764,6 +790,7 @@ function CurrentIntelligence({
   fallbackItems: RenderPlanItem[];
   onEvidence: OpenEvidence;
 }) {
+  const { locale } = useLocale();
   const claims = context.claims.slice(0, 12);
   const rules = context.rules.slice(0, 8);
   if (!claims.length && !rules.length && !fallbackItems.length) return null;
@@ -773,10 +800,10 @@ function CurrentIntelligence({
         <ClaimLedger claims={claims} onEvidence={onEvidence} />
       ) : fallbackItems.length ? (
         <section className="current-snapshot-index" aria-labelledby="current-index-title">
-          <RegionHeader id="current-index-title" title="Verified signal index" note={`${fallbackItems.length} distinct current records`} />
+          <RegionHeader id="current-index-title" title={locale === "zh-Hant" ? "已驗證訊號索引" : "Verified signal index"} note={locale === "zh-Hant" ? `${fallbackItems.length} 筆不同的目前紀錄` : `${fallbackItems.length} distinct current records`} />
           <DigestTable
-            ariaLabel="Verified signal index"
-            headlineLabel="Signal"
+            ariaLabel={locale === "zh-Hant" ? "已驗證訊號索引" : "Verified signal index"}
+            headlineLabel={locale === "zh-Hant" ? "訊號" : "Signal"}
             items={fallbackItems}
             onEvidence={onEvidence}
           />
@@ -794,34 +821,35 @@ function ClaimLedger({
   claims: PublicationClaimRecord[];
   onEvidence: OpenEvidence;
 }) {
+  const { locale } = useLocale();
   return (
     <section className="claim-ledger-panel" aria-labelledby="claim-ledger-title">
       <RegionHeader
         id="claim-ledger-title"
-        title="Verified judgment ledger"
-        note={`${claims.length} active Claim records · no duplicate projections`}
+        title={locale === "zh-Hant" ? "已驗證判斷帳本" : "Verified judgment ledger"}
+        note={locale === "zh-Hant" ? `${claims.length} 筆有效 Claim 紀錄 · 無重複投影` : `${claims.length} active Claim records · no duplicate projections`}
       />
       <div
         className="claim-ledger"
         role="table"
-        aria-label="Verified judgment ledger"
+        aria-label={locale === "zh-Hant" ? "已驗證判斷帳本" : "Verified judgment ledger"}
         data-count={claims.length}
         data-density={collectionDensity(claims.length, "table")}
       >
         <div className="claim-ledger-row claim-ledger-head" role="row">
-          <span role="columnheader">Desk</span><span role="columnheader">Claim</span>
-          <span role="columnheader">Move</span><span role="columnheader">Confidence</span>
-          <span role="columnheader">Evidence</span><span role="columnheader">Verified</span>
+          <span role="columnheader">{locale === "zh-Hant" ? "編輯台" : "Desk"}</span><span role="columnheader">Claim</span>
+          <span role="columnheader">{locale === "zh-Hant" ? "變動" : "Move"}</span><span role="columnheader">{locale === "zh-Hant" ? "信心程度" : "Confidence"}</span>
+          <span role="columnheader">{locale === "zh-Hant" ? "證據" : "Evidence"}</span><span role="columnheader">{locale === "zh-Hant" ? "驗證時間" : "Verified"}</span>
         </div>
         {claims.map((claim) => (
           <div className={`claim-ledger-row ${sectionClass(claim.section_id)}`} key={claim.id} role="row">
             <span role="cell">
               <b aria-hidden="true" className={`ledger-direction ${directionClass(claim.direction)}`}>{directionGlyph(claim.direction)}</b>
               <span className="sr-only">{humanize(claim.direction)} direction · </span>
-              {sectionName(claim.section_id)}
+              {sectionName(claim.section_id, locale)}
             </span>
             <span role="cell">
-              <Link href={signalPath(claim.statement, claim.id)}><strong><DirectionalStatement text={claim.statement} /></strong></Link>
+              <Link href={signalPath(claim.statement, claim.id, locale)}><strong><DirectionalStatement text={claim.statement} /></strong></Link>
               <small>{claim.source_label}</small>
               <small className="collection-detail collection-detail-sparse">
                 {humanize(claim.claim_type)} · {humanize(claim.status)}
@@ -831,13 +859,13 @@ function ClaimLedger({
             <span role="cell">{humanize(claim.confidence_label ?? claim.epistemic_status)}</span>
             <span role="cell">
               <button
-                aria-label={`Open evidence for ${claim.statement}`}
+                aria-label={`${locale === "zh-Hant" ? "開啟證據" : "Open evidence for"} ${claim.statement}`}
                 className="digest-evidence"
                 onClick={(event) => onEvidence(claim.id, event.currentTarget)}
                 type="button"
               >{claim.evidence_count}</button>
             </span>
-            <time role="cell">{formatRelativeTime(claim.updated_at ?? claim.issued_at)}</time>
+            <time role="cell">{formatRelativeTime(claim.updated_at ?? claim.issued_at, locale)}</time>
           </div>
         ))}
       </div>
@@ -846,9 +874,10 @@ function ClaimLedger({
 }
 
 function RuleWatch({ rules }: { rules: PublicationContext["rules"] }) {
+  const { locale } = useLocale();
   return (
     <section className="watch-panel rule-watch" aria-labelledby="rule-watch-title">
-      <RegionHeader id="rule-watch-title" title="⚖ Rule watch" note="Normalized source facts" />
+      <RegionHeader id="rule-watch-title" title={locale === "zh-Hant" ? "⚖ 規則監測" : "⚖ Rule watch"} note={locale === "zh-Hant" ? "已標準化的來源事實" : "Normalized source facts"} />
       <div
         className="watch-list"
         data-count={rules.length}
@@ -856,7 +885,7 @@ function RuleWatch({ rules }: { rules: PublicationContext["rules"] }) {
       >
         {rules.map((rule) => (
           <article key={rule.id}>
-            <div><span>{rule.authority ?? humanize(rule.rule_type)}</span><time>{formatRelativeTime(rule.transition_at ?? rule.updated_at)}</time></div>
+            <div><span>{rule.authority ?? humanize(rule.rule_type)}</span><time>{formatRelativeTime(rule.transition_at ?? rule.updated_at, locale)}</time></div>
             <strong>{rule.title}</strong>
             <p><b>{humanize(rule.previous_state ?? "recorded")}</b><span>→</span><b>{humanize(rule.current_state)}</b></p>
             <p className="collection-detail collection-detail-sparse rule-watch-context">
@@ -878,12 +907,13 @@ function ResearchWatch({
   items: PublicationContext["research"];
   total: number;
 }) {
+  const { locale } = useLocale();
   return (
     <section
       className={`watch-panel research-watch${featured ? " research-watch-featured" : ""}`}
       aria-labelledby="research-watch-title"
     >
-      <RegionHeader id="research-watch-title" title="🔬 Research screening" note={`${total} eligible public watches · not Claims`} />
+      <RegionHeader id="research-watch-title" title={locale === "zh-Hant" ? "🔬 研究篩選" : "🔬 Research screening"} note={locale === "zh-Hant" ? `${total} 個符合資格的公開監測 · 並非 Claims` : `${total} eligible public watches · not Claims`} />
       <div
         className="watch-list research-watch-list"
         data-count={items.length}
@@ -892,14 +922,14 @@ function ResearchWatch({
         {items.map((item) => (
           <article key={item.id}>
             <div>
-              <span>{researchCandidateLabel(item.candidate_type)} · {humanize(item.screening_stage)}</span>
-              <time>{formatRelativeTime(item.detected_at)}</time>
+              <span>{researchCandidateLabel(item.candidate_type, locale)} · {humanize(item.screening_stage)}</span>
+              <time>{formatRelativeTime(item.detected_at, locale)}</time>
             </div>
             <strong>{item.headline}</strong>
             <p className="collection-detail collection-detail-sparse research-context">
-              <span>Screening context</span>
+              <span>{locale === "zh-Hant" ? "篩選脈絡" : "Screening context"}</span>
               <b>{item.topic_label}</b>
-              <span>{item.evidence_count} public records from {item.source_label}; not yet a Claim.</span>
+              <span>{locale === "zh-Hant" ? `${item.evidence_count} 筆來自 ${item.source_label} 的公開紀錄；尚非 Claim。` : `${item.evidence_count} public records from ${item.source_label}; not yet a Claim.`}</span>
             </p>
             <p className="research-entity"><b>{item.entity}</b><span>{item.baseline_label}</span></p>
             <p className={`research-evidence ${directionClass(item.direction)}`}>
@@ -918,13 +948,14 @@ function SourceCoverageBand({
 }: {
   coverage: PublicationContext["coverage"];
 }) {
+  const { locale } = useLocale();
   if (!coverage.length) return null;
   const max = Math.max(...coverage.map((source) => source.records_24h), 1);
   return (
     <section className="source-coverage-band" aria-labelledby="source-coverage-title">
       <header>
-        <h2 id="source-coverage-title">◌ Source coverage</h2>
-        <p>Raw intake · context only, not published Claims</p>
+        <h2 id="source-coverage-title">{locale === "zh-Hant" ? "◌ 來源涵蓋" : "◌ Source coverage"}</h2>
+        <p>{locale === "zh-Hant" ? "原始攝取 · 僅供脈絡，不是已發布 Claims" : "Raw intake · context only, not published Claims"}</p>
       </header>
       <div
         data-count={coverage.length}
@@ -935,7 +966,7 @@ function SourceCoverageBand({
             <span>{sourceGlyph(source.source_slug)} {source.source_label}</span>
             <strong>{source.records_24h}<small> / 24h</small></strong>
             <div aria-hidden="true"><i style={{ inlineSize: `${Math.max(4, source.records_24h / max * 100)}%` }} /></div>
-            <small>{source.records_total} captured · {formatRelativeTime(source.latest_ingested_at)}</small>
+            <small>{source.records_total} {locale === "zh-Hant" ? "筆已擷取" : "captured"} · {formatRelativeTime(source.latest_ingested_at, locale)}</small>
           </article>
         ))}
       </div>
@@ -944,18 +975,19 @@ function SourceCoverageBand({
 }
 
 function CurrentDestinations() {
+  const { locale } = useLocale();
   return (
-    <nav aria-label="Continue beyond the current snapshot" className="current-destinations">
-      <Link href="/explore">
-        <span><small>Discovery</small><strong>Explore Signals and Topics</strong></span>
+    <nav aria-label={locale === "zh-Hant" ? "從目前快照繼續探索" : "Continue beyond the current snapshot"} className="current-destinations">
+      <Link href={localePath("/explore", locale)}>
+        <span><small>{locale === "zh-Hant" ? "探索" : "Discovery"}</small><strong>{locale === "zh-Hant" ? "探索訊號與主題" : "Explore Signals and Topics"}</strong></span>
         <Icon name="arrow" size={17} />
       </Link>
-      <Link href="/editions">
-        <span><small>Permanent record</small><strong>Browse Editions</strong></span>
+      <Link href={localePath("/editions", locale)}>
+        <span><small>{locale === "zh-Hant" ? "永久紀錄" : "Permanent record"}</small><strong>{locale === "zh-Hant" ? "瀏覽期次" : "Browse Editions"}</strong></span>
         <Icon name="arrow" size={17} />
       </Link>
-      <Link href="/method">
-        <span><small>How to read this</small><strong>Read the Method</strong></span>
+      <Link href={localePath("/method", locale)}>
+        <span><small>{locale === "zh-Hant" ? "如何閱讀" : "How to read this"}</small><strong>{locale === "zh-Hant" ? "閱讀方法" : "Read the Method"}</strong></span>
         <Icon name="arrow" size={17} />
       </Link>
     </nav>
@@ -963,34 +995,36 @@ function CurrentDestinations() {
 }
 
 function SparseLead({ data }: { data: FrontPageData }) {
+  const { locale } = useLocale();
   const activeItemCount = data.slots
     .filter((publicationSlot) => publicationSlot.type !== "archive")
     .reduce((total, publicationSlot) => total + publicationSlot.items.length, 0);
   const fullyRetired = activeItemCount === 0;
   return (
     <div className="sparse-lead">
-      <p className="eyebrow">Evidence threshold · intentionally sparse</p>
+      <p className="eyebrow">{locale === "zh-Hant" ? "證據門檻 · 刻意保持稀疏" : "Evidence threshold · intentionally sparse"}</p>
       <h2>
         {fullyRetired
-          ? "No Open Signal judgment is currently published."
-          : "No verified judgment currently clears the Lead threshold."}
+          ? locale === "zh-Hant" ? "目前沒有已發布的 Open Signal 判斷。" : "No Open Signal judgment is currently published."
+          : locale === "zh-Hant" ? "目前沒有已驗證判斷通過主訊號門檻。" : "No verified judgment currently clears the Lead threshold."}
       </h2>
       {fullyRetired ? (
         <p>
-          The previous judgment reached its retirement boundary. Open Signal published a complete
-          new snapshot without manufacturing a replacement; labeled source observations and
-          screening context may remain below.
+          {locale === "zh-Hant"
+            ? "先前判斷已達淘汰界線。Open Signal 發布了完整的新快照，沒有捏造替代內容；帶標籤的來源觀測與篩選脈絡仍可能保留在下方。"
+            : "The previous judgment reached its retirement boundary. Open Signal published a complete new snapshot without manufacturing a replacement; labeled source observations and screening context may remain below."}
         </p>
       ) : (
         <p>
-          Open Signal keeps the page sparse instead of lowering evidence standards. Verified
-          material remains below, with its original data and assessment times.
+          {locale === "zh-Hant"
+            ? "Open Signal 寧可讓頁面保持稀疏，也不降低證據標準。已驗證材料仍保留在下方，並顯示原始資料與評估時間。"
+            : "Open Signal keeps the page sparse instead of lowering evidence standards. Verified material remains below, with its original data and assessment times."}
         </p>
       )}
       <dl>
-        <div><dt>Active Sections</dt><dd>{data.sections.length || 0}</dd></div>
-        <div><dt>Snapshot</dt><dd>{data.snapshot.id.slice(0, 8)}</dd></div>
-        <div><dt>Compiled</dt><dd>{formatRelativeTime(data.snapshot.composed_at)}</dd></div>
+        <div><dt>{locale === "zh-Hant" ? "有效區段" : "Active Sections"}</dt><dd>{data.sections.length || 0}</dd></div>
+        <div><dt>{locale === "zh-Hant" ? "快照" : "Snapshot"}</dt><dd>{data.snapshot.id.slice(0, 8)}</dd></div>
+        <div><dt>{locale === "zh-Hant" ? "編製" : "Compiled"}</dt><dd>{formatRelativeTime(data.snapshot.composed_at, locale)}</dd></div>
       </dl>
     </div>
   );
@@ -1007,6 +1041,7 @@ function DigestTable({
   items: RenderPlanItem[];
   onEvidence: OpenEvidence;
 }) {
+  const { locale } = useLocale();
   return (
     <div
       className="digest-table"
@@ -1016,9 +1051,9 @@ function DigestTable({
       data-density={collectionDensity(items.length, "table")}
     >
       <div className="digest-row digest-head" role="row">
-        <span role="columnheader">Type</span><span role="columnheader">{headlineLabel}</span>
-        <span role="columnheader">Source</span><span role="columnheader">Confidence</span>
-        <span role="columnheader">Evidence</span><span role="columnheader">Verified</span>
+        <span role="columnheader">{locale === "zh-Hant" ? "類型" : "Type"}</span><span role="columnheader">{headlineLabel}</span>
+        <span role="columnheader">{locale === "zh-Hant" ? "來源" : "Source"}</span><span role="columnheader">{locale === "zh-Hant" ? "信心程度" : "Confidence"}</span>
+        <span role="columnheader">{locale === "zh-Hant" ? "證據" : "Evidence"}</span><span role="columnheader">{locale === "zh-Hant" ? "驗證時間" : "Verified"}</span>
       </div>
       {items.map((item) => (
         <div
@@ -1026,10 +1061,10 @@ function DigestTable({
           key={item.id}
           role="row"
         >
-          <span role="cell">{sectionName(item.section_id)}</span>
+          <span role="cell">{sectionName(item.section_id, locale)}</span>
           <span role="cell">
             {item.trust.claim_id ? (
-              <Link href={signalPath(item.headline, item.trust.claim_id)}><strong><DirectionalStatement text={item.headline} /></strong></Link>
+              <Link href={signalPath(item.headline, item.trust.claim_id, locale)}><strong><DirectionalStatement text={item.headline} /></strong></Link>
             ) : <strong><DirectionalStatement text={item.headline} /></strong>}
             {item.dek ? <small className="collection-detail collection-detail-sparse">{item.dek}</small> : null}
           </span>
@@ -1038,14 +1073,14 @@ function DigestTable({
           <span role="cell">
             {item.trust.claim_id ? (
               <button
-                aria-label={`Open evidence for ${item.headline}`}
+                aria-label={`${locale === "zh-Hant" ? "開啟證據" : "Open evidence for"} ${item.headline}`}
                 className="digest-evidence"
                 onClick={(event) => onEvidence(item.trust.claim_id!, event.currentTarget)}
                 type="button"
               >{item.trust.evidence_count}</button>
             ) : item.trust.evidence_count}
           </span>
-          <span role="cell">{formatRelativeTime(item.times.assessed_at)}</span>
+          <span role="cell">{formatRelativeTime(item.times.assessed_at, locale)}</span>
         </div>
       ))}
     </div>
@@ -1061,46 +1096,47 @@ function ArchiveTable({
   currentSnapshotId: string;
   isCurrent: boolean;
 }) {
+  const { locale } = useLocale();
   return (
     <div className="archive-table-wrap">
       <div className="archive-heading">
-        <div><p className="eyebrow">Archive snapshots</p><h2 id="archive-title">Archive</h2></div>
-        <p>Chronological, immutable publication record.</p>
+        <div><p className="eyebrow">{locale === "zh-Hant" ? "典藏快照" : "Archive snapshots"}</p><h2 id="archive-title">{locale === "zh-Hant" ? "典藏" : "Archive"}</h2></div>
+        <p>{locale === "zh-Hant" ? "依時間排列、不可變的出版紀錄。" : "Chronological, immutable publication record."}</p>
       </div>
       {archive.length ? (
         <div
           className="archive-table"
           role="table"
-          aria-label="Edition archive"
+          aria-label={locale === "zh-Hant" ? "期次典藏" : "Edition archive"}
           data-count={archive.length}
           data-density={collectionDensity(archive.length, "table")}
         >
           <div className="archive-row archive-head" role="row">
-            <span role="columnheader">Composed</span><span role="columnheader">Sections</span>
-            <span role="columnheader">Claims</span><span role="columnheader">Trigger</span>
-            <span role="columnheader">State</span><span role="columnheader">Snapshot</span>
+            <span role="columnheader">{locale === "zh-Hant" ? "編製" : "Composed"}</span><span role="columnheader">{locale === "zh-Hant" ? "區段" : "Sections"}</span>
+            <span role="columnheader">Claims</span><span role="columnheader">{locale === "zh-Hant" ? "觸發" : "Trigger"}</span>
+            <span role="columnheader">{locale === "zh-Hant" ? "狀態" : "State"}</span><span role="columnheader">{locale === "zh-Hant" ? "快照" : "Snapshot"}</span>
           </div>
           {archive.map((snapshot) => (
             <div className="archive-row" role="row" key={snapshot.id}>
-              <time role="cell">{formatDateTime(snapshot.composed_at)}</time>
+              <time role="cell">{formatDateTime(snapshot.composed_at, locale)}</time>
               <span role="cell">
                 {snapshot.sections.length}
                 <small className="collection-detail collection-detail-sparse">
-                  {snapshot.sections.map(sectionName).join(" · ") || "No active Sections"}
+                  {snapshot.sections.map((section) => sectionName(section, locale)).join(" · ") || (locale === "zh-Hant" ? "沒有有效區段" : "No active Sections")}
                 </small>
               </span>
               <span role="cell">{snapshot.claim_count}</span>
               <span role="cell">{humanize(snapshot.trigger_type)}</span>
               <span role="cell">{humanize(snapshot.status)}</span>
               <span role="cell">
-                <Link className="archive-edition-link" href={editionPath(snapshot.id)}>
-                  {snapshot.id === currentSnapshotId ? <b className="current-snapshot">{isCurrent ? "Current" : "This edition"}</b> : snapshot.id.slice(0, 8)}
+                <Link className="archive-edition-link" href={editionPath(snapshot.id, locale)}>
+                  {snapshot.id === currentSnapshotId ? <b className="current-snapshot">{isCurrent ? locale === "zh-Hant" ? "目前" : "Current" : locale === "zh-Hant" ? "本期" : "This edition"}</b> : snapshot.id.slice(0, 8)}
                 </Link>
               </span>
             </div>
           ))}
         </div>
-      ) : <p className="empty-copy">No archived snapshots are public yet.</p>}
+      ) : <p className="empty-copy">{locale === "zh-Hant" ? "目前尚無公開典藏快照。" : "No archived snapshots are public yet."}</p>}
     </div>
   );
 }
@@ -1115,16 +1151,17 @@ function RegionHeader({ id, title, note }: { id: string; title: string; note?: s
 }
 
 function FrontPageSkeleton() {
+  const { locale } = useLocale();
   return (
     <SiteShell systemState="checking">
-      <div aria-busy="true" aria-label="Loading current publication" className="front-page skeleton-page">
+      <div aria-busy="true" aria-label={locale === "zh-Hant" ? "正在載入目前出版內容" : "Loading current publication"} className="front-page skeleton-page">
         <div className="skeleton skeleton-title" />
         <div className="skeleton skeleton-kicker" />
         <div className="skeleton skeleton-headline" />
         <div className="skeleton skeleton-headline short" />
         <div className="skeleton skeleton-chart" />
         <div className="skeleton-row"><div className="skeleton" /><div className="skeleton" /></div>
-        <p className="sr-only">Loading the latest verified snapshot.</p>
+        <p className="sr-only">{locale === "zh-Hant" ? "正在載入最近的已驗證快照。" : "Loading the latest verified snapshot."}</p>
       </div>
     </SiteShell>
   );
@@ -1139,15 +1176,16 @@ function FrontPageError({
   onRetry: () => void;
   retrying: boolean;
 }) {
+  const { locale, text } = useLocale();
   return (
     <SiteShell systemState="unavailable">
       <div className="front-page fatal-state" role="alert">
-        <p className="eyebrow">Publication unavailable</p>
-        <h1>The current verified snapshot could not be loaded.</h1>
-        <p>The archive was not replaced and no partial page was published.</p>
+        <p className="eyebrow">{locale === "zh-Hant" ? "出版內容暫時無法使用" : "Publication unavailable"}</p>
+        <h1>{locale === "zh-Hant" ? "目前的已驗證快照無法載入。" : "The current verified snapshot could not be loaded."}</h1>
+        <p>{locale === "zh-Hant" ? "典藏紀錄未被替換，系統也沒有發布不完整頁面。" : "The archive was not replaced and no partial page was published."}</p>
         <code>{error}</code>
         <button className="primary-action" disabled={retrying} onClick={onRetry} type="button">
-          <Icon name="refresh" size={18} /> {retrying ? "Checking…" : copy.en.retry}
+          <Icon name="refresh" size={18} /> {retrying ? text.checking : text.retry}
         </button>
       </div>
     </SiteShell>
@@ -1335,10 +1373,10 @@ function sourceGlyph(slug: string): string {
   return "•";
 }
 
-function sectionName(sectionId: string): string {
-  if (sectionId === "rules-moved") return "Rules";
-  if (sectionId === "research-frontier") return "Research";
-  if (sectionId === "expectations-moved") return "Expectations";
+function sectionName(sectionId: string, locale: "en" | "zh-Hant" = "en"): string {
+  if (sectionId === "rules-moved") return locale === "zh-Hant" ? "規則變化" : "Rules";
+  if (sectionId === "research-frontier") return locale === "zh-Hant" ? "研究動向" : "Research";
+  if (sectionId === "expectations-moved") return locale === "zh-Hant" ? "預期變化" : "Expectations";
   return humanize(sectionId);
 }
 
@@ -1348,9 +1386,9 @@ function sectionClass(sectionId: string): string {
   return "section-expectations";
 }
 
-function researchCandidateLabel(candidateType: string): string {
-  if (candidateType === "institution_entry") return "Institution activity";
-  if (candidateType === "stage_transition") return "Trial portfolio";
-  if (candidateType === "cross_topic_relation") return "Cross-topic relation";
+function researchCandidateLabel(candidateType: string, locale: "en" | "zh-Hant"): string {
+  if (candidateType === "institution_entry") return locale === "zh-Hant" ? "機構活動" : "Institution activity";
+  if (candidateType === "stage_transition") return locale === "zh-Hant" ? "試驗組合" : "Trial portfolio";
+  if (candidateType === "cross_topic_relation") return locale === "zh-Hant" ? "跨主題關係" : "Cross-topic relation";
   return humanize(candidateType);
 }

@@ -1,4 +1,4 @@
-version: "2.2.0"
+version: "2.3.0"
 
 # Production is launched by one hourly platform Cron. Every occurrence is
 # still bucketed independently so slower desks run only on their own cadence.
@@ -136,6 +136,17 @@ schedules:
     payload:
       reason: "snapshot_delivery"
       locale: "en"
+
+  - id: "publication-snapshot-delivery-zh-hant"
+    job_type: "publication.deliver_snapshot"
+    queue_name: "publication"
+    cadence_seconds: 3600
+    phase_offset_seconds: 0
+    priority: 81
+    maximum_attempts: 3
+    payload:
+      reason: "snapshot_delivery"
+      locale: "zh-Hant"
 
   # Read-only observability runs before the bounded mutation job.
   - id: "raw-retention-report"

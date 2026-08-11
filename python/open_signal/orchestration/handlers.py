@@ -93,7 +93,10 @@ class ProductionHandlers:
             raise ValueError(f"unsupported delivery reason {reason!r}")
         if self.delivery is None:
             return {"status": "disabled"}
-        return self.delivery.deliver(locale=str(job.payload.get("locale") or "en"))
+        locale = str(job.payload.get("locale") or "en")
+        if locale not in {"en", "zh-Hant"}:
+            raise ValueError(f"unsupported publication locale {locale!r}")
+        return self.delivery.deliver(locale=locale)
 
     def report_raw_retention(self, job: ClaimedJob) -> dict[str, Any]:
         mode = str(job.payload.get("mode") or "")

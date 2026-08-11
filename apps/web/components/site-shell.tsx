@@ -1,21 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { copy } from "../lib/i18n";
+import { localePath, SUPPORTED_LOCALES } from "../lib/i18n";
 import { Icon, type IconName } from "./icons";
-
-const navigation: Array<{
-  key: string;
-  label: string;
-  href: string;
-  icon: IconName;
-}> = [
-  { key: "current", label: copy.en.current, href: "/", icon: "pulse" },
-  { key: "explore", label: "Explore", href: "/explore", icon: "search" },
-  { key: "archive", label: copy.en.archive, href: "/editions", icon: "archive" },
-  { key: "method", label: copy.en.method, href: "/method", icon: "method" },
-];
+import { useLocale } from "./locale-provider";
 
 export function SiteShell({
   children,
@@ -27,6 +17,30 @@ export function SiteShell({
   systemState?: string;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { locale, text } = useLocale();
+  const navigation: Array<{
+    key: string;
+    label: string;
+    href: string;
+    icon: IconName;
+  }> = [
+    { key: "current", label: text.current, href: localePath("/", locale), icon: "pulse" },
+    { key: "explore", label: text.explore, href: localePath("/explore", locale), icon: "search" },
+    { key: "archive", label: text.archive, href: localePath("/editions", locale), icon: "archive" },
+    { key: "method", label: text.method, href: localePath("/method", locale), icon: "method" },
+  ];
+  const query = searchParams.toString();
+  const currentLocation = `${pathname}${query ? `?${query}` : ""}`;
+  const stateLabel =
+    systemState === "operational"
+      ? text.operational
+      : systemState === "unavailable"
+        ? text.unavailable
+        : systemState === "checking"
+          ? text.checking
+          : systemState;
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -39,12 +53,12 @@ export function SiteShell({
 
   return (
     <div className="site-frame" data-active-route={active}>
-      <a className="skip-link" href="#main-content">Skip to publication</a>
+      <a className="skip-link" href="#main-content">{text.skipToPublication}</a>
 
       <header className="site-header">
         <div className="site-header-inner">
           <Brand />
-          <nav aria-label="Primary navigation" className="primary-navigation">
+          <nav aria-label={text.primaryNavigation} className="primary-navigation">
             {navigation.map((item) => {
               const itemActive = active === item.key;
               return (
@@ -59,14 +73,28 @@ export function SiteShell({
               );
             })}
           </nav>
-          <div className="header-status" aria-label={`${copy.en.systemStatus}: ${systemState}`}>
+          <div className="header-status" aria-label={`${text.systemStatus}: ${stateLabel}`}>
             <span className={`status-dot status-${systemState}`} />
-            <span>{systemState}</span>
+            <span>{stateLabel}</span>
           </div>
+          <nav className="language-switcher" aria-label={text.language}>
+            {SUPPORTED_LOCALES.map((candidate) => (
+              <a
+                aria-current={candidate === locale ? "page" : undefined}
+                className={candidate === locale ? "is-active" : undefined}
+                href={localePath(currentLocation, candidate)}
+                hrefLang={candidate}
+                key={candidate}
+                lang={candidate}
+              >
+                {candidate === "en" ? "EN" : "繁中"}
+              </a>
+            ))}
+          </nav>
           <button
             aria-controls="mobile-navigation"
             aria-expanded={menuOpen}
-            aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+            aria-label={menuOpen ? text.closeNavigation : text.openNavigation}
             className="icon-button mobile-menu-button"
             onClick={() => setMenuOpen((value) => !value)}
             type="button"
@@ -75,7 +103,7 @@ export function SiteShell({
           </button>
         </div>
         <nav
-          aria-label="Mobile navigation"
+          aria-label={text.mobileNavigation}
           className={`mobile-navigation${menuOpen ? " is-open" : ""}`}
           id="mobile-navigation"
         >
@@ -94,7 +122,21 @@ export function SiteShell({
               </Link>
             );
           })}
-          <p><span className={`status-dot status-${systemState}`} /> {systemState}</p>
+          <div className="mobile-language-switcher" aria-label={text.language}>
+            {SUPPORTED_LOCALES.map((candidate) => (
+              <a
+                className={candidate === locale ? "is-active" : undefined}
+                href={localePath(currentLocation, candidate)}
+                hrefLang={candidate}
+                key={candidate}
+                lang={candidate}
+                onClick={() => setMenuOpen(false)}
+              >
+                {candidate === "en" ? text.english : text.traditionalChinese}
+              </a>
+            ))}
+          </div>
+          <p><span className={`status-dot status-${systemState}`} /> {stateLabel}</p>
         </nav>
       </header>
 
@@ -106,10 +148,11 @@ export function SiteShell({
 }
 
 function Brand() {
+  const { locale, text } = useLocale();
   return (
-    <Link className="brand" href="/" aria-label="Open Signal home">
-      <span className="brand-name">Open Signal</span>
-      <span className="brand-beta">Public Beta</span>
+    <Link className="brand" href={localePath("/", locale)} aria-label={text.homeLabel}>
+      <span className="brand-name">{text.brand}</span>
+      <span className="brand-beta">{text.beta}</span>
     </Link>
   );
 }

@@ -16,18 +16,25 @@ from typing import Any
 
 import httpx
 
+from open_signal.agents.runtime import DeepSeekClient
 from open_signal.api.editions import FrontPagePresenter
 from open_signal.api.presenters import ClaimPagePresenter
+from open_signal.publication.localization import (
+    LOCALIZATION_VERSION,
+    PublicationLocalizer,
+)
 from open_signal.sources.artifact_store import ArtifactStore, S3ArtifactStore
 
 DELIVERY_VERSION = "1.0.0"
 CONTENT_TYPE = "application/json; charset=utf-8"
+SUPPORTED_DELIVERY_LOCALES = frozenset({"en", "zh-Hant"})
 
 
 @dataclass(frozen=True)
 class PublicationKeys:
     edition: str
     manifest: str
+    localization: str
     current: str
     receipt: str
     claim_snapshots: tuple[str, ...]
@@ -47,6 +54,7 @@ class PublicationDelivery:
         client: Any | None = None,
         front_page: Any | None = None,
         claim_page: Any | None = None,
+        localizer: PublicationLocalizer | None = None,
     ) -> None:
         self.store = store
         self.revalidate_url = revalidate_url
@@ -54,8 +62,11 @@ class PublicationDelivery:
         self.client = client or httpx.Client(timeout=20.0)
         self.front_page = front_page or FrontPagePresenter(engine)
         self.claim_page = claim_page or ClaimPagePresenter(engine)
+        self.localizer = localizer
 
     def deliver(self, *, locale: str = "en") -> dict[str, Any]:
+        if locale not in SUPPORTED_DELIVERY_LOCALES:
+            raise ValueError(f"unsupported publication locale: {locale}")
         page = self.front_page.build(locale=locale)
         if page is None:
             return {"status": "empty", "locale": locale}
@@ -87,6 +98,17 @@ class PublicationDelivery:
                 )
             claim_payloads[claim_id] = payload
 
+        localization_metadata: dict[str, Any] | None = None
+        if locale != "en":
+            page, claim_payloads, localization_metadata = self._localize(
+                page,
+                claim_payloads,
+                edition_id=edition_id,
+                claim_ids=claim_ids,
+                locale=locale,
+                key=keys.localization,
+            )
+
         edition_bytes = _json_bytes(page)
         claim_bytes = {
             claim_id: _json_bytes(payload)
@@ -116,6 +138,8 @@ class PublicationDelivery:
                 )
             ],
         }
+        if localization_metadata is not None:
+            manifest["localization"] = localization_metadata
         manifest_bytes = _json_bytes(manifest)
         pointer = {
             "delivery_version": DELIVERY_VERSION,
@@ -168,6 +192,81 @@ class PublicationDelivery:
             "manifest_sha256": pointer["manifest_sha256"],
         }
 
+    def _localize(
+        self,
+        page: dict[str, Any],
+        claim_payloads: dict[str, dict[str, Any]],
+        *,
+        edition_id: str,
+        claim_ids: list[str],
+        locale: str,
+        key: str,
+    ) -> tuple[
+        dict[str, Any],
+        dict[str, dict[str, Any]],
+        dict[str, Any],
+    ]:
+        existing = self._json_or_none(key)
+        if existing is None:
+            if self.localizer is None:
+                raise RuntimeError(
+                    f"publication localizer is not configured for {locale}"
+                )
+            source_payloads = [page, *(claim_payloads[claim_id] for claim_id in claim_ids)]
+            batch = self.localizer.localize_many(source_payloads, locale=locale)
+            if len(batch.payloads) != len(source_payloads):
+                raise RuntimeError("publication localizer returned the wrong payload count")
+            bundle = {
+                "localization_version": LOCALIZATION_VERSION,
+                "edition_id": edition_id,
+                "locale": locale,
+                "provenance": batch.provenance,
+                "usage": {
+                    "prompt_tokens": batch.prompt_tokens,
+                    "completion_tokens": batch.completion_tokens,
+                    "estimated_cost_usd": batch.estimated_cost_usd,
+                    "translated_string_count": batch.translated_string_count,
+                },
+                "page": batch.payloads[0],
+                "claims": {
+                    claim_id: payload
+                    for claim_id, payload in zip(
+                        claim_ids,
+                        batch.payloads[1:],
+                        strict=True,
+                    )
+                },
+            }
+            bundle_bytes = _json_bytes(bundle)
+            self._put_immutable(key, bundle_bytes)
+        else:
+            bundle = existing
+
+        if (
+            bundle.get("edition_id") != edition_id
+            or bundle.get("locale") != locale
+            or not isinstance(bundle.get("page"), dict)
+            or not isinstance(bundle.get("claims"), dict)
+        ):
+            raise RuntimeError(f"invalid publication localization bundle: {key}")
+        localized_claims = bundle["claims"]
+        if set(localized_claims) != set(claim_ids) or not all(
+            isinstance(localized_claims[claim_id], dict) for claim_id in claim_ids
+        ):
+            raise RuntimeError(f"incomplete publication localization bundle: {key}")
+        metadata = {
+            "key": key,
+            "sha256": _sha256(_json_bytes(bundle)),
+            "version": bundle.get("localization_version"),
+            "provenance": bundle.get("provenance"),
+            "usage": bundle.get("usage"),
+        }
+        return (
+            bundle["page"],
+            {claim_id: localized_claims[claim_id] for claim_id in claim_ids},
+            metadata,
+        )
+
     def _put_immutable(self, key: str, data: bytes) -> None:
         if self.store.exists(key):
             if self.store.get(key) != data:
@@ -219,6 +318,11 @@ def from_environment(engine: Any) -> PublicationDelivery | None:
         store,
         revalidate_url=str(values["revalidate_url"]),
         revalidate_token=str(values["revalidate_token"]),
+        localizer=(
+            PublicationLocalizer(DeepSeekClient())
+            if os.environ.get("DEEPSEEK_API_KEY")
+            else None
+        ),
     )
 
 
@@ -240,6 +344,7 @@ def _keys(edition_id: str, claim_ids: list[str], locale: str) -> PublicationKeys
     return PublicationKeys(
         edition=f"{prefix}/editions/{edition_id}/front-page.{locale}.json",
         manifest=f"{prefix}/editions/{edition_id}/manifest.{locale}.json",
+        localization=f"{prefix}/editions/{edition_id}/localization.{locale}.json",
         current=f"{prefix}/channels/front-page/{locale}.json",
         receipt=f"{prefix}/deliveries/{edition_id}/vercel.{locale}.json",
         claim_snapshots=tuple(

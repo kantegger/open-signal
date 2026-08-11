@@ -27,8 +27,8 @@ def test_load_counts(registry: Registry) -> None:
     assert len(registry.templates()) == 3
     assert len(registry.freshness_policies()) == 7
     assert registry.freshness_policy_version == "1.0.0"
-    assert len(registry.job_schedules()) == 13
-    assert registry.job_schedule_version == "2.2.0"
+    assert len(registry.job_schedules()) == 14
+    assert registry.job_schedule_version == "2.3.0"
 
 
 def test_validation_passes(registry: Registry) -> None:
@@ -101,6 +101,12 @@ def test_job_schedules_preserve_section_boundaries(registry: Registry) -> None:
     assert delivery.priority > registry.job_schedule(
         "publication-freshness-reconcile"
     ).priority
+    localized_delivery = registry.job_schedule(
+        "publication-snapshot-delivery-zh-hant"
+    )
+    assert localized_delivery is not None
+    assert localized_delivery.payload["locale"] == "zh-Hant"
+    assert localized_delivery.priority > delivery.priority
     assert min(schedule.cadence_seconds for schedule in schedules) == 3600
 
 

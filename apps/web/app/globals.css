@@ -146,7 +146,7 @@ dd,
 
 .site-header-inner {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr auto auto;
   gap: clamp(24px, 4vw, 58px);
   align-items: center;
   width: min(100%, var(--content-max));
@@ -228,6 +228,30 @@ dd,
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+
+.language-switcher {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--hairline-strong);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro, 9px);
+  letter-spacing: 0.04em;
+}
+
+.language-switcher a {
+  min-inline-size: 37px;
+  padding: 7px 8px;
+  color: var(--ink-muted);
+  text-align: center;
+}
+
+.language-switcher a + a { border-inline-start: 1px solid var(--hairline-strong); }
+.language-switcher a:hover,
+.language-switcher a:focus-visible,
+.language-switcher a.is-active { color: var(--ink); background: var(--canvas-raised); }
+
+.mobile-language-switcher { display: none; }
 
 .status-dot {
   display: inline-block;
@@ -1994,7 +2018,8 @@ dd,
   .brand-name { font-size: 17px; }
   .brand-beta { font-size: 8px; }
   .primary-navigation,
-  .header-status { display: none; }
+  .header-status,
+  .language-switcher { display: none; }
   .mobile-menu-button { display: grid; }
   .mobile-navigation {
     position: absolute;
@@ -2019,6 +2044,19 @@ dd,
     text-transform: uppercase;
   }
   .mobile-navigation a.is-active { color: var(--expectations); }
+  .mobile-navigation .mobile-language-switcher {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    margin-block-start: 10px;
+    border: 1px solid var(--hairline);
+  }
+  .mobile-navigation .mobile-language-switcher a {
+    justify-content: center;
+    border-block-end: 0;
+  }
+  .mobile-navigation .mobile-language-switcher a + a {
+    border-inline-start: 1px solid var(--hairline);
+  }
   .mobile-navigation p {
     display: flex;
     gap: 9px;
@@ -3219,6 +3257,17 @@ dd,
   padding-block: 10px;
   border-block: 1px solid var(--hairline);
   font-family: var(--font-mono);
+}
+
+.translation-fallback-notice {
+  margin: 0;
+  padding: 10px 14px;
+  border-block: 1px solid color-mix(in srgb, var(--warning) 42%, var(--hairline));
+  color: var(--ink-soft);
+  background: color-mix(in srgb, var(--warning) 7%, transparent);
+  font-family: var(--font-sans);
+  font-size: clamp(12px, 0.85vw, 14px);
+  line-height: 1.55;
 }
 
 .sealed-evidence-link {

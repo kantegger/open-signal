@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
+import { isSupportedLocale, localePath } from "../../../lib/i18n";
 
 interface DeliveryNotice {
   edition_id?: unknown;
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
   }
   if (
     !validIdentifier(body.edition_id) ||
-    body.locale !== "en" ||
+    !isSupportedLocale(body.locale) ||
     !Array.isArray(body.claim_ids) ||
     !body.claim_ids.every(validIdentifier)
   ) {
@@ -37,11 +38,11 @@ export async function POST(request: NextRequest) {
   // expire synchronously instead of serving the previous Edition once via SWR.
   revalidateTag(`front-page:${locale}`, { expire: 0 });
   revalidateTag("publication-pointer", { expire: 0 });
-  revalidatePath("/");
+  revalidatePath(localePath("/", locale));
   revalidatePath("/api/publication/current");
   for (const claimId of claimIds) {
     revalidateTag(`claim:${claimId}:${locale}`, { expire: 0 });
-    revalidatePath(`/claims/${claimId}`);
+    revalidatePath(localePath(`/claims/${claimId}`, locale));
   }
   return NextResponse.json({ revalidated: true, locale, claim_count: claimIds.length });
 }
