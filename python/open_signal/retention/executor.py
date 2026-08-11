@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from collections import Counter
 from datetime import datetime, timezone
 from typing import Any
@@ -35,6 +34,44 @@ WHERE ranked.representation_rank > 1
 ORDER BY r.last_seen_at, r.id
 LIMIT :maximum_rows
 FOR UPDATE OF r SKIP LOCKED
+"""
+
+_INSERT_AUDIT_EVENTS_SQL = """
+INSERT INTO raw_payload_purge_events
+  (raw_source_record_id, source_id, source_content_hash,
+   policy_version, actor, reason, detail)
+SELECT r.id,
+       r.source_id,
+       r.content_hash,
+       :policy,
+       :actor,
+       :reason,
+       jsonb_build_object(
+           'source_slug', s.slug,
+           'last_seen_at', r.last_seen_at,
+           'payload_bytes', COALESCE(pg_column_size(r.payload), 0),
+           'row_identity_preserved', true
+       )
+FROM raw_source_records r
+JOIN sources s ON s.id = r.source_id
+WHERE r.id = ANY(CAST(:raw_ids AS uuid[]))
+  AND r.retention_state = 'hot'
+  AND r.payload IS NOT NULL
+RETURNING id, raw_source_record_id, created_at
+"""
+
+_PURGE_PAYLOADS_SQL = """
+UPDATE raw_source_records r
+SET payload = NULL,
+    retention_state = 'purged',
+    payload_purged_at = event.created_at,
+    purge_policy_version = :policy
+FROM raw_payload_purge_events event
+WHERE event.id = ANY(CAST(:event_ids AS uuid[]))
+  AND r.id = event.raw_source_record_id
+  AND r.retention_state = 'hot'
+  AND r.payload IS NOT NULL
+RETURNING r.id
 """
 
 
@@ -71,62 +108,50 @@ class RawRetentionExecutor:
                 text(_ELIGIBLE_SQL.format(hot_days_case=hot_days_case)),
                 parameters,
             ).mappings().all()
+            if rows:
+                raw_ids = [str(row["id"]) for row in rows]
+                event_rows = (
+                    conn.execute(
+                        text(_INSERT_AUDIT_EVENTS_SQL),
+                        {
+                            "raw_ids": raw_ids,
+                            "policy": self.policy.version,
+                            "actor": "retention-executor",
+                            "reason": (
+                                "superseded representation exceeded source TTL"
+                            ),
+                        },
+                    )
+                    .mappings()
+                    .all()
+                )
+                if len(event_rows) != len(rows):
+                    raise RuntimeError(
+                        "raw payload audit batch changed during purge: "
+                        f"selected={len(rows)} audited={len(event_rows)}"
+                    )
+                event_ids = [str(event["id"]) for event in event_rows]
+                updated_ids = {
+                    str(row_id)
+                    for row_id in conn.execute(
+                        text(_PURGE_PAYLOADS_SQL),
+                        {
+                            "event_ids": event_ids,
+                            "policy": self.policy.version,
+                        },
+                    ).scalars()
+                }
+                if updated_ids != set(raw_ids):
+                    raise RuntimeError(
+                        "raw payload batch changed during purge: "
+                        f"selected={len(raw_ids)} updated={len(updated_ids)}"
+                    )
+
             for row in rows:
-                event = conn.execute(
-                    text(
-                        """
-                        INSERT INTO raw_payload_purge_events
-                          (raw_source_record_id, source_id, source_content_hash,
-                           policy_version, actor, reason, detail)
-                        VALUES
-                          (:raw, :source, :content_hash, :policy, :actor,
-                           :reason, CAST(:detail AS jsonb))
-                        RETURNING created_at
-                        """
-                    ),
-                    {
-                        "raw": row["id"],
-                        "source": row["source_id"],
-                        "content_hash": row["content_hash"],
-                        "policy": self.policy.version,
-                        "actor": "retention-executor",
-                        "reason": "superseded representation exceeded source TTL",
-                        "detail": json.dumps(
-                            {
-                                "source_slug": row["source_slug"],
-                                "last_seen_at": row["last_seen_at"].isoformat(),
-                                "payload_bytes": int(row["payload_bytes"]),
-                                "row_identity_preserved": True,
-                            }
-                        ),
-                    },
-                ).scalar_one()
-                updated = conn.execute(
-                    text(
-                        """
-                        UPDATE raw_source_records
-                        SET payload = NULL,
-                            retention_state = 'purged',
-                            payload_purged_at = :purged_at,
-                            purge_policy_version = :policy
-                        WHERE id = :raw
-                          AND retention_state = 'hot'
-                          AND payload IS NOT NULL
-                        RETURNING id
-                        """
-                    ),
-                    {
-                        "raw": row["id"],
-                        "purged_at": event,
-                        "policy": self.policy.version,
-                    },
-                ).scalar_one_or_none()
-                if updated is None:
-                    raise RuntimeError(f"raw payload changed during purge: {row['id']}")
                 slug = str(row["source_slug"])
                 source_rows[slug] += 1
                 source_bytes[slug] += int(row["payload_bytes"])
-                purged_ids.append(str(updated))
+                purged_ids.append(str(row["id"]))
 
         return {
             "mode": "active",
