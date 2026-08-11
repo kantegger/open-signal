@@ -145,6 +145,8 @@ class OpenAlexChain:
                             DO UPDATE SET
                               payload = EXCLUDED.payload,
                               retention_state = 'hot',
+                              payload_purged_at = NULL,
+                              purge_policy_version = NULL,
                               transport_metadata = jsonb_set(
                                 COALESCE(raw_source_records.transport_metadata, '{}'::jsonb)
                                   || EXCLUDED.transport_metadata,

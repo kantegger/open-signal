@@ -1,4 +1,4 @@
-version: "2.1.0"
+version: "2.2.0"
 
 # Production is launched by one hourly platform Cron. Every occurrence is
 # still bucketed independently so slower desks run only on their own cadence.
@@ -137,8 +137,7 @@ schedules:
       reason: "snapshot_delivery"
       locale: "en"
 
-  # Deliberately read-only. This classifies storage pressure once per day and
-  # cannot upload, clear payloads, or delete rows.
+  # Read-only observability runs before the bounded mutation job.
   - id: "raw-retention-report"
     job_type: "retention.report_raw"
     queue_name: "analysis"
@@ -148,4 +147,18 @@ schedules:
     maximum_attempts: 1
     payload:
       mode: "report_only"
-      policy_version: "1.0.0"
+      policy_version: "2.0.0"
+
+  # Only superseded payload bodies beyond their source TTL are cleared. The
+  # row identity, content hash, normalized data, and append-only audit event
+  # remain. The per-run cap prevents a large lock or WAL spike.
+  - id: "raw-retention-purge"
+    job_type: "retention.purge_raw"
+    queue_name: "analysis"
+    cadence_seconds: 3600
+    phase_offset_seconds: 2400
+    priority: 96
+    maximum_attempts: 3
+    payload:
+      mode: "active"
+      policy_version: "2.0.0"

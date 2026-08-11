@@ -48,8 +48,9 @@ class VerificationResult:
 
 
 class ClaimVerifier:
-    def __init__(self, engine: Any) -> None:
+    def __init__(self, engine: Any, *, evidence_sealer: Any | None = None) -> None:
         self.engine = engine
+        self.evidence_sealer = evidence_sealer
 
     # ------------------------------------------------------------------ verify
     def verify(
@@ -58,9 +59,12 @@ class ClaimVerifier:
         with self.engine.connect() as conn:
             claim = conn.execute(
                 text(
-                    "SELECT claim_type, public_statement, structured_proposition, "
-                    "confidence, evidence_bundle_id, issued_at, status, section_id "
-                    "FROM claims WHERE id = :id"
+                    "SELECT c.claim_type, c.public_statement, "
+                    "c.structured_proposition, c.confidence, "
+                    "COALESCE(v.evidence_bundle_id, c.evidence_bundle_id), "
+                    "c.issued_at, c.status, c.section_id "
+                    "FROM claims c LEFT JOIN claim_versions v "
+                    "ON v.id = c.current_version_id WHERE c.id = :id"
                 ),
                 {"id": claim_id},
             ).fetchone()
@@ -187,15 +191,39 @@ class ClaimVerifier:
     def gate_for_composer(
         self, claim_id: str, render_candidate: dict[str, Any] | None = None
     ) -> bool:
-        """Composer gate: only verified claims may proceed."""
+        """Composer gate: verification and required evidence sealing precede status."""
         result = self.verify(claim_id, render_candidate)
-        new_status = "verified" if result.passed else "rejected"
+        if not result.passed:
+            with self.engine.begin() as conn:
+                conn.execute(
+                    text("UPDATE claims SET status = 'rejected' WHERE id = :id"),
+                    {"id": claim_id},
+                )
+            return False
+
+        with self.engine.connect() as conn:
+            policy = conn.execute(
+                text(
+                    "SELECT evidence_policy_version FROM claims WHERE id = :id"
+                ),
+                {"id": claim_id},
+            ).scalar_one()
+        if policy == "sealed-v1":
+            if self.evidence_sealer is None:
+                from open_signal.claims.evidence_seal import from_environment
+
+                self.evidence_sealer = from_environment(self.engine)
+            # Storage write + read-back + append-only receipt all succeed
+            # before the Claim can become Composer-eligible.  Exceptions are
+            # intentionally retryable and leave the Claim in draft state.
+            self.evidence_sealer.seal_claim(claim_id)
+
         with self.engine.begin() as conn:
             conn.execute(
-                text("UPDATE claims SET status = :status WHERE id = :id"),
-                {"status": new_status, "id": claim_id},
+                text("UPDATE claims SET status = 'verified' WHERE id = :id"),
+                {"id": claim_id},
             )
-        return result.passed
+        return True
 
 
 def _claim_proposition(proposition: dict[str, Any] | None) -> dict[str, Any]:

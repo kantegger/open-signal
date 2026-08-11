@@ -434,13 +434,14 @@ export const emptyFrontPageFixture = {
 };
 
 export const claimFixture = {
-  claim: { id: ids.lead, claim_type: "derived_observation", public_statement: "September rate cut became 21 points more likely.", status: "verified", desk_id: "expectations-desk", issued_at: assessedAt, valid_from: validFrom, valid_until: validUntil, materially_updated_at: assessedAt },
+  claim: { id: ids.lead, claim_type: "derived_observation", public_statement: "September rate cut became 21 points more likely.", status: "verified", desk_id: "expectations-desk", issued_at: assessedAt, valid_from: validFrom, valid_until: validUntil, materially_updated_at: assessedAt, evidence_policy_version: "sealed-v1" },
   observation: "Three sustained upward moves occurred in the seven-day period.",
   analysis: { summary: "The repricing persisted after the initial spike and appeared across independent market inputs.", structured_proposition: { predicate: "probability_move", operator: "increased_by", value: 21 }, predicate: "probability_move", operator: "increased_by", value: 21 },
   assessment: { summary: "Open Signal does not infer participant motivation; the durable change is the supported claim.", confidence: 0.86, confidence_label: "high", epistemic_status: "verified observation", model_version: "lead-signal-v2.3", charter_version: "os-charter-v1.4" },
   evidence: { items: [{ title: "CME FedWatch probability series", type: "market-implied probability", value: "64% → 85%", observed_at: "2026-08-08T14:25:00Z" }, { title: "Open Signal numeric replay", type: "deterministic calculation", value: "+21 percentage points" }], snapshot_hash: "fixture-evidence-snapshot-hash" },
   supporting_evidence: { items: [{ title: "Atlanta Fed GDPNow", type: "economic forecast", observed_at: "2026-08-08T13:58:00Z" }], snapshot_hash: "fixture-evidence-snapshot-hash" },
   counterevidence: { items: [{ title: "FOMC member remarks", type: "official communication", observed_at: "2026-08-08T10:15:00Z" }], snapshot_hash: "fixture-evidence-snapshot-hash" },
+  evidence_record: { object_hash: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", object_key: "public/evidence/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json", byte_size: 2048, content_type: "application/json; charset=utf-8", policy_version: "1.0.0", sealed_at: assessedAt, url: "https://evidence.open-signal.test/public/evidence/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json" },
   uncertainty: { unresolved_questions: ["Whether the repricing persists after the CPI release."], known_limitations: ["Market positioning can move without a policy probability change."] },
   method: { calculation_ids: ["calc-fixture-001"], source_coverage: { sources: 4, independent_sources: 3 } },
   agent_lineage: { lineage_id: "expectations-lead-v2", desk_id: "expectations-desk", name: "Expectations Desk", foundation_model: "DeepSeek", model_version: "v2.3", charter_id: "expectations-charter", charter_version: "v1.4", status: "active" },

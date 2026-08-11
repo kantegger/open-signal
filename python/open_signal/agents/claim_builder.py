@@ -89,8 +89,84 @@ class DeterministicClaimBuilder:
         conn: Any,
         source_market_id: str,
         calculation: dict[str, Any],
-        snapshot_hash: str,
-    ) -> str:
+        captured_at: datetime,
+    ) -> tuple[str, str]:
+        market = conn.execute(
+            text(
+                """
+                SELECT sm.external_market_id, sm.question, sm.ends_at,
+                       s.name AS source_name
+                FROM source_markets sm
+                JOIN sources s ON s.id = sm.source_id
+                WHERE sm.id = :market
+                """
+            ),
+            {"market": source_market_id},
+        ).mappings().one()
+        rows = conn.execute(
+            text(
+                """
+                SELECT observed_at, probability
+                FROM market_observations
+                WHERE source_market_id = :market
+                  AND probability IS NOT NULL
+                  AND observed_at <= :captured_at
+                  AND observed_at >= :captured_at - interval '7 days'
+                ORDER BY observed_at
+                """
+            ),
+            {"market": source_market_id, "captured_at": captured_at},
+        ).fetchall()
+        series = market_series_snapshot(
+            [(row[0], row[1]) for row in rows],
+            captured_at=captured_at,
+        )
+        primary = [
+            {
+                "type": "observed_market_series",
+                "source_market_id": source_market_id,
+                "external_market_id": str(market["external_market_id"]),
+                "title": str(market["question"]),
+                "source": str(market["source_name"]),
+                "resolution_deadline_at": (
+                    market["ends_at"].isoformat() if market["ends_at"] else None
+                ),
+                "captured_at": captured_at.isoformat(),
+                "points": series["points"],
+                "series_quality": series["quality"],
+                "metric": {
+                    key: value
+                    for key, value in calculation.items()
+                    if key not in {"eligible", "_calc_record_id"}
+                },
+            }
+        ]
+        calc_ids = (
+            [str(calculation["_calc_record_id"])]
+            if calculation.get("_calc_record_id")
+            else []
+        )
+        coverage = {
+            "sources": 1,
+            "source_name": str(market["source_name"]),
+            "source_markets": [source_market_id],
+            "captured_at": captured_at.isoformat(),
+        }
+        snapshot_hash = hashlib.sha256(
+            json.dumps(
+                {
+                    "primary_evidence": primary,
+                    "supporting_evidence": [],
+                    "counter_evidence": [],
+                    "data_calculation_ids": calc_ids,
+                    "source_coverage": coverage,
+                    "builder_version": EVIDENCE_BUNDLE_VERSION,
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+                default=str,
+            ).encode()
+        ).hexdigest()
         row = conn.execute(
             text(
                 """
@@ -104,21 +180,13 @@ class DeterministicClaimBuilder:
                 """
             ),
             {
-                "primary": json.dumps(
-                    [
-                        {
-                            "source_market_id": source_market_id,
-                            "observation_series_size": calculation.get("series_size", 0),
-                            "metric": {k: v for k, v in calculation.items() if k != "eligible"},
-                        }
-                    ]
-                ),
+                "primary": json.dumps(primary),
                 "calc": calculation.get("_calc_record_id"),
-                "coverage": json.dumps({"source_markets": [source_market_id]}),
+                "coverage": json.dumps(coverage),
                 "hash": snapshot_hash,
             },
         ).fetchone()
-        return str(row[0])
+        return str(row[0]), snapshot_hash
 
     # ------------------------------------------------------------------ build
     def build_from_candidate(
@@ -211,11 +279,11 @@ class DeterministicClaimBuilder:
 
         with self.engine.begin() as conn:
             run_id = self._create_run(conn, source_market_id, calculation)
-            evidence_bundle_id = self._create_evidence_bundle(
+            evidence_bundle_id, evidence_snapshot_hash = self._create_evidence_bundle(
                 conn,
                 source_market_id,
                 calculation,
-                snapshot_hash,
+                now,
             )
 
             direction = calculation.get("direction", 0)
@@ -250,15 +318,15 @@ class DeterministicClaimBuilder:
                        claim_type, public_statement, structured_proposition,
                        confidence, confidence_label, epistemic_status,
                        evidence_bundle_id, evidence_snapshot_hash,
-                       idempotency_key, issued_at, valid_from, valid_until,
-                       status)
+                       evidence_policy_version, idempotency_key, issued_at,
+                       valid_from, valid_until, status)
                     VALUES
                       (:inst, :desk, :lineage, :model, :charter, :run,
                        :section, :capability, 'derived_observation',
                        :statement, CAST(:prop AS jsonb),
                        :confidence, 'high', 'derived',
-                       :eb, :hash, :key, :issued, :issued, :valid_until,
-                       'draft')
+                       :eb, :hash, 'sealed-v1', :key, :issued, :issued,
+                       :valid_until, 'draft')
                     RETURNING id
                     """
                 ),
@@ -275,7 +343,7 @@ class DeterministicClaimBuilder:
                     "prop": json.dumps(proposition),
                     "confidence": 0.9,
                     "eb": evidence_bundle_id,
-                    "hash": snapshot_hash,
+                    "hash": evidence_snapshot_hash,
                     "key": idempotency_key,
                     "issued": now,
                     "valid_until": now + timedelta(hours=72),

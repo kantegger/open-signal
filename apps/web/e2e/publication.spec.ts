@@ -203,6 +203,10 @@ test("keeps public information readable and encodes direction semantically", asy
   expect(signalHref).toBeTruthy();
   await page.goto(signalHref!);
   await expect(page.getByRole("heading", { name: "Published evidence bundle" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Open sealed evidence/ })).toHaveAttribute(
+    "href",
+    /^https:\/\/evidence\.open-signal\.test\/public\/evidence\/v1\//,
+  );
   expect(await fontSize(page.locator(".claim-record-header dl > div").first())).toBeGreaterThanOrEqual(11);
   await expect(page.locator(".claim-record-header .statement-movement")).toHaveCount(1);
 });

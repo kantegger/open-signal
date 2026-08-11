@@ -182,13 +182,13 @@ class RulesCharterAgent:
                            claim_type, public_statement, structured_proposition,
                            confidence, confidence_label, epistemic_status,
                            evidence_bundle_id, evidence_snapshot_hash,
-                           issued_at, status)
+                           evidence_policy_version, issued_at, status)
                         VALUES
                           ('open-signal', 'rules-desk', :lineage, :model, 'os-018',
                            :run, 'rules-moved', 'rule.materiality',
                            'rule_change_observation', :statement,
                            CAST(:prop AS jsonb), :confidence, :label, 'agent_judgment',
-                           :eb, :hash, now(), 'draft')
+                           :eb, :hash, 'sealed-v1', now(), 'draft')
                         RETURNING id
                         """
                     ),

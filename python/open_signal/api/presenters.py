@@ -20,11 +20,15 @@ class ClaimPagePresenter:
         with self.engine.connect() as conn:
             claim = conn.execute(
                 text(
-                    "SELECT id, claim_type, public_statement, structured_proposition, "
-                    "confidence, confidence_label, epistemic_status, status, desk_id, "
-                    "agent_lineage_id, model_version, charter_version, evidence_bundle_id, "
-                    "issued_at, valid_from, valid_until, updated_at, resolution_contract_id "
-                    "FROM claims WHERE id = :id"
+                    "SELECT c.id, c.claim_type, c.public_statement, "
+                    "c.structured_proposition, c.confidence, c.confidence_label, "
+                    "c.epistemic_status, c.status, c.desk_id, c.agent_lineage_id, "
+                    "c.model_version, c.charter_version, "
+                    "COALESCE(v.evidence_bundle_id, c.evidence_bundle_id), "
+                    "c.issued_at, c.valid_from, c.valid_until, c.updated_at, "
+                    "c.resolution_contract_id, c.evidence_policy_version "
+                    "FROM claims c LEFT JOIN claim_versions v "
+                    "ON v.id = c.current_version_id WHERE c.id = :id"
                 ),
                 {"id": claim_id},
             ).fetchone()
@@ -41,6 +45,7 @@ class ClaimPagePresenter:
             ).fetchall()
 
             evidence = None
+            evidence_seal = None
             if claim[12]:
                 evidence = conn.execute(
                     text(
@@ -48,6 +53,14 @@ class ClaimPagePresenter:
                         "data_calculation_ids, source_coverage, unresolved_questions, "
                         "known_limitations, snapshot_hash "
                         "FROM evidence_bundles WHERE id = :id"
+                    ),
+                    {"id": claim[12]},
+                ).fetchone()
+                evidence_seal = conn.execute(
+                    text(
+                        "SELECT object_hash, storage_key, byte_size, content_type, "
+                        "policy_version, sealed_at FROM evidence_seals "
+                        "WHERE evidence_bundle_id = :id"
                     ),
                     {"id": claim[12]},
                 ).fetchone()
@@ -93,6 +106,7 @@ class ClaimPagePresenter:
             claim,
             versions,
             evidence,
+            evidence_seal,
             lineage,
             resolution,
             topic,
@@ -105,6 +119,7 @@ class ClaimPagePresenter:
         claim: Any,
         versions: list[Any],
         evidence: Any | None,
+        evidence_seal: Any | None,
         lineage: Any | None,
         resolution: Any | None,
         topic: Any | None,
@@ -127,6 +142,7 @@ class ClaimPagePresenter:
                 "valid_from": claim[14].isoformat() if claim[14] else None,
                 "valid_until": claim[15].isoformat() if claim[15] else None,
                 "materially_updated_at": claim[16].isoformat() if claim[16] else None,
+                "evidence_policy_version": claim[18],
             },
             # 1. Observation
             "observation": observation,
@@ -160,6 +176,18 @@ class ClaimPagePresenter:
             ),
             # 5. Counterevidence
             "counterevidence": self._evidence_block(evidence, "counter_evidence"),
+            "evidence_record": (
+                {
+                    "object_hash": evidence_seal[0],
+                    "object_key": evidence_seal[1],
+                    "byte_size": int(evidence_seal[2]),
+                    "content_type": evidence_seal[3],
+                    "policy_version": evidence_seal[4],
+                    "sealed_at": evidence_seal[5].isoformat(),
+                }
+                if evidence_seal
+                else None
+            ),
             "uncertainty": {
                 "unresolved_questions": list(evidence[5] or []) if evidence else [],
                 "known_limitations": list(evidence[6] or []) if evidence else [],

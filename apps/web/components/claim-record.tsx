@@ -46,7 +46,16 @@ export function ClaimRecord({ page }: { page: ClaimPageData }) {
       </section>
 
       <section className="claim-evidence-section">
-        <header><p className="eyebrow">Evidence</p><h2>Published evidence bundle</h2><p>Sources and counterevidence are shown as frozen for this Claim version.</p></header>
+        <header>
+          <p className="eyebrow">Evidence</p>
+          <h2>Published evidence bundle</h2>
+          <p>{page.evidence_record ? "This content-addressed bundle was stored and read back before the Claim became publishable." : page.claim.evidence_policy_version === "sealed-v1" ? "Evidence sealing is pending; this Claim cannot enter a public Edition yet." : "This legacy Claim predates the sealed-evidence cutover; its evidence remains inside the published Claim record."}</p>
+          {page.evidence_record?.url ? (
+            <a className="sealed-evidence-link" href={page.evidence_record.url} rel="noreferrer" target="_blank">
+              Open sealed evidence <Icon name="arrow" size={15} />
+            </a>
+          ) : null}
+        </header>
         <div className="claim-evidence-columns">
           <ClaimEvidenceList title="Primary and supporting" items={[...page.evidence.items, ...(page.supporting_evidence?.items ?? [])]} />
           <ClaimEvidenceList title="Counterevidence" items={page.counterevidence.items} />
@@ -98,7 +107,7 @@ export function ClaimRecord({ page }: { page: ClaimPageData }) {
       </section>
 
       <footer className="claim-record-footer">
-        <span>Evidence snapshot {page.evidence.snapshot_hash?.slice(0, 24) || "recorded in ledger"}</span>
+        <span>{page.evidence_record ? `Sealed object ${page.evidence_record.object_hash.slice(0, 24)}` : `Evidence snapshot ${page.evidence.snapshot_hash?.slice(0, 24) || "recorded in ledger"}`}</span>
         <Link href="/">Return to current front page <Icon name="arrow" size={16} /></Link>
       </footer>
     </article>

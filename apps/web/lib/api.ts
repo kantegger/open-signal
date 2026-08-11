@@ -23,6 +23,7 @@ export interface ClaimPageData {
     valid_from?: string | null;
     valid_until?: string | null;
     materially_updated_at?: string | null;
+    evidence_policy_version?: "legacy" | "sealed-v1" | string;
   };
   observation: string;
   analysis: {
@@ -43,6 +44,15 @@ export interface ClaimPageData {
   evidence: EvidenceBlock;
   supporting_evidence?: EvidenceBlock;
   counterevidence: EvidenceBlock;
+  evidence_record?: {
+    object_hash: string;
+    object_key: string;
+    byte_size: number;
+    content_type: string;
+    policy_version: string;
+    sealed_at: string;
+    url?: string;
+  } | null;
   uncertainty?: {
     unresolved_questions: unknown[];
     known_limitations: unknown[];

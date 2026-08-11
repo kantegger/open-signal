@@ -24,7 +24,7 @@ This preserves the distinction at the center of Open Signal:
 | Draft/non-public Edition rows | `operational_ttl` | Mutable until publication; cannot be promoted in place |
 | Public Claims, versions, evidence and lineage | permanent accountability record | Existing ledger rules continue |
 | Raw source-record identity, hashes and provenance | durable reproducibility index | Keep the row and ID; never break downstream references |
-| Raw source-record JSON payload | hot/cold operational input | Report-only classification exists; R2 movement is not active |
+| Raw source-record JSON payload | hot/purged operational input | Keep the newest representation; clear only expired superseded bodies |
 | High-frequency observations | operational/reproducibility input | Compaction remains deferred until replay and resolution validation exists |
 
 `first_published_at` is the durable classification boundary. Status alone is not
@@ -56,7 +56,7 @@ Corrections continue to work by cloning the source snapshot, publishing a new
 Edition, and appending `corrected` / `superseded` events. There is no generic
 session-level trigger bypass.
 
-## Raw payload retention: report-only phase
+## Raw payload retention: bounded active purge
 
 The production measurement on 2026-08-11 found 37,448 raw records occupying
 about 173 MB of total PostgreSQL relation storage. Polymarket accounted for
@@ -64,66 +64,68 @@ about 126 MB of logical JSON payload and 32,637 of its 36,782 rows were already
 superseded representations. The database was only three days old, so a uniform
 30-day hot window would allow avoidable growth before reclaiming anything.
 
-Migration `0013` therefore models payload location separately from record
-identity. The `raw_source_records` row, content hash, timestamps, source link and
-all downstream foreign-key targets remain in PostgreSQL. A future executor may
-set only the JSON `payload` to `NULL` after the bytes exist in verified private
-R2 storage. This avoids deleting provenance rows or rewriting public evidence.
+Migration `0013` models payload location separately from record identity.
+Migration `0014` adds the active `purged` state and an append-only purge-event
+ledger. The `raw_source_records` row, content hash, timestamps, source link and
+all downstream foreign-key targets remain in PostgreSQL; only an eligible JSON
+`payload` body is cleared. Public Claims no longer depend on that mutable hot
+body: new Claims must seal their exact public Evidence Bundle to a verified,
+content-addressed R2 object before they can enter a public Edition.
 
-The two-tier workflow is:
+The active workflow is:
 
-1. keep the latest representation for every external object hot regardless of
-   age;
-2. classify only superseded payloads against source-specific hot windows and
-   Rights Manifests;
-3. report all public-evidence and provenance dependencies;
-4. build deterministic gzip bytes under a content-addressed private R2 key;
-5. upload, read the object back, and verify compressed and source-content
-   SHA-256 hashes;
-6. append a `raw_payload_archive_events` row;
-7. in the same database transaction, change `retention_state` to `cold`, store
-   the verified pointer, and clear only `payload`;
-8. monitor the recovery grace period, replay/rehydration, table reuse and cost.
+1. keep the latest representation for every `(source, record type, external
+   ID)` hot regardless of age;
+2. classify only superseded payloads against source-specific hot windows;
+3. select no more than 1,000 rows per execution with `FOR UPDATE SKIP LOCKED`;
+4. append a `raw_payload_purge_events` audit row and clear only `payload` in the
+   same database transaction;
+5. retain source identity, content hash, timestamps and downstream references;
+6. rehydrate an identical payload as hot if an adapter observes it again;
+7. monitor logical bytes cleared, PostgreSQL page reuse and storage cost.
 
 The machine-readable report policy starts with:
 
 - keep the current raw representation for every live external object in Neon;
-- classify superseded Polymarket payloads after 7 days, general payloads after
+- classify superseded Polymarket payloads after 2 days, general payloads after
   30 days, ClinicalTrials after 90 days and Federal Register after 365 days;
-- treat dependency-bearing rows as held until every read/replay path can hydrate
-  a cold payload;
-- let an explicit Rights Manifest denial or legal maximum block R2 copying and
-  require review;
+- keep sealed public Evidence Bundles in R2 permanently and independently from
+  the raw-payload TTL;
 - compact old market observations only after replay and resolution scoring have
   been tested against the compacted representation.
 
 `retention.report_raw` is scheduled daily and its handler accepts only
 `mode=report_only`. Its PostgreSQL transaction is explicitly read-only. The
 standalone `python scripts/report_raw_retention.py` command has the same
-boundary. Neither code path uploads to R2, updates a raw row, nor deletes data.
+boundary. `retention.purge_raw` reuses the existing hourly scheduler with a
+phase offset and processes at most 1,000 rows per run; it does not increase the
+Cloudflare Cron frequency or add a separate Neon wake-up.
 
-Database triggers reject a hot-to-cold transition unless a matching immutable
-archive event already exists. Once archive metadata exists it cannot be
-rewritten; identical source content may be rehydrated to hot while retaining the
-verified pointer. The archive-object module currently defines and tests the
-deterministic bytes and read-back verification contract only.
+Database triggers reject direct payload clearing unless the same transaction
+has inserted the matching immutable purge event. Purge events cannot be updated
+or deleted. The older cold/archive schema remains readable for backward
+compatibility, but there is no asynchronous raw-payload-to-R2 archive job.
 
-Production activation requires a separate reviewed executor/runbook, private R2
-binding or credentials, restore drill, dependency hydration tests, source-rights
-review, a bounded batch limit, and observed PostgreSQL page reuse. Logical JSON
-bytes in the report are not a promise that PostgreSQL files shrink immediately.
+Logical JSON bytes cleared are not a promise that PostgreSQL files or Neon
+storage metrics shrink immediately; the first objective is to stop avoidable
+growth while PostgreSQL vacuum and page reuse catch up.
 
 ## Deployment order
 
 1. Run migration `0012` before deploying code that writes `edition_events`.
 2. Verify Edition backfill counts and payload hashes.
-3. Run migration `0013` before deploying the raw-retention planner.
+3. Run migration `0013`, then the expand migration `0014`. Its transitional
+   Claim default remains legacy so the previous worker can continue safely.
 4. Verify every existing raw row is `hot` with a non-null payload and no archive
    pointer.
-5. Deploy the API, writer, web Archive and report-only retention handler.
-6. Confirm Archive cursor traversal reaches the oldest public Edition.
-7. Inspect at least one daily retention report before designing an execution
-   batch.
+5. Deploy the API, writers, web Archive, evidence sealer, report handler and
+   bounded purge handler. Every new writer explicitly selects `sealed-v1`.
+6. After the new worker is healthy, run contract migration `0015` to make
+   `sealed-v1` the database default. Downgrade to `0014` before rolling the
+   application back to a pre-sealing release.
+7. Confirm Archive cursor traversal reaches the oldest public Edition.
+8. Inspect the first daily report and hourly purge audit before raising the
+   1,000-row batch ceiling.
 
-Production Neon and R2 are not modified merely by merging OS-053; migration and
-any future archive execution remain explicit deployment steps.
+Production Neon and R2 are not modified merely by merging OS-053; migrations and
+the first deployed scheduler execution remain explicit deployment steps.

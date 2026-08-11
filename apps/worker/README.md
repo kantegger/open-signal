@@ -29,10 +29,11 @@ uses the intended deterministic Job buckets. Longer desk cadences remain in the
 machine-readable schedule registry and are idempotently skipped between due
 boundaries.
 
-The retention schedule runs once per day in report-only mode. It classifies
-superseded raw payloads and logs logical byte counts, rights state and provenance
-holds. It has no upload, update or delete path. Run the same read-only report on
-demand with:
+The retention report runs once per day and remains read-only. A separate
+hourly schedule clears at most 1,000 expired, superseded raw payload bodies per
+run. It always preserves the newest representation for every external object,
+the raw row identity and content hash, normalized observations, and sealed
+public evidence. Run the read-only report on demand with:
 
 ```powershell
 python scripts/report_raw_retention.py

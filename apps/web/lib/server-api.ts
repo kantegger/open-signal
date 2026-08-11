@@ -67,22 +67,24 @@ export async function fetchClaimServer(
   const publicationBase = process.env.OPEN_SIGNAL_PUBLICATION_BASE_URL;
   if (publicationBase) {
     try {
-      return await fetchJson<ClaimPageData>(
+      const page = await fetchJson<ClaimPageData>(
         joinUrl(
           publicationBase,
           `public/publications/claims/${encodeURIComponent(claimId)}/${encodeURIComponent(locale)}.json`,
         ),
         [`claim:${claimId}:${locale}`],
       );
+      return withEvidenceObjectUrl(page, publicationBase);
     } catch (error) {
       if (!process.env.OPEN_SIGNAL_API_URL) throw error;
     }
   }
 
-  return fetchJson<ClaimPageData>(
+  const page = await fetchJson<ClaimPageData>(
     `${apiBase()}/api/claims/${encodeURIComponent(claimId)}?locale=${encodeURIComponent(locale)}`,
     [`claim:${claimId}:${locale}`],
   );
+  return publicationBase ? withEvidenceObjectUrl(page, publicationBase) : page;
 }
 
 export async function fetchTopicServer(
@@ -192,4 +194,21 @@ function safeObjectKey(value: unknown, prefix: string): value is string {
     !value.includes("..") &&
     !value.includes("\\")
   );
+}
+
+function withEvidenceObjectUrl(
+  page: ClaimPageData,
+  publicationBase: string,
+): ClaimPageData {
+  const record = page.evidence_record;
+  if (!record || !safeObjectKey(record.object_key, "public/evidence/v1/")) {
+    return page;
+  }
+  return {
+    ...page,
+    evidence_record: {
+      ...record,
+      url: joinUrl(publicationBase, record.object_key),
+    },
+  };
 }

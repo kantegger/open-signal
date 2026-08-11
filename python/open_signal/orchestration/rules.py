@@ -311,6 +311,8 @@ class RulesSectionService:
                                     "document_number": identifier,
                                     "source_url": source_url,
                                     "authority": authority,
+                                    "content_hash": content_hash,
+                                    "source_created_at": transition_at.isoformat(),
                                 }
                             ]
                         ),
@@ -319,6 +321,8 @@ class RulesSectionService:
                                 "source": "Federal Register",
                                 "authority": "official_government",
                                 "source_url": source_url,
+                                "sources": 1,
+                                "raw_source_record_ids": [raw_id],
                             }
                         ),
                         "hash": snapshot_hash,
@@ -384,14 +388,14 @@ class RulesSectionService:
                            capability_id, claim_type, public_statement,
                            structured_proposition, confidence, confidence_label,
                            epistemic_status, evidence_bundle_id,
-                           evidence_snapshot_hash, idempotency_key, issued_at,
-                           status)
+                           evidence_snapshot_hash, evidence_policy_version,
+                           idempotency_key, issued_at, status)
                         VALUES
                           ('open-signal', :desk, :lineage, 'deterministic',
                            'os-049', :run, :section, :capability, 'source_fact',
                            :statement, CAST(:proposition AS jsonb), 1.0, 'high',
-                           'authoritative_primary', :evidence, :hash, :key,
-                           :issued, 'draft')
+                           'authoritative_primary', :evidence, :hash,
+                           'sealed-v1', :key, :issued, 'draft')
                         RETURNING id
                         """
                     ),

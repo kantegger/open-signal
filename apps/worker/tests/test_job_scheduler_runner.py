@@ -117,18 +117,30 @@ def test_research_schedule_revision_matches_candidate_contract() -> None:
     assert schedule.payload["candidate_version"] == CANDIDATE_VERSION
 
 
-def test_retention_schedule_is_report_only() -> None:
-    schedule = next(
+def test_retention_schedules_report_then_run_bounded_purge() -> None:
+    report = next(
         item
         for item in Registry.load().job_schedules()
         if item.id == "raw-retention-report"
     )
+    purge = next(
+        item
+        for item in Registry.load().job_schedules()
+        if item.id == "raw-retention-purge"
+    )
 
-    assert schedule.job_type == "retention.report_raw"
-    assert schedule.cadence_seconds == 86400
-    assert schedule.payload == {
+    assert report.job_type == "retention.report_raw"
+    assert report.cadence_seconds == 86400
+    assert report.payload == {
         "mode": "report_only",
-        "policy_version": "1.0.0",
+        "policy_version": "2.0.0",
+    }
+    assert purge.job_type == "retention.purge_raw"
+    assert purge.cadence_seconds == 3600
+    assert purge.phase_offset_seconds > report.phase_offset_seconds
+    assert purge.payload == {
+        "mode": "active",
+        "policy_version": "2.0.0",
     }
 
 
