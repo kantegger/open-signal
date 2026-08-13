@@ -106,13 +106,13 @@ export default async function TopicPage({ params }: Props) {
 
           <header className="topic-header">
             <div>
-              <p className="eyebrow">{traditional ? "標準預期" : "Canonical expectation"} · {humanize(page.topic.event_type)}</p>
+              <p className="eyebrow">{traditional ? "標準預期" : "Canonical expectation"} · {humanize(page.topic.event_type, locale)}</p>
               <h1>{page.topic.title}</h1>
               {page.source_event?.title && page.source_event.title !== page.topic.title ? <p>{page.source_event.title}</p> : null}
               {tags.length ? <div className="topic-tags">{tags.slice(0, 8).map((tag) => <span key={tag}>{tag}</span>)}</div> : null}
             </div>
             <dl className="topic-facts">
-              <div><dt>{traditional ? "狀態" : "Status"}</dt><dd>{humanize(page.topic.status)}</dd></div>
+              <div><dt>{traditional ? "狀態" : "Status"}</dt><dd>{humanize(page.topic.status, locale)}</dd></div>
               <div><dt>{traditional ? "結算" : "Resolves"}</dt><dd>{formatDateTime(page.topic.resolution_deadline_at, locale)}</dd></div>
               <div><dt>{traditional ? "市場" : "Markets"}</dt><dd>{page.markets.length}</dd></div>
               <div><dt>{traditional ? "已驗證訊號" : "Verified signals"}</dt><dd>{page.signals.length}</dd></div>
@@ -159,11 +159,11 @@ export default async function TopicPage({ params }: Props) {
                     <Link href={signalPath(signal.public_statement, signal.id, locale)}>
                       <DirectionalStatement text={signal.public_statement} />
                       <small className="collection-detail collection-detail-balanced">
-                        {humanize(signal.claim_type)} · {traditional ? "更新" : "updated"} {formatRelativeTime(signal.updated_at, locale)}
+                        {humanize(signal.claim_type, locale)} · {traditional ? "更新" : "updated"} {formatRelativeTime(signal.updated_at, locale)}
                       </small>
                     </Link>
-                    <span>{humanize(signal.confidence_label ?? signal.epistemic_status)}</span>
-                    <span>{humanize(signal.status)}</span>
+                    <span>{humanize(signal.confidence_label ?? signal.epistemic_status, locale)}</span>
+                    <span>{humanize(signal.status, locale)}</span>
                   </article>
                 ))}
               </div>

@@ -120,7 +120,7 @@ export default async function EditionsPage({ searchParams }: Props) {
               <select name="section" defaultValue={filters.section ?? ""}>
                 <option value="">{traditional ? "所有區段" : "All Sections"}</option>
                 {archive.facets.sections.map((section) => (
-                  <option value={section} key={section}>{humanize(section)}</option>
+                  <option value={section} key={section}>{humanize(section, locale)}</option>
                 ))}
               </select>
             </label>
@@ -129,7 +129,7 @@ export default async function EditionsPage({ searchParams }: Props) {
               <select name="status" defaultValue={filters.status ?? ""}>
                 <option value="">{traditional ? "所有編製狀態" : "All compile states"}</option>
                 {archive.facets.statuses.map((status) => (
-                  <option value={status} key={status}>{humanize(status)}</option>
+                  <option value={status} key={status}>{humanize(status, locale)}</option>
                 ))}
               </select>
             </label>
@@ -164,15 +164,15 @@ export default async function EditionsPage({ searchParams }: Props) {
                     <span role="cell">
                       {edition.sections.length} {traditional ? "個區段" : "Sections"}
                       <small className="collection-detail collection-detail-balanced">
-                        {edition.sections.map(humanize).join(" · ") || (traditional ? "沒有有效區段" : "No active Sections")}
+                        {edition.sections.map((section) => humanize(section, locale)).join(" · ") || (traditional ? "沒有有效區段" : "No active Sections")}
                       </small>
                     </span>
                     <span role="cell">{edition.claim_count}</span>
-                    <span role="cell">{humanize(edition.trigger_type)}</span>
+                    <span role="cell">{humanize(edition.trigger_type, locale)}</span>
                     <span role="cell">{edition.correction_count}</span>
                     <span role="cell">
-                      {humanize(edition.latest_event_type ?? edition.status)}
-                      <small>{humanize(edition.status)} {traditional ? "編製" : "compile"}</small>
+                      {humanize(edition.latest_event_type ?? edition.status, locale)}
+                      <small>{humanize(edition.status, locale)} {traditional ? "編製" : "compile"}</small>
                     </span>
                     <span role="cell"><Link href={editionPath(edition.id, locale)}>{edition.id.slice(0, 8)} →</Link></span>
                   </div>

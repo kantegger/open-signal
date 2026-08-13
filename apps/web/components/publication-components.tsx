@@ -72,7 +72,7 @@ export function SignalHero({ item, onEvidence }: ComponentProps) {
             {start !== null ? <span>{formatPercent(start)}</span> : null}
             {start !== null ? <span className="change-arrow">→</span> : null}
             <strong>{formatPercent(current)}</strong>
-            {string(fields.window) ? <small>· {humanize(string(fields.window))}</small> : null}
+            {string(fields.window) ? <small>· {humanize(string(fields.window), locale)}</small> : null}
           </div>
         ) : null}
 
@@ -120,7 +120,7 @@ function SecondarySignal({ item, onEvidence }: ComponentProps) {
         </p>
       ) : previousState || currentState ? (
         <p className="secondary-transition">
-          <span>{humanize(previousState || "previous")}</span><span>→</span><strong>{humanize(currentState || "current")}</strong>
+          <span>{humanize(previousState || "previous", locale)}</span><span>→</span><strong>{humanize(currentState || "current", locale)}</strong>
         </p>
       ) : null}
       {observation ? <p className="secondary-observation"><span>{locale === "zh-Hant" ? "觀測" : "Observed"}</span>{observation}</p> : null}
@@ -205,7 +205,7 @@ export function DocumentChange({ item, onEvidence }: ComponentProps) {
           <div><span>{locale === "zh-Hant" ? "新" : "New"}</span><p>{newText || (locale === "zh-Hant" ? "未發布" : "Not published")}</p></div>
         </div>
       ) : null}
-      {summary ? <p className="change-classification"><span>{humanize(string(fields.change_type) || "Material")}</span> — {summary}</p> : null}
+      {summary ? <p className="change-classification"><span>{humanize(string(fields.change_type) || "Material", locale)}</span> — {summary}</p> : null}
       <TrustLine item={item} onEvidence={onEvidence} />
     </article>
   );
@@ -550,8 +550,8 @@ function transitionStages(fields: JsonRecord, locale: "en" | "zh-Hant"): Stage[]
   const previous = string(fields.previous_state);
   const current = string(fields.current_state);
   const values: Stage[] = [];
-  if (previous) values.push({ label: humanize(previous), date: shortDate(fields.previous_date, locale), current: false });
-  if (current) values.push({ label: humanize(current), date: shortDate(fields.transition_date ?? fields.effective_at, locale), detail: string(fields.observation) || undefined, current: true });
+  if (previous) values.push({ label: humanize(previous, locale), date: shortDate(fields.previous_date, locale), current: false });
+  if (current) values.push({ label: humanize(current, locale), date: shortDate(fields.transition_date ?? fields.effective_at, locale), detail: string(fields.observation) || undefined, current: true });
   return values;
 }
 
@@ -614,7 +614,7 @@ function changeLabel(
 
 function confidence(item: RenderPlanItem, locale: "en" | "zh-Hant"): string {
   const label = item.trust.confidence_label || item.trust.epistemic_status;
-  if (label) return humanize(label);
+  if (label) return humanize(label, locale);
   if (item.trust.confidence === null || item.trust.confidence === undefined) return locale === "zh-Hant" ? "未評分" : "Not scored";
   if (locale === "zh-Hant") return item.trust.confidence >= 0.8 ? "高" : item.trust.confidence >= 0.55 ? "中" : "低";
   return item.trust.confidence >= 0.8 ? "High" : item.trust.confidence >= 0.55 ? "Medium" : "Low";
@@ -624,7 +624,7 @@ function sectionName(sectionId: string, locale: "en" | "zh-Hant"): string {
   if (sectionId === "rules-moved") return locale === "zh-Hant" ? "規則變化" : "Rules";
   if (sectionId === "research-frontier") return locale === "zh-Hant" ? "研究動向" : "Research";
   if (sectionId === "expectations-moved") return locale === "zh-Hant" ? "預期變化" : "Expectations";
-  return humanize(sectionId);
+  return humanize(sectionId, locale);
 }
 
 function sectionClass(sectionId: string): string {

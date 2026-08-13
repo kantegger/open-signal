@@ -11,12 +11,14 @@ from __future__ import annotations
 import copy
 import json
 import re
-from dataclasses import dataclass
+from collections import Counter
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from typing import Any
 
 from open_signal.agents.runtime import DeepSeekClient, LlmUsage
 
-LOCALIZATION_VERSION = "os-l10n-001"
+LOCALIZATION_VERSION = "os-l10n-002"
 SUPPORTED_TARGETS = frozenset({"zh-Hant"})
 
 _TRANSLATABLE_FIELDS = frozenset(
@@ -26,25 +28,45 @@ _TRANSLATABLE_FIELDS = frozenset(
         "baseline_label",
         "change_reason",
         "change_summary",
+        "change_title",
+        "current_text",
         "dek",
         "description",
+        "detail",
         "diff_summary",
+        "entity",
         "event_title",
+        "expectation_title",
         "headline",
+        "interpretation",
+        "item_title",
         "known_limitations",
+        "limitation",
         "method_summary",
         "metric",
+        "new_text",
         "observation",
+        "old_text",
         "option_label",
+        "original_claim",
+        "outcome",
+        "previous_text",
+        "primary_observation",
+        "primary_signal",
         "public_statement",
         "question",
         "reason",
+        "rationale",
         "resolution_rule_summary",
+        "rule_title",
         "statement",
         "summary",
         "title",
+        "topic_label",
         "unresolved_questions",
+        "window",
         "window_label",
+        "work_title",
     }
 )
 _SOURCE_EVIDENCE_FIELDS = frozenset(
@@ -72,6 +94,8 @@ _PROTECTED_PATTERN = re.compile(
 )
 _PLACEHOLDER_PATTERN = re.compile(r"__OS_TOKEN_\d{4}__")
 _HAS_ENGLISH = re.compile(r"[A-Za-z]")
+_HAS_CJK = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]")
+_ENGLISH_WORD = re.compile(r"[A-Za-z]{2,}")
 _ENUM_LIKE = re.compile(r"^[A-Za-z0-9_.:/-]+$")
 
 
@@ -87,6 +111,9 @@ class LocalizationBatch:
     completion_tokens: int
     estimated_cost_usd: float
     translated_string_count: int
+    cache_hit_count: int = 0
+    cache_miss_count: int = 0
+    new_translations: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -119,6 +146,7 @@ class PublicationLocalizer:
         payloads: list[dict[str, Any]],
         *,
         locale: str,
+        translation_memory: Mapping[str, str] | None = None,
     ) -> LocalizationBatch:
         if locale not in SUPPORTED_TARGETS:
             raise LocalizationError(f"unsupported localization target: {locale}")
@@ -128,12 +156,30 @@ class PublicationLocalizer:
         refs = _collect_text_refs(localized)
         unique_sources = list(dict.fromkeys(ref.source for ref in refs))
         translated: dict[str, str] = {}
-        usage = LlmUsage()
+        cache_hits = 0
+        misses: list[str] = []
+        memory = translation_memory or {}
+        for source in unique_sources:
+            cached = memory.get(source)
+            if isinstance(cached, str):
+                try:
+                    _validate_restored_translation(source, cached)
+                except LocalizationError:
+                    misses.append(source)
+                else:
+                    translated[source] = cached.strip()
+                    cache_hits += 1
+            else:
+                misses.append(source)
 
-        for offset in range(0, len(unique_sources), self.batch_size):
-            batch = unique_sources[offset : offset + self.batch_size]
+        usage = LlmUsage()
+        new_translations: dict[str, str] = {}
+
+        for offset in range(0, len(misses), self.batch_size):
+            batch = misses[offset : offset + self.batch_size]
             batch_result, batch_usage = self._translate_batch(batch, locale=locale)
             translated.update(batch_result)
+            new_translations.update(batch_result)
             usage.prompt_tokens += batch_usage.prompt_tokens
             usage.completion_tokens += batch_usage.completion_tokens
             usage.total_tokens += batch_usage.total_tokens
@@ -154,6 +200,9 @@ class PublicationLocalizer:
             completion_tokens=usage.completion_tokens,
             estimated_cost_usd=usage.cost_usd(self.model),
             translated_string_count=len(unique_sources),
+            cache_hit_count=cache_hits,
+            cache_miss_count=len(misses),
+            new_translations=new_translations,
         )
 
     def _translate_batch(
@@ -173,8 +222,11 @@ class PublicationLocalizer:
             "You localize a public evidence product from English into Traditional Chinese "
             "(BCP 47 zh-Hant). Translate faithfully and concisely. Preserve uncertainty, "
             "modality, and epistemic strength exactly; never add causality, advice, or facts. "
-            "Keep proper names recognizable. Every __OS_TOKEN_0000__ placeholder must appear "
-            "exactly once and unchanged. Return only JSON in the form "
+            "Translate every sentence and descriptive phrase; keep official proper names "
+            "recognizable and use established Traditional Chinese names when they exist. "
+            "Use natural newsroom Traditional Chinese, not word-for-word English syntax. "
+            "Every __OS_TOKEN_0000__ placeholder must appear exactly once and unchanged. "
+            "Return only JSON in the form "
             '{"translations":{"0":"..."}} with one entry for every input id.'
         )
         content, usage = self.client.chat(
@@ -214,8 +266,7 @@ class PublicationLocalizer:
             restored = candidate.strip()
             for placeholder, original in tokens.items():
                 restored = restored.replace(placeholder, original)
-            if _numeric_tokens(source) != _numeric_tokens(restored):
-                raise LocalizationError("localized presentation changed numeric tokens")
+            _validate_restored_translation(source, restored)
             result[source] = restored
             if protected_source == source and not tokens and restored == source:
                 # Exact preservation is allowed for proper names, but a whole batch of
@@ -303,6 +354,20 @@ def _numeric_tokens(value: str) -> list[str]:
         for match in _PROTECTED_PATTERN.finditer(value)
         if any(ch.isdigit() for ch in match.group(0))
     ]
+
+
+def _validate_restored_translation(source: str, candidate: str) -> None:
+    value = candidate.strip()
+    if not value:
+        raise LocalizationError("localizer returned an empty translation")
+    source_tokens = Counter(match.group(0) for match in _PROTECTED_PATTERN.finditer(source))
+    candidate_tokens = Counter(match.group(0) for match in _PROTECTED_PATTERN.finditer(value))
+    if source_tokens != candidate_tokens:
+        raise LocalizationError("localized presentation changed a protected number, date, or URL")
+    if _numeric_tokens(source) != _numeric_tokens(value):
+        raise LocalizationError("localized presentation changed numeric tokens")
+    if len(_ENGLISH_WORD.findall(source)) >= 2 and not _HAS_CJK.search(value):
+        raise LocalizationError("localized presentation contains no Traditional Chinese text")
 
 
 def _set_path(payload: dict[str, Any], path: tuple[str | int, ...], value: str) -> None:

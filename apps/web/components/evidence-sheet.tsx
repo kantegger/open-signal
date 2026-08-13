@@ -157,7 +157,7 @@ function SheetRecord({ page }: { page: ClaimPageData }) {
         </div>
         <dl className="claim-identity">
           <div><dt>Claim ID</dt><dd>{page.claim.id}</dd></div>
-          <div><dt>{traditional ? "狀態" : "Status"}</dt><dd className="verified-state">{humanize(page.claim.status)}</dd></div>
+          <div><dt>{traditional ? "狀態" : "Status"}</dt><dd className="verified-state">{humanize(page.claim.status, locale)}</dd></div>
           <div><dt>{traditional ? "最近實質更新" : "Last materially updated"}</dt><dd>{formatDateTime(page.claim.materially_updated_at ?? page.claim.issued_at, locale)}</dd></div>
         </dl>
       </section>
@@ -165,7 +165,7 @@ function SheetRecord({ page }: { page: ClaimPageData }) {
       <section className="epistemic-grid" aria-label={traditional ? "觀測、分析與判斷" : "Observation, analysis, and assessment"}>
         <div><p className="eyebrow">{traditional ? "觀測" : "Observation"}</p><p>{page.observation}</p></div>
         <div><p className="eyebrow">{traditional ? "分析" : "Analysis"}</p><p>{page.analysis.summary || propositionSummary(page.analysis.structured_proposition, locale)}</p></div>
-        <div><p className="eyebrow">{traditional ? "Open Signal 判斷" : "Open Signal assessment"}</p><p>{page.assessment.summary || humanize(page.assessment.epistemic_status)}</p></div>
+        <div><p className="eyebrow">{traditional ? "Open Signal 判斷" : "Open Signal assessment"}</p><p>{page.assessment.summary || humanize(page.assessment.epistemic_status, locale)}</p></div>
       </section>
 
       <section className="trust-rationale-grid">
@@ -221,7 +221,7 @@ function SheetRecord({ page }: { page: ClaimPageData }) {
               <div className="history-row" role="row" key={version.version_number}>
                 <strong role="cell">v{version.version_number}</strong>
                 <time role="cell">{formatDateTime(version.created_at, locale)}</time>
-                <span role="cell">{humanize(version.change_type)}</span>
+                <span role="cell">{humanize(version.change_type, locale)}</span>
                 <span role="cell">{version.change_reason}</span>
               </div>
             ))}
@@ -260,11 +260,11 @@ function EvidenceList({ title, items, compact = false }: { title: string; items:
             const record = objectValue(item);
             const href = stringValue(record.url ?? record.source_url);
             return (
-              <li key={`${evidenceTitle(item)}-${index}`}>
+              <li key={`${evidenceTitle(item, locale)}-${index}`}>
                 <span>{index + 1}</span>
                 <div>
-                  <strong>{evidenceTitle(item)}</strong>
-                  <small>{evidenceMeta(item, detailLimit)}</small>
+                  <strong>{evidenceTitle(item, locale)}</strong>
+                  <small>{evidenceMeta(item, detailLimit, locale)}</small>
                 </div>
                 {href ? <a href={href} rel="noreferrer" target="_blank">{locale === "zh-Hant" ? "來源" : "Source"}</a> : null}
               </li>
@@ -295,7 +295,7 @@ function propositionSummary(proposition: JsonRecord, locale: "en" | "zh-Hant"): 
 }
 
 function confidenceLabel(page: ClaimPageData, locale: "en" | "zh-Hant"): string {
-  if (page.assessment.confidence_label) return humanize(page.assessment.confidence_label);
+  if (page.assessment.confidence_label) return humanize(page.assessment.confidence_label, locale);
   const value = page.assessment.confidence;
   if (value === null || value === undefined) return locale === "zh-Hant" ? "未評分" : "Not scored";
   if (locale === "zh-Hant") return value >= 0.8 ? "高" : value >= 0.55 ? "中" : "低";
@@ -319,19 +319,19 @@ function methodSummary(page: ClaimPageData, locale: "en" | "zh-Hant"): string {
   return `The published assessment is derived from ${count}. Observation, analysis, and assessment remain separately versioned; the interface does not recalculate the Claim.`;
 }
 
-function evidenceTitle(value: unknown): string {
+function evidenceTitle(value: unknown, locale: "en" | "zh-Hant" = "en"): string {
   const record = objectValue(value);
-  return stringValue(record.title ?? record.name ?? record.source ?? record.type ?? record.description) || renderUnknown(value) || "Evidence item";
+  return stringValue(record.title ?? record.name ?? record.source ?? record.type ?? record.description) || renderUnknown(value) || (locale === "zh-Hant" ? "證據項目" : "Evidence item");
 }
 
-function evidenceMeta(value: unknown, limit = 3): string {
+function evidenceMeta(value: unknown, limit = 3, locale: "en" | "zh-Hant" = "en"): string {
   const record = objectValue(value);
   const excluded = new Set(["title", "name", "source", "type", "description", "url", "source_url"]);
   const details = Object.entries(record)
     .filter(([key, item]) => !excluded.has(key) && ["string", "number", "boolean"].includes(typeof item))
     .slice(0, limit)
-    .map(([key, item]) => `${humanize(key)} ${String(item)}`);
-  return details.join(" · ") || "Frozen in the evidence bundle";
+    .map(([key, item]) => `${humanize(key, locale)} ${String(item)}`);
+  return details.join(" · ") || (locale === "zh-Hant" ? "已凍結於證據包" : "Frozen in the evidence bundle");
 }
 
 function renderUnknown(value: unknown): string {
