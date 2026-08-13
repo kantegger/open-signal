@@ -90,6 +90,22 @@ export async function fetchClaimServer(
 export async function fetchTopicServer(
   topicId: string,
 ): Promise<TopicPageData> {
+  const publicationBase = process.env.OPEN_SIGNAL_PUBLICATION_BASE_URL;
+  if (publicationBase) {
+    try {
+      return await fetchJson<TopicPageData>(
+        joinUrl(
+          publicationBase,
+          `public/publications/topics/${encodeURIComponent(topicId)}/en.json`,
+        ),
+        [`topic:${topicId}`],
+        LIVE_CACHE_SECONDS,
+      );
+    } catch (error) {
+      if (!process.env.OPEN_SIGNAL_API_URL) throw error;
+    }
+  }
+
   return fetchJson<TopicPageData>(
     `${apiBase()}/api/topics/${encodeURIComponent(topicId)}`,
     [`topic:${topicId}`],
@@ -108,6 +124,19 @@ export async function fetchEditionFrontPageServer(
 }
 
 export async function fetchSeoIndexServer(): Promise<SeoIndexData> {
+  const publicationBase = process.env.OPEN_SIGNAL_PUBLICATION_BASE_URL;
+  if (publicationBase) {
+    try {
+      return await fetchJson<SeoIndexData>(
+        joinUrl(publicationBase, "public/publications/channels/seo-index.json"),
+        ["seo-index"],
+        INDEX_CACHE_SECONDS,
+      );
+    } catch (error) {
+      if (!process.env.OPEN_SIGNAL_API_URL) throw error;
+    }
+  }
+
   return fetchJson<SeoIndexData>(
     `${apiBase()}/api/seo-index?limit=1000`,
     ["seo-index"],
@@ -131,7 +160,30 @@ export async function fetchEditionArchiveServer(params: {
   section?: string;
   status?: string;
   limit?: number;
+  locale?: string;
 } = {}): Promise<EditionArchiveData> {
+  const locale = params.locale ?? "en";
+  const isDefaultView =
+    !params.cursor && !params.year && !params.section && !params.status;
+  const publicationBase = process.env.OPEN_SIGNAL_PUBLICATION_BASE_URL;
+  if (publicationBase && isDefaultView) {
+    try {
+      return await fetchJson<EditionArchiveData>(
+        joinUrl(
+          publicationBase,
+          `public/publications/channels/editions/${encodeURIComponent(locale)}.json`,
+        ),
+        [
+          "edition-archive",
+          `edition-archive:${params.year ?? "all"}:${params.section ?? "all"}:${params.status ?? "all"}`,
+        ],
+        INDEX_CACHE_SECONDS,
+      );
+    } catch (error) {
+      if (!process.env.OPEN_SIGNAL_API_URL) throw error;
+    }
+  }
+
   const query = new URLSearchParams({ limit: String(params.limit ?? 50) });
   if (params.cursor) query.set("cursor", params.cursor);
   if (params.year) query.set("year", String(params.year));
@@ -151,7 +203,27 @@ export async function fetchExploreServer(params: {
   topicPage?: number;
   signalPage?: number;
   asOf?: string;
+  locale?: string;
 } = {}): Promise<ExploreData> {
+  const locale = params.locale ?? "en";
+  const isDefaultView =
+    (params.topicPage ?? 1) === 1 && (params.signalPage ?? 1) === 1 && !params.asOf;
+  const publicationBase = process.env.OPEN_SIGNAL_PUBLICATION_BASE_URL;
+  if (publicationBase && isDefaultView) {
+    try {
+      return await fetchJson<ExploreData>(
+        joinUrl(
+          publicationBase,
+          `public/publications/channels/explore/${encodeURIComponent(locale)}.json`,
+        ),
+        ["explore", `explore:${params.asOf ?? "current"}`],
+        INDEX_CACHE_SECONDS,
+      );
+    } catch (error) {
+      if (!process.env.OPEN_SIGNAL_API_URL) throw error;
+    }
+  }
+
   const query = new URLSearchParams({
     topic_page: String(params.topicPage ?? 1),
     signal_page: String(params.signalPage ?? 1),
