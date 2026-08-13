@@ -35,6 +35,7 @@ class PublicationKeys:
     edition: str
     manifest: str
     localization: str
+    translation_memory: str
     current: str
     receipt: str
     claim_snapshots: tuple[str, ...]
@@ -76,10 +77,15 @@ class PublicationDelivery:
         keys = _keys(edition_id, claim_ids, locale)
 
         current = self._json_or_none(keys.current)
+        expected_localization_version = (
+            LOCALIZATION_VERSION if locale != "en" else None
+        )
         already_current = (
             current is not None
             and current.get("edition_id") == edition_id
             and current.get("locale") == locale
+            and current.get("localization_version")
+            == expected_localization_version
         )
         if already_current and self.store.exists(keys.receipt):
             return {
@@ -107,6 +113,7 @@ class PublicationDelivery:
                 claim_ids=claim_ids,
                 locale=locale,
                 key=keys.localization,
+                translation_memory_key=keys.translation_memory,
             )
 
         edition_bytes = _json_bytes(page)
@@ -151,6 +158,8 @@ class PublicationDelivery:
             "front_page_key": keys.edition,
             "front_page_sha256": _sha256(edition_bytes),
         }
+        if expected_localization_version is not None:
+            pointer["localization_version"] = expected_localization_version
 
         self._put_immutable(keys.edition, edition_bytes)
         for claim_id, key in zip(claim_ids, keys.claim_snapshots, strict=True):
@@ -201,6 +210,7 @@ class PublicationDelivery:
         claim_ids: list[str],
         locale: str,
         key: str,
+        translation_memory_key: str,
     ) -> tuple[
         dict[str, Any],
         dict[str, dict[str, Any]],
@@ -213,7 +223,15 @@ class PublicationDelivery:
                     f"publication localizer is not configured for {locale}"
                 )
             source_payloads = [page, *(claim_payloads[claim_id] for claim_id in claim_ids)]
-            batch = self.localizer.localize_many(source_payloads, locale=locale)
+            translation_memory = self._load_translation_memory(
+                translation_memory_key,
+                locale=locale,
+            )
+            batch = self.localizer.localize_many(
+                source_payloads,
+                locale=locale,
+                translation_memory=translation_memory,
+            )
             if len(batch.payloads) != len(source_payloads):
                 raise RuntimeError("publication localizer returned the wrong payload count")
             bundle = {
@@ -226,7 +244,10 @@ class PublicationDelivery:
                     "completion_tokens": batch.completion_tokens,
                     "estimated_cost_usd": batch.estimated_cost_usd,
                     "translated_string_count": batch.translated_string_count,
+                    "cache_hit_count": batch.cache_hit_count,
+                    "cache_miss_count": batch.cache_miss_count,
                 },
+                "translation_memory_key": translation_memory_key,
                 "page": batch.payloads[0],
                 "claims": {
                     claim_id: payload
@@ -239,6 +260,15 @@ class PublicationDelivery:
             }
             bundle_bytes = _json_bytes(bundle)
             self._put_immutable(key, bundle_bytes)
+            if batch.new_translations:
+                translation_memory.update(batch.new_translations)
+                self._put_mutable_if_changed(
+                    translation_memory_key,
+                    _translation_memory_bytes(
+                        translation_memory,
+                        locale=locale,
+                    ),
+                )
         else:
             bundle = existing
 
@@ -266,6 +296,40 @@ class PublicationDelivery:
             {claim_id: localized_claims[claim_id] for claim_id in claim_ids},
             metadata,
         )
+
+    def _load_translation_memory(
+        self,
+        key: str,
+        *,
+        locale: str,
+    ) -> dict[str, str]:
+        if not self.store.exists(key):
+            return {}
+        try:
+            payload = json.loads(self.store.get(key))
+        except (json.JSONDecodeError, UnicodeDecodeError, OSError):
+            return {}
+        if (
+            not isinstance(payload, dict)
+            or payload.get("schema_version") != 1
+            or payload.get("localization_version") != LOCALIZATION_VERSION
+            or payload.get("locale") != locale
+            or not isinstance(payload.get("entries"), dict)
+        ):
+            return {}
+
+        memory: dict[str, str] = {}
+        for digest, raw_entry in payload["entries"].items():
+            if not isinstance(digest, str) or not isinstance(raw_entry, dict):
+                continue
+            source = raw_entry.get("source")
+            translation = raw_entry.get("translation")
+            if not isinstance(source, str) or not isinstance(translation, str):
+                continue
+            if _sha256(source.encode("utf-8")) != digest:
+                continue
+            memory[source] = translation
+        return memory
 
     def _put_immutable(self, key: str, data: bytes) -> None:
         if self.store.exists(key):
@@ -341,14 +405,34 @@ def _claim_ids(page: dict[str, Any]) -> list[str]:
 
 def _keys(edition_id: str, claim_ids: list[str], locale: str) -> PublicationKeys:
     prefix = "public/publications"
+    presentation_locale = (
+        locale if locale == "en" else f"{locale}.{LOCALIZATION_VERSION}"
+    )
     return PublicationKeys(
-        edition=f"{prefix}/editions/{edition_id}/front-page.{locale}.json",
-        manifest=f"{prefix}/editions/{edition_id}/manifest.{locale}.json",
-        localization=f"{prefix}/editions/{edition_id}/localization.{locale}.json",
+        edition=(
+            f"{prefix}/editions/{edition_id}/front-page."
+            f"{presentation_locale}.json"
+        ),
+        manifest=(
+            f"{prefix}/editions/{edition_id}/manifest."
+            f"{presentation_locale}.json"
+        ),
+        localization=(
+            f"{prefix}/editions/{edition_id}/localization."
+            f"{presentation_locale}.json"
+        ),
+        translation_memory=(
+            f"{prefix}/localization-memory/{locale}/"
+            f"{LOCALIZATION_VERSION}.json"
+        ),
         current=f"{prefix}/channels/front-page/{locale}.json",
-        receipt=f"{prefix}/deliveries/{edition_id}/vercel.{locale}.json",
+        receipt=(
+            f"{prefix}/deliveries/{edition_id}/vercel."
+            f"{presentation_locale}.json"
+        ),
         claim_snapshots=tuple(
-            f"{prefix}/editions/{edition_id}/claims/{claim_id}.{locale}.json"
+            f"{prefix}/editions/{edition_id}/claims/"
+            f"{claim_id}.{presentation_locale}.json"
             for claim_id in claim_ids
         ),
         claim_current=tuple(
@@ -370,3 +454,25 @@ def _json_bytes(value: Any) -> bytes:
 
 def _sha256(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
+
+
+def _translation_memory_bytes(
+    translations: dict[str, str],
+    *,
+    locale: str,
+) -> bytes:
+    entries = {
+        _sha256(source.encode("utf-8")): {
+            "source": source,
+            "translation": translation,
+        }
+        for source, translation in translations.items()
+    }
+    return _json_bytes(
+        {
+            "schema_version": 1,
+            "localization_version": LOCALIZATION_VERSION,
+            "locale": locale,
+            "entries": entries,
+        }
+    )

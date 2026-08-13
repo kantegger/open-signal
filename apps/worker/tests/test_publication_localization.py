@@ -64,6 +64,13 @@ def sample_payloads() -> list[dict]:
                             "headline": "Rate-cut probability rose to 72%",
                             "summary": "The market moved 4.2pp over 24 hours.",
                             "claim_ids": ["claim-1"],
+                            "display_fields": {
+                                "old_text": "Coverage applies only to existing facilities.",
+                                "new_text": "Coverage now includes newly licensed facilities.",
+                                "change_title": "Material rule coverage expanded after licensing change",
+                                "window": "next 24 hours",
+                                "work_title": "Phase 2 trial design for solid tumors",
+                            },
                             "evidence": {
                                 "headline": "Original source headline 72%",
                                 "url": "https://example.test/evidence/72",
@@ -72,6 +79,15 @@ def sample_payloads() -> list[dict]:
                     ]
                 }
             ],
+            "publication_context": {
+                "research": [
+                    {
+                        "topic_label": "Oncology immunotherapy",
+                        "entity": "Anhui Provincial Hospital + 2 other sponsors",
+                        "source_label": "ClinicalTrials.gov",
+                    }
+                ]
+            },
         },
         {
             "locale": {
@@ -102,11 +118,21 @@ def test_localization_translates_presentation_but_preserves_truth_fields() -> No
 
     page, claim = result.payloads
     item = page["slots"][0]["items"][0]
+    fields = item["display_fields"]
     assert item["headline"].startswith("繁中：")
     assert "72%" in item["headline"]
     assert item["source_headline"] == "Rate-cut probability rose to 72%"
     assert item["evidence"]["headline"] == "Original source headline 72%"
     assert item["evidence"]["url"] == "https://example.test/evidence/72"
+    assert fields["old_text"].startswith("繁中：")
+    assert fields["new_text"].startswith("繁中：")
+    assert fields["change_title"].startswith("繁中：")
+    assert fields["window"].startswith("繁中：")
+    assert fields["work_title"].startswith("繁中：")
+    research = page["publication_context"]["research"][0]
+    assert research["topic_label"].startswith("繁中：")
+    assert research["entity"].startswith("繁中：")
+    assert research["source_label"] == "ClinicalTrials.gov"
     assert claim["claim"]["public_statement"].startswith("繁中：")
     assert (
         claim["claim"]["source_public_statement"]
@@ -149,3 +175,44 @@ def test_localization_rejects_unsupported_target() -> None:
             sample_payloads(),
             locale="ja",
         )
+
+
+def test_localization_reuses_valid_translation_memory_without_llm_calls() -> None:
+    first_client = FakeClient()
+    first = PublicationLocalizer(first_client).localize_many(
+        sample_payloads(),
+        locale="zh-Hant",
+    )
+    second_client = FakeClient()
+
+    second = PublicationLocalizer(second_client).localize_many(
+        sample_payloads(),
+        locale="zh-Hant",
+        translation_memory=first.new_translations,
+    )
+
+    assert second_client.calls == []
+    assert second.cache_hit_count == first.translated_string_count
+    assert second.cache_miss_count == 0
+    assert second.prompt_tokens == 0
+    assert second.completion_tokens == 0
+    assert second.new_translations == {}
+    assert second.payloads == first.payloads
+
+
+def test_invalid_cached_english_prose_is_retranslated() -> None:
+    client = FakeClient()
+    source = "Rate-cut probability rose to 72%"
+
+    result = PublicationLocalizer(client).localize_many(
+        sample_payloads(),
+        locale="zh-Hant",
+        translation_memory={source: source},
+    )
+
+    assert client.calls
+    assert result.cache_hit_count < result.translated_string_count
+    assert result.cache_miss_count > 0
+    assert result.payloads[0]["slots"][0]["items"][0]["headline"].startswith(
+        "繁中："
+    )

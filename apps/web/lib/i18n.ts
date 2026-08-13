@@ -244,7 +244,88 @@ export function formatRelativeTime(
   return formatter.format(months, "month");
 }
 
-export function humanize(value: string | null | undefined): string {
-  if (!value) return "Not recorded";
+const traditionalTerms: Record<string, string> = {
+  "24h": "24小時",
+  "30d": "30天",
+  "7d": "7天",
+  active: "有效",
+  active_event: "活躍事件",
+  aging: "較舊但仍有效",
+  authoritative_primary: "權威一手來源",
+  business: "商業",
+  correction: "修正",
+  create: "建立",
+  credible_challenger: "可信挑戰者",
+  crypto: "加密資產",
+  current: "目前",
+  derived: "衍生",
+  derived_observation: "衍生觀測",
+  detected: "已偵測",
+  down: "下降",
+  economy: "經濟",
+  event_representative: "事件代表",
+  expectations_moved: "預期變化",
+  final: "已定案",
+  freshness_reconcile: "新鮮度重整",
+  generated: "已產生",
+  geopolitics: "地緣政治",
+  hard_expiry: "強制到期",
+  health: "健康",
+  high: "高",
+  initial: "首次發布",
+  institution_entry: "機構動態",
+  investigated: "已調查",
+  largest_material_move: "最大實質變動",
+  latest_for_subject: "主題最新紀錄",
+  leader: "領先項",
+  low: "低",
+  main_election: "主要選舉",
+  manual: "人工觸發",
+  material: "實質",
+  material_repricing: "實質重新定價",
+  medium: "中",
+  middle_east: "中東",
+  near_resolution: "接近結算",
+  next_24_hours: "未來24小時",
+  next_24h: "未來24小時",
+  neutral: "中性",
+  not_published: "未發布",
+  observed_move: "已觀測變動",
+  oil: "石油",
+  operational: "運作正常",
+  operational_ttl: "營運保留期",
+  politics: "政治",
+  previous: "先前",
+  public_permanent: "永久公開紀錄",
+  published: "已發布",
+  recorded: "已記錄",
+  research_frontier: "研究動向",
+  rollback: "回復",
+  rule: "規則",
+  rules_moved: "規則變化",
+  scheduled: "排程",
+  science: "科學",
+  section_refresh: "區段更新",
+  shadow_investigation: "影子調查",
+  source_fact: "來源事實",
+  sports: "體育",
+  stage_transition: "試驗階段",
+  substantive: "實質變更",
+  technology: "科技",
+  up: "上升",
+  update: "更新",
+  verified: "已驗證",
+  verified_signal: "已驗證訊號",
+};
+
+export function humanize(
+  value: string | null | undefined,
+  locale: SupportedLocale = DEFAULT_LOCALE,
+): string {
+  if (!value) return locale === "zh-Hant" ? "未記錄" : "Not recorded";
+  const normalized = value.toLowerCase().replaceAll("-", "_").replaceAll(" ", "_");
+  if (locale === "zh-Hant" && traditionalTerms[normalized]) {
+    return traditionalTerms[normalized];
+  }
   return value.replaceAll("_", " ").replaceAll("-", " ");
 }

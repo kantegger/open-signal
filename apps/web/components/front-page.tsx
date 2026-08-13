@@ -384,7 +384,7 @@ function Publication({
             </div>
             <div>
               <p className="eyebrow">{locale === "zh-Hant" ? "系統狀態" : "System state"}</p>
-              <strong><span className={`status-dot status-${data.system_state.status}`} /> {humanize(data.system_state.status)}</strong>
+              <strong><span className={`status-dot status-${data.system_state.status}`} /> {humanize(data.system_state.status, locale)}</strong>
               <span>{locale === "zh-Hant" ? "最近檢查" : "Last checked"} {formatRelativeTime(data.system_state.last_checked_at, locale)}</span>
             </div>
           </footer>
@@ -407,17 +407,17 @@ function EditionIntegrity({
   return (
     <section className="edition-integrity" aria-label={locale === "zh-Hant" ? "期次完整性與生命週期" : "Edition integrity and lifecycle"}>
       <dl>
-        <div><dt>{locale === "zh-Hant" ? "紀錄類別" : "Record class"}</dt><dd>{humanize(record.record_class)}</dd></div>
+        <div><dt>{locale === "zh-Hant" ? "紀錄類別" : "Record class"}</dt><dd>{humanize(record.record_class, locale)}</dd></div>
         <div><dt>{locale === "zh-Hant" ? "首次發布" : "First published"}</dt><dd>{formatDateTime(record.first_published_at, locale)}</dd></div>
         <div><dt>Payload SHA-256</dt><dd title={record.payload_hash}>{record.payload_hash.slice(0, 16)}…</dd></div>
-        <div><dt>{locale === "zh-Hant" ? "生命週期" : "Lifecycle"}</dt><dd>{humanize(latest?.event_type ?? "published")} · {record.events.length} {locale === "zh-Hant" ? "個事件" : "events"}</dd></div>
+        <div><dt>{locale === "zh-Hant" ? "生命週期" : "Lifecycle"}</dt><dd>{humanize(latest?.event_type ?? "published", locale)} · {record.events.length} {locale === "zh-Hant" ? "個事件" : "events"}</dd></div>
       </dl>
       {record.events.length > 1 ? (
         <ol aria-label={locale === "zh-Hant" ? "期次生命週期事件" : "Edition lifecycle events"}>
           {record.events.map((event) => (
             <li key={event.id}>
               <span>{event.sequence_no.toString().padStart(2, "0")}</span>
-              <strong>{humanize(event.event_type)}</strong>
+              <strong>{humanize(event.event_type, locale)}</strong>
               <time>{formatDateTime(event.created_at, locale)}</time>
               {event.reason ? <em>{event.reason}</em> : null}
               {event.related_edition_id ? (
@@ -605,7 +605,7 @@ function VerifiedTapeRow({
   const currentState = textField(fields.current_state);
   const primaryMetric = current != null
     ? formatProbability(current)
-    : change || humanize(currentState || "verified");
+    : change || humanize(currentState || "verified", locale);
   const secondaryMetric = delta != null
     ? `${formatDelta(delta)} · 24h`
     : current != null && change
@@ -665,7 +665,7 @@ function ObservedTapeRow({
   return (
     <article className="tape-row tape-row-observed section-expectations">
       <div className="topic-monitor-identity">
-        <span>{locale === "zh-Hant" ? "來源" : "Source"} · {humanize(observation.event_type)}</span>
+        <span>{locale === "zh-Hant" ? "來源" : "Source"} · {humanize(observation.event_type, locale)}</span>
         <Link href={topicPath(observation.title, observation.id, locale)}>{observation.title}</Link>
       </div>
       <div className="topic-monitor-state">
@@ -845,18 +845,18 @@ function ClaimLedger({
           <div className={`claim-ledger-row ${sectionClass(claim.section_id)}`} key={claim.id} role="row">
             <span role="cell">
               <b aria-hidden="true" className={`ledger-direction ${directionClass(claim.direction)}`}>{directionGlyph(claim.direction)}</b>
-              <span className="sr-only">{humanize(claim.direction)} direction · </span>
+              <span className="sr-only">{humanize(claim.direction, locale)}{locale === "zh-Hant" ? "方向 · " : " direction · "}</span>
               {sectionName(claim.section_id, locale)}
             </span>
             <span role="cell">
               <Link href={signalPath(claim.statement, claim.id, locale)}><strong><DirectionalStatement text={claim.statement} /></strong></Link>
               <small>{claim.source_label}</small>
               <small className="collection-detail collection-detail-sparse">
-                {humanize(claim.claim_type)} · {humanize(claim.status)}
+                {humanize(claim.claim_type, locale)} · {humanize(claim.status, locale)}
               </small>
             </span>
             <span className={directionClass(claim.direction)} role="cell">{claim.change ?? "—"}</span>
-            <span role="cell">{humanize(claim.confidence_label ?? claim.epistemic_status)}</span>
+            <span role="cell">{humanize(claim.confidence_label ?? claim.epistemic_status, locale)}</span>
             <span role="cell">
               <button
                 aria-label={`${locale === "zh-Hant" ? "開啟證據" : "Open evidence for"} ${claim.statement}`}
@@ -885,9 +885,9 @@ function RuleWatch({ rules }: { rules: PublicationContext["rules"] }) {
       >
         {rules.map((rule) => (
           <article key={rule.id}>
-            <div><span>{rule.authority ?? humanize(rule.rule_type)}</span><time>{formatRelativeTime(rule.transition_at ?? rule.updated_at, locale)}</time></div>
+            <div><span>{rule.authority ?? humanize(rule.rule_type, locale)}</span><time>{formatRelativeTime(rule.transition_at ?? rule.updated_at, locale)}</time></div>
             <strong>{rule.title}</strong>
-            <p><b>{humanize(rule.previous_state ?? "recorded")}</b><span>→</span><b>{humanize(rule.current_state)}</b></p>
+            <p><b>{humanize(rule.previous_state ?? "recorded", locale)}</b><span>→</span><b>{humanize(rule.current_state, locale)}</b></p>
             <p className="collection-detail collection-detail-sparse rule-watch-context">
               {rule.jurisdiction ? `${rule.jurisdiction} · ` : ""}{rule.source_label}
             </p>
@@ -922,7 +922,7 @@ function ResearchWatch({
         {items.map((item) => (
           <article key={item.id}>
             <div>
-              <span>{researchCandidateLabel(item.candidate_type, locale)} · {humanize(item.screening_stage)}</span>
+              <span>{researchCandidateLabel(item.candidate_type, locale)} · {humanize(item.screening_stage, locale)}</span>
               <time>{formatRelativeTime(item.detected_at, locale)}</time>
             </div>
             <strong>{item.headline}</strong>
@@ -934,7 +934,7 @@ function ResearchWatch({
             <p className="research-entity"><b>{item.entity}</b><span>{item.baseline_label}</span></p>
             <p className={`research-evidence ${directionClass(item.direction)}`}>
               <b>{directionGlyph(item.direction)} {item.metric}</b>
-              <span>{item.window_label} · {item.evidence_count} records · {item.source_label}</span>
+              <span>{item.window_label} · {item.evidence_count} {locale === "zh-Hant" ? "筆紀錄" : "records"} · {item.source_label}</span>
             </p>
           </article>
         ))}
@@ -1069,7 +1069,7 @@ function DigestTable({
             {item.dek ? <small className="collection-detail collection-detail-sparse">{item.dek}</small> : null}
           </span>
           <span role="cell">{item.trust.source_label}</span>
-          <span role="cell">{humanize(item.trust.confidence_label ?? item.trust.epistemic_status)}</span>
+          <span role="cell">{humanize(item.trust.confidence_label ?? item.trust.epistemic_status, locale)}</span>
           <span role="cell">
             {item.trust.claim_id ? (
               <button
@@ -1126,8 +1126,8 @@ function ArchiveTable({
                 </small>
               </span>
               <span role="cell">{snapshot.claim_count}</span>
-              <span role="cell">{humanize(snapshot.trigger_type)}</span>
-              <span role="cell">{humanize(snapshot.status)}</span>
+              <span role="cell">{humanize(snapshot.trigger_type, locale)}</span>
+              <span role="cell">{humanize(snapshot.status, locale)}</span>
               <span role="cell">
                 <Link className="archive-edition-link" href={editionPath(snapshot.id, locale)}>
                   {snapshot.id === currentSnapshotId ? <b className="current-snapshot">{isCurrent ? locale === "zh-Hant" ? "目前" : "Current" : locale === "zh-Hant" ? "本期" : "This edition"}</b> : snapshot.id.slice(0, 8)}
@@ -1377,7 +1377,7 @@ function sectionName(sectionId: string, locale: "en" | "zh-Hant" = "en"): string
   if (sectionId === "rules-moved") return locale === "zh-Hant" ? "規則變化" : "Rules";
   if (sectionId === "research-frontier") return locale === "zh-Hant" ? "研究動向" : "Research";
   if (sectionId === "expectations-moved") return locale === "zh-Hant" ? "預期變化" : "Expectations";
-  return humanize(sectionId);
+  return humanize(sectionId, locale);
 }
 
 function sectionClass(sectionId: string): string {
@@ -1390,5 +1390,5 @@ function researchCandidateLabel(candidateType: string, locale: "en" | "zh-Hant")
   if (candidateType === "institution_entry") return locale === "zh-Hant" ? "機構活動" : "Institution activity";
   if (candidateType === "stage_transition") return locale === "zh-Hant" ? "試驗組合" : "Trial portfolio";
   if (candidateType === "cross_topic_relation") return locale === "zh-Hant" ? "跨主題關係" : "Cross-topic relation";
-  return humanize(candidateType);
+  return humanize(candidateType, locale);
 }

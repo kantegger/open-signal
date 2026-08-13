@@ -8,7 +8,10 @@ from copy import deepcopy
 import httpx
 import pytest
 from open_signal.publication.delivery import PublicationDelivery
-from open_signal.publication.localization import LocalizationBatch
+from open_signal.publication.localization import (
+    LOCALIZATION_VERSION,
+    LocalizationBatch,
+)
 from open_signal.sources.artifact_store import ArtifactStore
 
 
@@ -99,13 +102,19 @@ class Client:
 class Localizer:
     def __init__(self) -> None:
         self.calls = 0
+        self.translation_memories: list[dict[str, str]] = []
 
-    def localize_many(self, payloads, *, locale):
+    def localize_many(self, payloads, *, locale, translation_memory=None):
         self.calls += 1
+        memory = dict(translation_memory or {})
+        self.translation_memories.append(memory)
         localized = deepcopy(payloads)
         localized[0]["localized"] = locale
         for payload in localized[1:]:
             payload["localized"] = locale
+        source = "Repeated public headline"
+        translation = "重複的公開標題"
+        cache_hit = int(memory.get(source) == translation)
         return LocalizationBatch(
             payloads=localized,
             provenance="test/localizer:v1",
@@ -113,6 +122,9 @@ class Localizer:
             completion_tokens=5,
             estimated_cost_usd=0.001,
             translated_string_count=3,
+            cache_hit_count=cache_hit,
+            cache_miss_count=1 - cache_hit,
+            new_translations={} if cache_hit else {source: translation},
         )
 
 
@@ -224,20 +236,32 @@ def test_traditional_chinese_delivery_seals_localization_before_pointer() -> Non
     assert result["status"] == "delivered"
     assert localizer.calls == 1
     localization_key = (
-        "public/publications/editions/edition-1/localization.zh-Hant.json"
+        "public/publications/editions/edition-1/localization."
+        f"zh-Hant.{LOCALIZATION_VERSION}.json"
+    )
+    memory_key = (
+        "public/publications/localization-memory/zh-Hant/"
+        f"{LOCALIZATION_VERSION}.json"
     )
     pointer_key = "public/publications/channels/front-page/zh-Hant.json"
     manifest_key = (
-        "public/publications/editions/edition-1/manifest.zh-Hant.json"
+        "public/publications/editions/edition-1/manifest."
+        f"zh-Hant.{LOCALIZATION_VERSION}.json"
     )
     assert store.put_order.index(localization_key) < store.put_order.index(pointer_key)
+    assert store.put_order.index(memory_key) < store.put_order.index(pointer_key)
     assert json.loads(store.get(pointer_key))["locale"] == "zh-Hant"
+    assert (
+        json.loads(store.get(pointer_key))["localization_version"]
+        == LOCALIZATION_VERSION
+    )
     manifest = json.loads(store.get(manifest_key))
     assert manifest["localization"]["key"] == localization_key
     assert manifest["localization"]["provenance"] == "test/localizer:v1"
     page = json.loads(
         store.get(
-            "public/publications/editions/edition-1/front-page.zh-Hant.json"
+            "public/publications/editions/edition-1/front-page."
+            f"zh-Hant.{LOCALIZATION_VERSION}.json"
         )
     )
     assert page["localized"] == "zh-Hant"
@@ -259,6 +283,63 @@ def test_localized_notification_retry_reuses_sealed_translation() -> None:
 
     assert result["status"] == "delivered"
     assert localizer.calls == 1
+
+
+def test_localized_delivery_reuses_translation_memory_across_editions() -> None:
+    store = MemoryStore()
+    localizer = Localizer()
+
+    delivery(store, Client(), localizer=localizer).deliver(locale="zh-Hant")
+    delivery(
+        store,
+        Client(),
+        localizer=localizer,
+        front_page=FrontPage("edition-2"),
+    ).deliver(locale="zh-Hant")
+
+    assert localizer.calls == 2
+    assert localizer.translation_memories[0] == {}
+    assert localizer.translation_memories[1] == {
+        "Repeated public headline": "重複的公開標題"
+    }
+    second_bundle = json.loads(
+        store.get(
+            "public/publications/editions/edition-2/localization."
+            f"zh-Hant.{LOCALIZATION_VERSION}.json"
+        )
+    )
+    assert second_bundle["usage"]["cache_hit_count"] == 1
+    assert second_bundle["usage"]["cache_miss_count"] == 0
+
+
+def test_localization_policy_version_republishes_same_edition() -> None:
+    store = MemoryStore()
+    pointer_key = "public/publications/channels/front-page/zh-Hant.json"
+    old_receipt = "public/publications/deliveries/edition-1/vercel.zh-Hant.json"
+    store.put(
+        pointer_key,
+        json.dumps(
+            {
+                "edition_id": "edition-1",
+                "locale": "zh-Hant",
+                "localization_version": "os-l10n-001",
+            }
+        ).encode(),
+        content_type="application/json",
+    )
+    store.put(old_receipt, b"{}", content_type="application/json")
+    localizer = Localizer()
+
+    result = delivery(store, Client(), localizer=localizer).deliver(
+        locale="zh-Hant"
+    )
+
+    assert result["status"] == "delivered"
+    assert localizer.calls == 1
+    assert (
+        json.loads(store.get(pointer_key))["localization_version"]
+        == LOCALIZATION_VERSION
+    )
 
 
 def test_non_english_delivery_requires_localizer() -> None:

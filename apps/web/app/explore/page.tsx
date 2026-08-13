@@ -229,7 +229,7 @@ export default async function ExplorePage({ searchParams }: Props) {
                         <DirectionalStatement text={signal.title} />
                       </Link>
                       <small>
-                        {humanize(signal.claim_type)} · {humanize(signal.status)}
+                        {humanize(signal.claim_type, locale)} · {humanize(signal.status, locale)}
                       </small>
                     </span>
                     <span role="cell">
@@ -238,7 +238,7 @@ export default async function ExplorePage({ searchParams }: Props) {
                           {signal.event_title}
                         </Link>
                       ) : (
-                        humanize(signal.section_id)
+                        humanize(signal.section_id, locale)
                       )}
                     </span>
                     <time role="cell">
@@ -278,8 +278,8 @@ function EventGroupCard({ group, locale }: { group: ExploreEventGroup; locale: S
     <article className="event-signal-card">
       <header>
         <p className="eyebrow">
-          <span>{humanize(group.event_type)}</span>
-          <span>{humanize(group.selection_reason)}</span>
+          <span>{humanize(group.event_type, locale)}</span>
+          <span>{humanize(group.selection_reason, locale)}</span>
         </p>
         <h3>{group.title}</h3>
         <p className="event-signal-summary">
@@ -297,7 +297,7 @@ function EventGroupCard({ group, locale }: { group: ExploreEventGroup; locale: S
           return (
             <li key={member.topic_id}>
               <div>
-                <small>{humanize(member.selection_reason)}</small>
+                <small>{humanize(member.selection_reason, locale)}</small>
                 <Link href={topicPath(member.title, member.topic_id, locale)}>
                   {member.option_label || member.title}
                 </Link>
@@ -420,5 +420,5 @@ function deskName(deskId: string, locale: SupportedLocale): string {
   if (deskId.includes("expectation")) return locale === "zh-Hant" ? "預期變化" : "Expectations";
   if (deskId.includes("rule")) return locale === "zh-Hant" ? "規則變化" : "Rules";
   if (deskId.includes("research")) return locale === "zh-Hant" ? "研究動向" : "Research";
-  return humanize(deskId);
+  return humanize(deskId, locale);
 }

@@ -27,13 +27,13 @@ export function ClaimRecord({ page, locale }: { page: ClaimPageData; locale: Sup
 
       <header className="claim-record-header">
         <div>
-          <p className="eyebrow">{traditional ? "公開 Claim" : "Public Claim"} · {humanize(page.claim.claim_type)}</p>
+          <p className="eyebrow">{traditional ? "公開 Claim" : "Public Claim"} · {humanize(page.claim.claim_type, locale)}</p>
           <h1><DirectionalStatement text={page.claim.public_statement || page.observation} /></h1>
           <p>{page.observation}</p>
         </div>
         <dl>
           <div><dt>Claim ID</dt><dd>{page.claim.id}</dd></div>
-          <div><dt>{traditional ? "狀態" : "Status"}</dt><dd className="verified-state">{humanize(page.claim.status)}</dd></div>
+          <div><dt>{traditional ? "狀態" : "Status"}</dt><dd className="verified-state">{humanize(page.claim.status, locale)}</dd></div>
           <div><dt>{traditional ? "發布" : "Issued"}</dt><dd>{formatDateTime(page.claim.issued_at, locale)}</dd></div>
           <div><dt>{traditional ? "有效至" : "Valid until"}</dt><dd>{page.claim.valid_until ? formatDateTime(page.claim.valid_until, locale) : traditional ? "沒有固定到期日" : "No fixed expiry"}</dd></div>
         </dl>
@@ -42,7 +42,7 @@ export function ClaimRecord({ page, locale }: { page: ClaimPageData; locale: Sup
       <section className="claim-epistemic" aria-label={traditional ? "Claim 認識論層級" : "Claim epistemic layers"}>
         <div><p className="eyebrow">{traditional ? "觀測" : "Observation"}</p><h2>{traditional ? "觀測到什麼" : "What was observed"}</h2><p>{page.observation}</p></div>
         <div><p className="eyebrow">{traditional ? "分析" : "Analysis"}</p><h2>{traditional ? "此模式支持什麼" : "What the pattern supports"}</h2><p>{page.analysis.summary || propositionSummary(page.analysis.structured_proposition, locale)}</p></div>
-        <div><p className="eyebrow">{traditional ? "判斷" : "Assessment"}</p><h2>{traditional ? "Open Signal 的判斷" : "Open Signal’s judgment"}</h2><p>{page.assessment.summary || humanize(page.assessment.epistemic_status)}</p></div>
+        <div><p className="eyebrow">{traditional ? "判斷" : "Assessment"}</p><h2>{traditional ? "Open Signal 的判斷" : "Open Signal’s judgment"}</h2><p>{page.assessment.summary || humanize(page.assessment.epistemic_status, locale)}</p></div>
       </section>
 
       <section className="claim-assessment-grid">
@@ -102,7 +102,7 @@ export function ClaimRecord({ page, locale }: { page: ClaimPageData; locale: Sup
           {page.version_history.map((version) => (
             <article key={version.version_number}>
               <strong>v{version.version_number}</strong>
-              <div><span>{humanize(version.change_type)}</span><time>{formatDateTime(version.created_at, locale)}</time></div>
+              <div><span>{humanize(version.change_type, locale)}</span><time>{formatDateTime(version.created_at, locale)}</time></div>
               <p><DirectionalStatement text={version.public_statement} /></p>
               <small>{version.change_reason}</small>
             </article>
@@ -138,9 +138,9 @@ function ClaimEvidenceList({ title, items, locale }: { title: string; items: unk
         const record = objectValue(item);
         const href = stringValue(record.url ?? record.source_url);
         return (
-          <article key={`${evidenceTitle(item)}-${index}`}>
+          <article key={`${evidenceTitle(item, locale)}-${index}`}>
             <span>{String(index + 1).padStart(2, "0")}</span>
-            <div><strong>{evidenceTitle(item)}</strong><p>{evidenceMeta(item, detailLimit)}</p></div>
+            <div><strong>{evidenceTitle(item, locale)}</strong><p>{evidenceMeta(item, detailLimit, locale)}</p></div>
             {href ? <a href={href} rel="noreferrer" target="_blank">{locale === "zh-Hant" ? "來源" : "Source"} ↗</a> : null}
           </article>
         );
@@ -155,7 +155,7 @@ function propositionSummary(proposition: JsonRecord, locale: SupportedLocale): s
 }
 
 function confidenceLabel(page: ClaimPageData, locale: SupportedLocale): string {
-  if (page.assessment.confidence_label) return humanize(page.assessment.confidence_label);
+  if (page.assessment.confidence_label) return humanize(page.assessment.confidence_label, locale);
   const value = page.assessment.confidence;
   if (value === null || value === undefined) return locale === "zh-Hant" ? "未評分" : "Not scored";
   if (locale === "zh-Hant") return value >= 0.8 ? "高" : value >= 0.55 ? "中" : "低";
@@ -172,18 +172,18 @@ function methodSummary(page: ClaimPageData, locale: SupportedLocale): string {
   return `This Claim was assembled from ${sourceText}. The page presents the stored result and never recomputes or silently updates the published judgment.`;
 }
 
-function evidenceTitle(value: unknown): string {
+function evidenceTitle(value: unknown, locale: SupportedLocale = "en"): string {
   const record = objectValue(value);
-  return stringValue(record.title ?? record.name ?? record.source ?? record.type ?? record.description) || renderUnknown(value) || "Evidence item";
+  return stringValue(record.title ?? record.name ?? record.source ?? record.type ?? record.description) || renderUnknown(value) || (locale === "zh-Hant" ? "證據項目" : "Evidence item");
 }
 
-function evidenceMeta(value: unknown, limit = 4): string {
+function evidenceMeta(value: unknown, limit = 4, locale: SupportedLocale = "en"): string {
   const record = objectValue(value);
   const values = Object.entries(record)
     .filter(([key, item]) => !["title", "name", "source", "type", "description", "url", "source_url"].includes(key) && ["string", "number", "boolean"].includes(typeof item))
     .slice(0, limit)
-    .map(([key, item]) => `${humanize(key)}: ${String(item)}`);
-  return values.join(" · ") || "Frozen in the evidence bundle";
+    .map(([key, item]) => `${humanize(key, locale)}: ${String(item)}`);
+  return values.join(" · ") || (locale === "zh-Hant" ? "已凍結於證據包" : "Frozen in the evidence bundle");
 }
 
 function renderUnknown(value: unknown): string {
