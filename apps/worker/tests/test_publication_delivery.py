@@ -128,6 +128,65 @@ class Localizer:
         )
 
 
+class Explore:
+    def __init__(self, *, fail=False, version="v1") -> None:
+        self.fail = fail
+        self.version = version
+        self.calls = 0
+
+    def build(self, **kwargs):
+        del kwargs
+        self.calls += 1
+        if self.fail:
+            raise RuntimeError("explore presenter failed")
+        return {"surface": "explore", "version": self.version}
+
+
+class EditionArchive:
+    def __init__(self, version="v1") -> None:
+        self.version = version
+        self.calls = 0
+
+    def build(self, **kwargs):
+        del kwargs
+        self.calls += 1
+        return {"surface": "editions", "version": self.version}
+
+
+class SeoIndex:
+    def __init__(self, version="v1") -> None:
+        self.version = version
+        self.calls = 0
+
+    def build(self, **kwargs):
+        del kwargs
+        self.calls += 1
+        return {"claims": [], "topics": [], "editions": [], "version": self.version}
+
+
+class TopicPage:
+    def __init__(self, missing=None) -> None:
+        self.missing = missing
+        self.built: list[str] = []
+
+    def build(self, topic_id):
+        self.built.append(topic_id)
+        if topic_id == self.missing:
+            return None
+        return {"topic": {"id": topic_id}, "title": f"Topic {topic_id}"}
+
+
+class FrontPageWithTopics(FrontPage):
+    def build(self, *, locale):
+        page = super().build(locale=locale)
+        page["slots"][0]["items"][0]["topic"] = {"id": "topic-1", "title": "Lead"}
+        page["slots"][0]["items"][1]["topic"] = {"id": "topic-1", "title": "Lead"}
+        page["slots"].append(
+            {"items": [{"claim_ids": [], "topic": {"id": "topic-2", "title": "Watch"}}]}
+        )
+        return page
+
+
 def delivery(
     store,
     client,
@@ -135,6 +194,10 @@ def delivery(
     claim_page=None,
     front_page=None,
     localizer=None,
+    explore=None,
+    edition_archive=None,
+    seo_index=None,
+    topic_page=None,
 ):
     return PublicationDelivery(
         object(),
@@ -145,6 +208,10 @@ def delivery(
         front_page=front_page or FrontPage(),
         claim_page=claim_page or ClaimPage(),
         localizer=localizer,
+        explore=explore,
+        edition_archive=edition_archive,
+        seo_index=seo_index,
+        topic_page=topic_page,
     )
 
 
@@ -350,3 +417,110 @@ def test_non_english_delivery_requires_localizer() -> None:
 def test_delivery_rejects_unknown_locale() -> None:
     with pytest.raises(ValueError, match="unsupported publication locale"):
         delivery(MemoryStore(), Client()).deliver(locale="ja")
+
+
+def test_delivery_writes_channel_snapshots_before_pointer() -> None:
+    store = MemoryStore()
+    client = Client()
+    explore = Explore()
+    editions = EditionArchive()
+    seo = SeoIndex()
+
+    result = delivery(
+        store,
+        client,
+        explore=explore,
+        edition_archive=editions,
+        seo_index=seo,
+    ).deliver()
+
+    assert result["status"] == "delivered"
+    explore_key = "public/publications/channels/explore/en.json"
+    editions_key = "public/publications/channels/editions/en.json"
+    seo_key = "public/publications/channels/seo-index.json"
+    pointer_key = "public/publications/channels/front-page/en.json"
+    assert store.put_order.index(explore_key) < store.put_order.index(pointer_key)
+    assert store.put_order.index(editions_key) < store.put_order.index(pointer_key)
+    assert store.put_order.index(seo_key) < store.put_order.index(pointer_key)
+    assert json.loads(store.get(explore_key)) == {"surface": "explore", "version": "v1"}
+    assert json.loads(store.get(editions_key)) == {"surface": "editions", "version": "v1"}
+    assert json.loads(store.get(seo_key))["version"] == "v1"
+    assert explore.calls == 1
+    assert editions.calls == 1
+    assert seo.calls == 1
+
+
+def test_channel_snapshots_are_not_rewritten_when_unchanged() -> None:
+    store = MemoryStore()
+    service = delivery(
+        store,
+        Client(),
+        explore=Explore(),
+        edition_archive=EditionArchive(),
+        seo_index=SeoIndex(),
+    )
+    service.deliver()
+    puts_after_first = list(store.put_order)
+
+    result = service.deliver()
+
+    assert result["status"] == "unchanged"
+    assert store.put_order == puts_after_first
+
+
+def test_explore_presenter_failure_does_not_block_front_page() -> None:
+    store = MemoryStore()
+    client = Client()
+
+    result = delivery(
+        store,
+        client,
+        explore=Explore(fail=True),
+        edition_archive=EditionArchive(),
+        seo_index=SeoIndex(),
+    ).deliver()
+
+    assert result["status"] == "delivered"
+    assert "public/publications/channels/front-page/en.json" in store.objects
+    assert "public/publications/channels/explore/en.json" not in store.objects
+    assert "public/publications/channels/editions/en.json" in store.objects
+    assert "public/publications/channels/seo-index.json" in store.objects
+
+
+def test_delivery_writes_referenced_topic_projections() -> None:
+    store = MemoryStore()
+    client = Client()
+    topics = TopicPage()
+
+    result = delivery(
+        store,
+        client,
+        front_page=FrontPageWithTopics(),
+        topic_page=topics,
+    ).deliver()
+
+    assert result["status"] == "delivered"
+    topic_one = "public/publications/topics/topic-1/en.json"
+    topic_two = "public/publications/topics/topic-2/en.json"
+    pointer_key = "public/publications/channels/front-page/en.json"
+    assert store.put_order.index(topic_one) < store.put_order.index(pointer_key)
+    assert store.put_order.index(topic_two) < store.put_order.index(pointer_key)
+    assert "public/publications/topics/topic-3/en.json" not in store.objects
+    assert topics.built == ["topic-1", "topic-2"]
+    assert client.calls[0]["json"]["topic_ids"] == ["topic-1", "topic-2"]
+
+
+def test_missing_topic_projection_does_not_block_front_page() -> None:
+    store = MemoryStore()
+
+    result = delivery(
+        store,
+        Client(),
+        front_page=FrontPageWithTopics(),
+        topic_page=TopicPage(missing="topic-2"),
+    ).deliver()
+
+    assert result["status"] == "delivered"
+    assert "public/publications/topics/topic-1/en.json" in store.objects
+    assert "public/publications/topics/topic-2/en.json" not in store.objects
+    assert "public/publications/channels/front-page/en.json" in store.objects

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 from dataclasses import dataclass
 from typing import Any
@@ -17,13 +18,17 @@ from typing import Any
 import httpx
 
 from open_signal.agents.runtime import DeepSeekClient
-from open_signal.api.editions import FrontPagePresenter
+from open_signal.api.editions import EditionArchivePresenter, FrontPagePresenter
+from open_signal.api.explore import ExplorePresenter
 from open_signal.api.presenters import ClaimPagePresenter
+from open_signal.api.topics import SeoIndexPresenter, TopicPagePresenter
 from open_signal.publication.localization import (
     LOCALIZATION_VERSION,
     PublicationLocalizer,
 )
 from open_signal.sources.artifact_store import ArtifactStore, S3ArtifactStore
+
+logger = logging.getLogger(__name__)
 
 DELIVERY_VERSION = "1.0.0"
 CONTENT_TYPE = "application/json; charset=utf-8"
@@ -37,9 +42,13 @@ class PublicationKeys:
     localization: str
     translation_memory: str
     current: str
+    explore: str
+    editions: str
+    seo_index: str
     receipt: str
     claim_snapshots: tuple[str, ...]
     claim_current: tuple[str, ...]
+    topic_current: tuple[str, ...]
 
 
 class PublicationDelivery:
@@ -56,6 +65,10 @@ class PublicationDelivery:
         front_page: Any | None = None,
         claim_page: Any | None = None,
         localizer: PublicationLocalizer | None = None,
+        explore: Any | None = None,
+        edition_archive: Any | None = None,
+        seo_index: Any | None = None,
+        topic_page: Any | None = None,
     ) -> None:
         self.store = store
         self.revalidate_url = revalidate_url
@@ -64,6 +77,10 @@ class PublicationDelivery:
         self.front_page = front_page or FrontPagePresenter(engine)
         self.claim_page = claim_page or ClaimPagePresenter(engine)
         self.localizer = localizer
+        self.explore = explore
+        self.edition_archive = edition_archive
+        self.seo_index = seo_index
+        self.topic_page = topic_page
 
     def deliver(self, *, locale: str = "en") -> dict[str, Any]:
         if locale not in SUPPORTED_DELIVERY_LOCALES:
@@ -74,7 +91,8 @@ class PublicationDelivery:
 
         edition_id = str(page["snapshot"]["id"])
         claim_ids = _claim_ids(page)
-        keys = _keys(edition_id, claim_ids, locale)
+        topic_ids = _topic_ids(page)
+        keys = _keys(edition_id, claim_ids, topic_ids, locale)
 
         current = self._json_or_none(keys.current)
         expected_localization_version = (
@@ -88,6 +106,7 @@ class PublicationDelivery:
             == expected_localization_version
         )
         if already_current and self.store.exists(keys.receipt):
+            self._write_read_models(keys, locale=locale, topic_ids=topic_ids)
             return {
                 "status": "unchanged",
                 "edition_id": edition_id,
@@ -172,6 +191,8 @@ class PublicationDelivery:
         for claim_id, key in zip(claim_ids, keys.claim_current, strict=True):
             self._put_mutable_if_changed(key, claim_bytes[claim_id])
 
+        self._write_read_models(keys, locale=locale, topic_ids=topic_ids)
+
         # The page pointer moves only after every referenced object exists.
         if not already_current:
             self.store.put(keys.current, _json_bytes(pointer), content_type=CONTENT_TYPE)
@@ -183,6 +204,7 @@ class PublicationDelivery:
                 "edition_id": edition_id,
                 "locale": locale,
                 "claim_ids": claim_ids,
+                "topic_ids": topic_ids,
             },
         )
         response.raise_for_status()
@@ -331,6 +353,57 @@ class PublicationDelivery:
             memory[source] = translation
         return memory
 
+    def _write_read_models(
+        self,
+        keys: PublicationKeys,
+        *,
+        locale: str,
+        topic_ids: list[str],
+    ) -> None:
+        self._write_optional_snapshot(keys.explore, self.explore, "explore")
+        self._write_optional_snapshot(
+            keys.editions,
+            self.edition_archive,
+            "edition archive",
+        )
+        self._write_optional_snapshot(keys.seo_index, self.seo_index, "seo index")
+        if self.topic_page is None:
+            return
+        for topic_id, key in zip(topic_ids, keys.topic_current, strict=True):
+            try:
+                payload = self.topic_page.build(topic_id)
+            except Exception:
+                logger.warning(
+                    "publication topic snapshot failed",
+                    extra={"topic_id": topic_id, "locale": locale},
+                    exc_info=True,
+                )
+                continue
+            if not isinstance(payload, dict):
+                continue
+            self._put_mutable_if_changed(key, _json_bytes(payload))
+
+    def _write_optional_snapshot(
+        self,
+        key: str,
+        presenter: Any,
+        label: str,
+    ) -> None:
+        if presenter is None:
+            return
+        try:
+            payload = presenter.build()
+        except Exception:
+            logger.warning(
+                "publication %s snapshot failed",
+                label,
+                exc_info=True,
+            )
+            return
+        if not isinstance(payload, dict):
+            return
+        self._put_mutable_if_changed(key, _json_bytes(payload))
+
     def _put_immutable(self, key: str, data: bytes) -> None:
         if self.store.exists(key):
             if self.store.get(key) != data:
@@ -387,6 +460,10 @@ def from_environment(engine: Any) -> PublicationDelivery | None:
             if os.environ.get("DEEPSEEK_API_KEY")
             else None
         ),
+        explore=ExplorePresenter(engine),
+        edition_archive=EditionArchivePresenter(engine),
+        seo_index=SeoIndexPresenter(engine),
+        topic_page=TopicPagePresenter(engine),
     )
 
 
@@ -403,7 +480,25 @@ def _claim_ids(page: dict[str, Any]) -> list[str]:
     return result
 
 
-def _keys(edition_id: str, claim_ids: list[str], locale: str) -> PublicationKeys:
+def _topic_ids(page: dict[str, Any]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for slot in page.get("slots", []):
+        for item in slot.get("items", []):
+            topic = item.get("topic")
+            topic_id = topic.get("id") if isinstance(topic, dict) else None
+            if topic_id and str(topic_id) not in seen:
+                seen.add(str(topic_id))
+                result.append(str(topic_id))
+    return result
+
+
+def _keys(
+    edition_id: str,
+    claim_ids: list[str],
+    topic_ids: list[str],
+    locale: str,
+) -> PublicationKeys:
     prefix = "public/publications"
     presentation_locale = (
         locale if locale == "en" else f"{locale}.{LOCALIZATION_VERSION}"
@@ -426,6 +521,9 @@ def _keys(edition_id: str, claim_ids: list[str], locale: str) -> PublicationKeys
             f"{LOCALIZATION_VERSION}.json"
         ),
         current=f"{prefix}/channels/front-page/{locale}.json",
+        explore=f"{prefix}/channels/explore/{locale}.json",
+        editions=f"{prefix}/channels/editions/{locale}.json",
+        seo_index=f"{prefix}/channels/seo-index.json",
         receipt=(
             f"{prefix}/deliveries/{edition_id}/vercel."
             f"{presentation_locale}.json"
@@ -438,6 +536,10 @@ def _keys(edition_id: str, claim_ids: list[str], locale: str) -> PublicationKeys
         claim_current=tuple(
             f"{prefix}/claims/{claim_id}/{locale}.json"
             for claim_id in claim_ids
+        ),
+        topic_current=tuple(
+            f"{prefix}/topics/{topic_id}/{locale}.json"
+            for topic_id in topic_ids
         ),
     )
 

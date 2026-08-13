@@ -58,6 +58,7 @@ export default async function ExplorePage({ searchParams }: Props) {
       topicPage: parsePage(params.topic_page),
       signalPage: parsePage(params.signal_page),
       asOf: params.as_of,
+      locale,
     });
   } catch {
     return (

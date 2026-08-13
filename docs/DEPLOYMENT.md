@@ -21,8 +21,10 @@ flowchart LR
 
 The database remains authoritative. R2 is a read-optimized publication layer,
 not a second mutable source of truth. Each Edition and its Claim payloads are
-written under immutable Edition keys. Current Claim projections are refreshed,
-and the front-page pointer moves last. Vercel is notified only after that move.
+written under immutable Edition keys. Current Claim, Topic, Explore, edition
+archive, and SEO-index projections are refreshed, and the front-page pointer
+moves last. Vercel is notified only after that move. Public pages read R2
+first; the FastAPI service is the long-tail and operations fallback.
 
 ## Provisioned beta resources
 
@@ -165,6 +167,10 @@ After the first scheduled delivery, verify that both R2 current pointers exist:
 
 - `public/publications/channels/front-page/en.json`
 - `public/publications/channels/front-page/zh-Hant.json`
+- `public/publications/channels/explore/en.json`
+- `public/publications/channels/explore/zh-Hant.json`
+- `public/publications/channels/editions/en.json`
+- `public/publications/channels/seo-index.json`
 
 The two pointers must reference the same Edition ID. The Traditional Chinese
 manifest additionally references the immutable localization bundle and records

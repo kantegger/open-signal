@@ -52,7 +52,7 @@ export default async function EditionsPage({ searchParams }: Props) {
   };
   let archive: EditionArchiveData;
   try {
-    archive = await fetchEditionArchiveServer(filters);
+    archive = await fetchEditionArchiveServer({ ...filters, locale });
   } catch {
     return (
       <SiteShell active="archive" systemState="unavailable">
