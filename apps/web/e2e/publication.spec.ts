@@ -291,7 +291,7 @@ test("keeps event content ahead of site telemetry when research is absent", asyn
   await expect(page.getByRole("heading", { name: "Live signal feed" })).toHaveCount(0);
 
   const comparison = await page.locator(".event-comparison").boundingBox();
-  const side = await page.locator(".dashboard-side").boundingBox();
+  const side = await page.locator(".secondary-region").boundingBox();
   expect(comparison).not.toBeNull();
   expect(side).not.toBeNull();
 
@@ -309,6 +309,33 @@ test("keeps event content ahead of site telemetry when research is absent", asyn
   expect(mobileOrder[0]!.y).toBeLessThan(mobileOrder[1]!.y);
   expect(mobileOrder[1]!.y).toBeLessThan(mobileOrder[2]!.y);
   expect(mobileOrder[2]!.y).toBeLessThan(mobileOrder[3]!.y);
+});
+
+test("keeps signal visuals directly below the hero when no event comparison is available", async ({ page, request }) => {
+  await request.post("http://127.0.0.1:8001/__control/front-mode?value=no-featured-event");
+  await revalidate(request, "e2e-no-featured-event");
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto("/");
+
+  await expect(page.locator(".event-comparison")).toHaveCount(0);
+  await expect(page.locator(".expectation-board")).toBeVisible();
+  await expect(page.locator(".secondary-region")).toBeVisible();
+  const [coverage, lead, secondary, movement] = await Promise.all([
+    page.locator(".coverage-strip").boundingBox(),
+    page.locator(".dashboard-lead-column").boundingBox(),
+    page.locator(".secondary-region").boundingBox(),
+    page.locator(".expectation-board").boundingBox(),
+  ]);
+  expect(coverage, "coverage box").not.toBeNull();
+  expect(lead, "lead box").not.toBeNull();
+  expect(secondary, "secondary box").not.toBeNull();
+  expect(movement, "movement box").not.toBeNull();
+
+  const firstRowBottom = Math.max(lead!.y + lead!.height, secondary!.y + secondary!.height);
+  expect(Math.abs(movement!.y - firstRowBottom)).toBeLessThanOrEqual(2);
+  expect(Math.abs(movement!.x - coverage!.x)).toBeLessThanOrEqual(2);
+  expect(Math.abs(movement!.width - coverage!.width)).toBeLessThanOrEqual(2);
+  await expect(page.locator(".expectation-signal-grid article")).toHaveCount(4);
 });
 
 test("opens an accessible evidence sheet and restores focus", async ({ page }) => {
