@@ -115,6 +115,24 @@ def test_research_context_uses_public_gate_and_event_first_headline() -> None:
     assert len(fingerprint) == 64
 
 
+def test_coverage_exposes_real_hourly_buckets_without_interpolation() -> None:
+    captured_at = datetime(2026, 8, 9, 8, 35, tzinfo=UTC)
+    connection = _CoverageConnection(
+        coverage_rows=[("openalex", 20, 7, captured_at - timedelta(minutes=5))],
+        activity_rows=[
+            ("openalex", captured_at - timedelta(hours=2), 2),
+            ("openalex", captured_at - timedelta(hours=1), 5),
+        ],
+    )
+
+    coverage = PublicationContextBuilder()._coverage(connection, captured_at=captured_at)
+
+    assert len(coverage) == 1
+    assert len(coverage[0]["hourly_records"]) == 24
+    assert [bucket["count"] for bucket in coverage[0]["hourly_records"][-2:]] == [2, 5]
+    assert sum(bucket["count"] for bucket in coverage[0]["hourly_records"]) == 7
+
+
 class _ResearchConnection:
     def __init__(self, rows: list[tuple]) -> None:
         self.rows = rows
@@ -124,3 +142,19 @@ class _ResearchConnection:
 
     def fetchall(self) -> list[tuple]:
         return self.rows
+
+
+class _CoverageResult:
+    def __init__(self, rows: list[tuple]) -> None:
+        self.rows = rows
+
+    def fetchall(self) -> list[tuple]:
+        return self.rows
+
+
+class _CoverageConnection:
+    def __init__(self, coverage_rows: list[tuple], activity_rows: list[tuple]) -> None:
+        self.result_sets = [coverage_rows, activity_rows]
+
+    def execute(self, *_args, **_kwargs) -> _CoverageResult:
+        return _CoverageResult(self.result_sets.pop(0))

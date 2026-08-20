@@ -298,12 +298,16 @@ const publicationContext = {
     ["federal-register", "Federal Register", 40, 34],
     ["polymarket-gamma", "Polymarket", 8, 8],
     ["clinicaltrials-gov", "ClinicalTrials.gov", 6, 4],
-  ].map(([source_slug, source_label, records_total, records_24h]) => ({
+  ].map(([source_slug, source_label, records_total, records_24h], sourceIndex) => ({
     source_slug,
     source_label,
     records_total,
     records_24h,
     latest_ingested_at: dataAsOf,
+    hourly_records: Array.from({ length: 24 }, (_, hourIndex) => ({
+      hour: new Date(new Date(dataAsOf).getTime() - (23 - hourIndex) * 60 * 60 * 1000).toISOString(),
+      count: Math.max(0, Math.round(Number(records_24h) / 24 + ((hourIndex * 7 + sourceIndex * 5) % 6) - 2)),
+    })),
   })),
 };
 
@@ -386,7 +390,7 @@ export const frontPageFixture = {
     },
   ],
   archive: [
-    { id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", edition_date: composedAt.slice(0, 10), composed_at: composedAt, status: "published", sections: ["expectations-moved", "rules-moved", "research-frontier"], claim_count: 10, correction_count: 0, trigger_type: "section_refresh" },
+    { id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", edition_date: composedAt.slice(0, 10), composed_at: composedAt, status: "published", sections: ["expectations-moved", "rules-moved", "research-frontier"], claim_count: 10, correction_count: 0, trigger_type: "section_refresh", claim_diff: { added: 3, retained: 7, retired: 0 } },
     { id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", edition_date: previousComposedAt.slice(0, 10), composed_at: previousComposedAt, status: "published", sections: ["expectations-moved", "rules-moved"], claim_count: 7, correction_count: 0, trigger_type: "scheduled" },
   ],
   method: { summary: "Open Signal separates observation, analysis, and assessment; publishes only verified Render Plans; and preserves every snapshot.", composer_version: "os-048", policy_version: "1.0.0" },

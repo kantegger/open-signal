@@ -12,6 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT))
 
 from apps.api import main as api_main
+from open_signal.api.editions import _claim_diff
 
 
 class _StubArchivePresenter:
@@ -75,3 +76,13 @@ def test_archive_list_rejects_malformed_cursor(client: TestClient) -> None:
 def test_archive_list_validates_page_size_before_presenter(client: TestClient) -> None:
     assert client.get("/api/editions?limit=0").status_code == 422
     assert client.get("/api/editions?limit=101").status_code == 422
+
+
+def test_claim_diff_compares_immutable_membership() -> None:
+    assert _claim_diff(["a", "b", "c"], ["b", "c", "d"]) == {
+        "added": 1,
+        "retained": 2,
+        "retired": 1,
+    }
+    assert _claim_diff([], []) == {"added": 0, "retained": 0, "retired": 0}
+    assert _claim_diff(["a"], None) is None
