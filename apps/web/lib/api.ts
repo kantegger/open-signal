@@ -244,6 +244,29 @@ export interface PublicationExpectationObservation {
   };
 }
 
+export interface PublicationExpectationEvent {
+  key: string;
+  title: string;
+  event_type: string;
+  source_label: string;
+  source_member_count: number;
+  eligible_member_count: number;
+  suppressed_member_count: number;
+  selection_reason: string;
+  latest_observed_at: string;
+  resolution_deadline_at: string;
+  members: Array<{
+    topic_id: string;
+    title: string;
+    option_label?: string | null;
+    current_probability?: number | null;
+    baseline_probability_24h?: number | null;
+    delta_24h_percentage_points?: number | null;
+    observed_at?: string | null;
+    selection_reason: string;
+  }>;
+}
+
 export interface PublicationRuleObservation {
   id: string;
   title: string;
@@ -310,6 +333,7 @@ export interface PublicationContext {
   };
   claims: PublicationClaimRecord[];
   expectations: PublicationExpectationObservation[];
+  expectation_events?: PublicationExpectationEvent[];
   rules: PublicationRuleObservation[];
   research: PublicationResearchWatch[];
   coverage: PublicationSourceCoverage[];

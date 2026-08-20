@@ -8,6 +8,7 @@ import type {
   EditionRecordData,
   PublicationClaimRecord,
   PublicationContext,
+  PublicationExpectationEvent,
   PublicationExpectationObservation,
   PublicationSlot,
   RenderPlanItem,
@@ -233,6 +234,11 @@ function Publication({
   const hasLiveTape = compact && Boolean(liveFeed.items.length || monitoredTopics.length);
   const currentIndexItems = uniquePlans([...digest.items, ...main.items, ...utility.items]).slice(0, 8);
   const observationCount = context.counts.expectation_observations + context.counts.rules_tracked;
+  const leadTopicId = lead.items[0]?.topic?.id;
+  const featuredEvent = context.expectation_events?.find((event) => (
+    event.members.some((member) => member.topic_id === leadTopicId)
+  ));
+  const featuredEventTopicIds = new Set(featuredEvent?.members.map((member) => member.topic_id) ?? []);
 
   return (
     <article className="front-page" data-snapshot-id={data.snapshot.id}>
@@ -284,20 +290,7 @@ function Publication({
               <SparseLead data={data} />
             )}
           </section>
-          {compact && research.length ? (
-            <ResearchWatch
-              featured
-              items={research}
-              total={context.counts.research_screening}
-            />
-          ) : null}
-          {compact && (monitoredTopics.length || context.claims.length) ? (
-            <SignalPulse
-              asOf={context.captured_at ?? data.snapshot.composed_at}
-              claims={context.claims}
-              observations={monitoredTopics}
-            />
-          ) : null}
+          {compact && featuredEvent ? <EventComparison event={featuredEvent} /> : null}
         </div>
 
         {secondary.items.length || hasLiveTape ? (
@@ -317,11 +310,19 @@ function Publication({
             {hasLiveTape ? (
               <ExpectationMovementBoard
                 items={liveFeed.items}
-                observations={monitoredTopics}
+                observations={monitoredTopics.filter((observation) => !featuredEventTopicIds.has(observation.id))}
                 onEvidence={onEvidence}
               />
             ) : null}
           </div>
+        ) : null}
+
+        {compact && research.length ? (
+          <ResearchWatch
+            featured
+            items={research}
+            total={context.counts.research_screening}
+          />
         ) : null}
       </div>
 
@@ -334,8 +335,6 @@ function Publication({
             fallbackItems={currentIndexItems}
             onEvidence={onEvidence}
           />
-          <SourceCoverageBand coverage={context.coverage} />
-          <EditionCadence archive={data.archive} currentSnapshotId={data.snapshot.id} />
           <CurrentDestinations />
         </>
       ) : (
@@ -460,126 +459,44 @@ function LiveFeed({
   );
 }
 
-function SignalPulse({
-  asOf,
-  claims,
-  observations,
-}: {
-  asOf: string;
-  claims: PublicationClaimRecord[];
-  observations: PublicationExpectationObservation[];
-}) {
+function EventComparison({ event }: { event: PublicationExpectationEvent }) {
   const { locale } = useLocale();
-  const measured = observations.filter((observation) => (
-    observation.delta_24h_percentage_points != null
-  ));
-  const rising = measured.filter((observation) => observation.delta_24h_percentage_points! > 0).length;
-  const falling = measured.filter((observation) => observation.delta_24h_percentage_points! < 0).length;
-  const largestMove = [...measured].sort((left, right) => (
-    Math.abs(right.delta_24h_percentage_points!) - Math.abs(left.delta_24h_percentage_points!)
-  ))[0];
-  const nearestResolution = observations
-    .filter((observation) => Number.isFinite(Date.parse(observation.resolution_deadline_at)))
-    .sort((left, right) => Date.parse(left.resolution_deadline_at) - Date.parse(right.resolution_deadline_at))[0];
-  const asOfTimestamp = Date.parse(asOf);
-  const deadlineBuckets = [
-    { label: locale === "zh-Hant" ? "24 小時" : "24h", days: 1 },
-    { label: locale === "zh-Hant" ? "3 天" : "3d", days: 3 },
-    { label: locale === "zh-Hant" ? "7 天" : "7d", days: 7 },
-    { label: locale === "zh-Hant" ? "30 天" : "30d", days: 30 },
-    { label: locale === "zh-Hant" ? "更久" : "later", days: Number.POSITIVE_INFINITY },
-  ].map((bucket, index, buckets) => {
-    const lowerDays = index === 0 ? 0 : buckets[index - 1].days;
-    const count = observations.filter((observation) => {
-      const deadline = Date.parse(observation.resolution_deadline_at);
-      if (!Number.isFinite(deadline) || !Number.isFinite(asOfTimestamp)) return false;
-      const days = (deadline - asOfTimestamp) / 86_400_000;
-      return days >= lowerDays && days < bucket.days;
-    }).length;
-    return { ...bucket, count };
-  });
-  const maxDeadlineCount = Math.max(...deadlineBuckets.map((bucket) => bucket.count), 1);
-  const evidenceReferences = claims.reduce((total, claim) => total + claim.evidence_count, 0);
-  const latestClaim = [...claims]
-    .filter((claim) => Number.isFinite(Date.parse(claim.updated_at ?? claim.issued_at)))
-    .sort((left, right) => (
-      Date.parse(right.updated_at ?? right.issued_at) - Date.parse(left.updated_at ?? left.issued_at)
-    ))[0];
-
+  const members = event.members.filter((member) => member.current_probability != null).slice(0, 5);
+  if (members.length < 2) return null;
   return (
-    <section className="signal-pulse" aria-labelledby="signal-pulse-title">
-      <RegionHeader
-        id="signal-pulse-title"
-        title={locale === "zh-Hant" ? "↕ 訊號脈動" : "↕ Signal pulse"}
-        note={locale === "zh-Hant" ? "衍生脈絡 · 並非新主張" : "Derived context · not a new Claim"}
-      />
-      <div className="signal-pulse-grid signal-pulse-visual-grid">
-        <article className="breadth-visual">
-          <span>{locale === "zh-Hant" ? "24 小時廣度" : "24h breadth"}</span>
-          <strong className="signal-pulse-breadth">
-            <b className="trend-up">↗ {rising}</b>
-            <b className="trend-down">↘ {falling}</b>
-            <b className="trend-neutral">— {observations.length - rising - falling}</b>
-          </strong>
-          <div aria-hidden="true" className="breadth-bar">
-            <i className="breadth-up" style={{ flexGrow: rising }} />
-            <i className="breadth-flat" style={{ flexGrow: observations.length - rising - falling }} />
-            <i className="breadth-down" style={{ flexGrow: falling }} />
-          </div>
-          <small>{locale === "zh-Hant" ? "上升 · 下降 · 持平或缺少可比較基準" : "up · down · flat or without a comparable baseline"}</small>
-        </article>
-        <article>
-          <span>{locale === "zh-Hant" ? "最大觀測變化" : "Largest observed move"}</span>
-          {largestMove ? (
-            <>
-              <strong className={deltaClass(largestMove.delta_24h_percentage_points)}>
-                {trendGlyph(largestMove.delta_24h_percentage_points)} {formatDelta(largestMove.delta_24h_percentage_points!)}
-                <small>{formatProbability(largestMove.current_probability)}</small>
-              </strong>
-              <Link href={topicPath(largestMove.title, largestMove.id, locale)}>{largestMove.title}</Link>
-            </>
-          ) : (
-            <><strong>—</strong><small>{locale === "zh-Hant" ? "目前沒有完整的 24 小時比較。" : "No complete 24h comparison is available."}</small></>
-          )}
-        </article>
-        <article className="deadline-visual">
-          <span>{locale === "zh-Hant" ? "結算期限分布" : "Resolution horizon"}</span>
-          <div className="deadline-bars" aria-label={locale === "zh-Hant" ? "按時間分組的結算期限" : "Resolution deadlines grouped by time"}>
-            {deadlineBuckets.map((bucket) => (
-              <span key={bucket.label}>
-                <i style={{ blockSize: `${Math.max(5, bucket.count / maxDeadlineCount * 100)}%` }} />
-                <b>{bucket.count}</b>
-                <small>{bucket.label}</small>
+    <section className="event-comparison" aria-labelledby="event-comparison-title">
+      <RegionHeader id="event-comparison-title" title={locale === "zh-Hant" ? "同一事件的主要情境" : "The event, not one market"} note={humanize(event.event_type, locale)} />
+      <header>
+        <h2>{event.title}</h2>
+        <p>{locale === "zh-Hant" ? "同一來源事件中的主要選項；僅保留領先者、顯著變動者與可信挑戰者。" : "Leading, materially moving, and credible options from the same source event."}</p>
+      </header>
+      <ol>
+        {members.map((member) => {
+          const probability = (member.current_probability ?? 0) * 100;
+          return (
+            <li key={member.topic_id}>
+              <Link href={topicPath(member.title, member.topic_id, locale)}>
+                <span><strong>{member.option_label || member.title}</strong><small>{humanize(member.selection_reason, locale)}</small></span>
+                <b>{formatProbability(member.current_probability)}</b>
+              </Link>
+              <div aria-hidden="true"><i style={{ inlineSize: `${Math.max(1, probability)}%` }} /></div>
+              <span className={deltaClass(member.delta_24h_percentage_points)}>
+                {trendGlyph(member.delta_24h_percentage_points)} {member.delta_24h_percentage_points == null ? "—" : formatDelta(member.delta_24h_percentage_points)}
               </span>
-            ))}
-          </div>
-          {nearestResolution ? (
-            <Link href={topicPath(nearestResolution.title, nearestResolution.id, locale)}>
-              {locale === "zh-Hant" ? "最近" : "Nearest"} · {formatRelativeTime(nearestResolution.resolution_deadline_at, locale)} · {nearestResolution.title}
-            </Link>
-          ) : (
-            <small>{locale === "zh-Hant" ? "沒有附帶有效期限。" : "No active deadline is attached."}</small>
-          )}
-        </article>
-        <article>
-          <span>{locale === "zh-Hant" ? "判斷基礎" : "Judgment base"}</span>
-          <strong>{claims.length} {locale === "zh-Hant" ? "筆已驗證" : "verified"} <small>· {evidenceReferences} {locale === "zh-Hant" ? "筆證據參照" : "evidence refs"}</small></strong>
-          {latestClaim ? (
-            <Link href={signalPath(latestClaim.statement, latestClaim.id, locale)}>
-              {locale === "zh-Hant" ? "最新" : "Latest"} · {formatRelativeTime(latestClaim.updated_at ?? latestClaim.issued_at, locale)}
-            </Link>
-          ) : <small>{locale === "zh-Hant" ? "目前沒有主張紀錄。" : "No current Claim record."}</small>}
-        </article>
-      </div>
+            </li>
+          );
+        })}
+      </ol>
+      <footer>
+        <span>{event.source_label}</span>
+        {event.suppressed_member_count ? <span>+ {event.suppressed_member_count} {locale === "zh-Hant" ? "個低訊號選項未顯示" : "lower-signal options suppressed"}</span> : null}
+        <time>{formatRelativeTime(event.latest_observed_at, locale)}</time>
+      </footer>
     </section>
   );
 }
 
-function ExpectationMovementBoard({
-  items,
-  observations,
-  onEvidence,
-}: {
+function ExpectationMovementBoard({ items, observations, onEvidence }: {
   items: RenderPlanItem[];
   observations: PublicationExpectationObservation[];
   onEvidence: OpenEvidence;
@@ -587,151 +504,68 @@ function ExpectationMovementBoard({
   const { locale } = useLocale();
   const ranked = [...observations]
     .filter((observation) => observation.current_probability != null)
-    .sort((left, right) => (
-      Math.abs(right.delta_24h_percentage_points ?? 0) - Math.abs(left.delta_24h_percentage_points ?? 0)
-    ))
-    .slice(0, 8);
-  const measured = ranked.filter((observation) => observation.delta_24h_percentage_points != null);
-  const rising = measured.filter((observation) => observation.delta_24h_percentage_points! > 0).length;
-  const falling = measured.filter((observation) => observation.delta_24h_percentage_points! < 0).length;
-  const flat = ranked.length - rising - falling;
-  const maxMove = Math.max(...ranked.map((observation) => Math.abs(observation.delta_24h_percentage_points ?? 0)), 1);
-  const plansByTopic = new Map(
-    uniquePlans(items).flatMap((item) => item.topic?.id ? [[item.topic.id, item] as const] : []),
-  );
+    .sort((left, right) => Math.abs(right.delta_24h_percentage_points ?? 0) - Math.abs(left.delta_24h_percentage_points ?? 0))
+    .slice(0, 4);
+  const plansByTopic = new Map(uniquePlans(items).flatMap((item) => item.topic?.id ? [[item.topic.id, item] as const] : []));
 
   return (
     <section className="expectation-board" aria-labelledby="expectation-board-title">
-      <RegionHeader
-        id="expectation-board-title"
-        title={locale === "zh-Hant" ? "↕ 預期變動" : "↕ Expectation movement"}
-        note={locale === "zh-Hant" ? "重要變動優先 · 24 小時" : "Material moves first · 24 hours"}
-      />
-      <div className="expectation-breadth" aria-label={locale === "zh-Hant" ? "預期變動廣度" : "Expectation movement breadth"}>
-        <strong className="trend-up"><b>{rising}</b><span>{locale === "zh-Hant" ? "上升" : "up"}</span></strong>
-        <strong className="trend-down"><b>{falling}</b><span>{locale === "zh-Hant" ? "下降" : "down"}</span></strong>
-        <strong className="trend-neutral"><b>{flat}</b><span>{locale === "zh-Hant" ? "持平／無基準" : "flat / no baseline"}</span></strong>
-      </div>
-      <ol className="movement-list">
+      <RegionHeader id="expectation-board-title" title={locale === "zh-Hant" ? "預期如何變動" : "Expectations in motion"} note={locale === "zh-Hant" ? "真實七天歷史 · 事件去重" : "Real 7-day histories · event-diverse"} />
+      <div className="expectation-signal-grid">
         {ranked.map((observation) => {
           const delta = observation.delta_24h_percentage_points;
-          const magnitude = Math.abs(delta ?? 0) / maxMove * 50;
           const plan = plansByTopic.get(observation.id);
           return (
-            <li key={observation.id}>
-              <Link href={topicPath(observation.title, observation.id, locale)}>
-                <span>{humanize(observation.event_type, locale)}</span>
-                <strong>{observation.title}</strong>
-              </Link>
-              <div className="movement-measure">
-                <div aria-hidden="true" className="movement-track">
-                  <i className="movement-negative" style={{ inlineSize: delta != null && delta < 0 ? `${magnitude}%` : 0 }} />
-                  <i className="movement-positive" style={{ inlineSize: delta != null && delta > 0 ? `${magnitude}%` : 0 }} />
-                </div>
-                <span className={deltaClass(delta)}>{trendGlyph(delta)} {delta == null ? "—" : formatDelta(delta)}</span>
-              </div>
-              <strong className="movement-probability">{formatProbability(observation.current_probability)}</strong>
-              <MiniSparkline observation={observation} />
-              {plan?.trust.claim_id ? (
-                <button
-                  aria-label={`${locale === "zh-Hant" ? "開啟證據" : "Open evidence for"} ${plan.headline}`}
-                  onClick={(event) => onEvidence(plan.trust.claim_id!, event.currentTarget)}
-                  type="button"
-                ><Icon name="evidence" size={15} /></button>
-              ) : <span />}
-            </li>
+            <article key={observation.id}>
+              <header><span>{humanize(observation.event_type, locale)}</span><time>{formatRelativeTime(observation.current_observed_at ?? observation.updated_at, locale)}</time></header>
+              <Link href={topicPath(observation.title, observation.id, locale)}><h3>{observation.title}</h3></Link>
+              <div className="expectation-signal-metric"><strong>{formatProbability(observation.current_probability)}</strong><span className={deltaClass(delta)}>{trendGlyph(delta)} {delta == null ? "—" : formatDelta(delta)} · 24h</span></div>
+              <SignalHistoryFigure observation={observation} />
+              <footer>
+                <span>{observation.source_label}</span>
+                {observation.series_quality ? <span>{observation.series_quality.observation_count} {locale === "zh-Hant" ? "筆觀測" : "observations"}</span> : null}
+                {plan?.trust.claim_id ? <button aria-label={`${locale === "zh-Hant" ? "開啟證據" : "Open evidence for"} ${plan.headline}`} onClick={(event) => onEvidence(plan.trust.claim_id!, event.currentTarget)} type="button"><Icon name="evidence" size={15} /></button> : null}
+              </footer>
+            </article>
           );
         })}
-      </ol>
+      </div>
     </section>
   );
 }
 
-function MiniSparkline({
-  observation,
-}: {
-  observation: PublicationExpectationObservation;
-}) {
+function SignalHistoryFigure({ observation }: { observation: PublicationExpectationObservation }) {
+  const { locale } = useLocale();
   const quality = observation.series_quality;
-  const seriesPoints = observation.series.flatMap(([rawTimestamp, value]) => {
+  const points = observation.series.flatMap(([rawTimestamp, value]) => {
     const timestamp = Date.parse(rawTimestamp);
-    return Number.isFinite(timestamp) && Number.isFinite(value)
-      ? [{ timestamp, value }]
-      : [];
+    return Number.isFinite(timestamp) && Number.isFinite(value) ? [{ timestamp, value }] : [];
   });
-  const values = seriesPoints.map((point) => point.value);
-  const observedRange = values.length ? Math.max(...values) - Math.min(...values) : 0;
-  const temporalOrderValid = seriesPoints.every((point, index) => (
-    index === 0 || point.timestamp > seriesPoints[index - 1].timestamp
-  ));
-  const temporalRange = seriesPoints.length >= 2
-    ? seriesPoints.at(-1)!.timestamp - seriesPoints[0].timestamp
-    : 0;
-  const hasCompleteHistory = quality?.coverage_status === "complete"
-    && seriesPoints.length >= 2
-    && observedRange > 0
-    && temporalOrderValid
-    && temporalRange > 0;
-  if (!hasCompleteHistory) {
-    const hasDirection = observation.delta_24h_percentage_points != null;
-    const fallbackDescription = hasDirection
-      ? `${observation.title}: only the observed 24-hour direction is shown; a complete seven-day series is unavailable.`
-      : `${observation.title}: no complete history or 24-hour baseline is available.`;
-    return (
-      <span
-        aria-label={fallbackDescription}
-        className={`sparkline-fallback ${deltaClass(observation.delta_24h_percentage_points)}`}
-        data-series-status={quality?.coverage_status ?? "unverified"}
-        title={fallbackDescription}
-      >
-        <span aria-hidden="true">{trendGlyph(observation.delta_24h_percentage_points)}</span>
-        <small>{hasDirection ? "Δ24h" : "no baseline"}</small>
-      </span>
-    );
+  const ordered = points.every((point, index) => index === 0 || point.timestamp > points[index - 1].timestamp);
+  if (quality?.coverage_status !== "complete" || points.length < 2 || !ordered) {
+    return <div className={`signal-history-fallback ${deltaClass(observation.delta_24h_percentage_points)}`} data-series-status={quality?.coverage_status ?? "unverified"}><b>{trendGlyph(observation.delta_24h_percentage_points)}</b><span>{locale === "zh-Hant" ? "七天歷史不完整；僅顯示已觀測的 24 小時方向。" : "Seven-day history incomplete; showing only the observed 24h direction."}</span></div>;
   }
-  const width = 92;
-  const height = 22;
-  const min = Math.min(...values);
-  const range = observedRange;
-  const firstTimestamp = seriesPoints[0].timestamp;
-  const coordinates = seriesPoints.map((point) => {
-    const x = ((point.timestamp - firstTimestamp) / temporalRange) * width;
-    const y = height - 2 - ((point.value - min) / range) * (height - 4);
-    return { timestamp: point.timestamp, x: x.toFixed(1), y: y.toFixed(1) };
-  });
-  const finalPoint = coordinates.at(-1) ?? { x: String(width), y: String(height / 2) };
-  const description = `${observation.title}: seven-day source history from ${quality.observation_count} observations, ${formatProbability(values[0])} to ${formatProbability(values.at(-1))}.`;
+  const width = 320;
+  const height = 104;
+  const inset = 8;
+  const firstTime = points[0].timestamp;
+  const timeRange = points.at(-1)!.timestamp - firstTime;
+  const coordinates = points.map((point) => ({ ...point, x: inset + ((point.timestamp - firstTime) / timeRange) * (width - inset * 2), y: inset + (1 - point.value) * (height - inset * 2) }));
+  const path = coordinates.map((point, index) => `${index ? "L" : "M"}${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(" ");
+  const first = coordinates[0];
+  const last = coordinates.at(-1)!;
+  const description = `${observation.title}: ${formatProbability(first.value)} to ${formatProbability(last.value)} across ${quality.observation_count} source observations.`;
   return (
-    <span
-      className="sparkline-evidence"
-      data-series-status={quality.coverage_status}
-    >
-      <svg
-        aria-label={description}
-        className={`mini-sparkline ${deltaClass(observation.delta_24h_percentage_points)}`}
-        role="img"
-        viewBox={`0 0 ${width} ${height}`}
-      >
+    <figure className={`signal-history-chart ${deltaClass(observation.delta_24h_percentage_points)}`}>
+      <svg aria-label={description} role="img" viewBox={`0 0 ${width} ${height}`}>
         <title>{description}</title>
-        <line className="sparkline-baseline" x1="0" x2={width} y1={height - 1} y2={height - 1} />
-        <polyline
-          fill="none"
-          points={coordinates.map((point) => `${point.x},${point.y}`).join(" ")}
-          vectorEffect="non-scaling-stroke"
-        />
-        {coordinates.map((point, index) => (
-          <circle
-            className="sparkline-sample"
-            cx={point.x}
-            cy={point.y}
-            key={`${point.timestamp}-${index}`}
-            r="0.65"
-          />
-        ))}
-        <circle className="sparkline-terminal" cx={finalPoint.x} cy={finalPoint.y} r="1.8" />
+        {[25, 50, 75].map((tick) => <line className="signal-history-grid" key={tick} x1="0" x2={width} y1={height - tick / 100 * height} y2={height - tick / 100 * height} />)}
+        <path d={path} fill="none" vectorEffect="non-scaling-stroke" />
+        {coordinates.map((point, index) => <circle cx={point.x} cy={point.y} key={`${point.timestamp}-${index}`} r="1.25" />)}
+        <circle className="is-terminal" cx={last.x} cy={last.y} r="3.5" />
       </svg>
-      <small>{`7d · ${quality.observation_count} obs`}</small>
-    </span>
+      <figcaption><span>{formatProbability(first.value)}</span><b>{locale === "zh-Hant" ? "7 天真實歷史" : "real 7d history"}</b><span>{formatProbability(last.value)}</span></figcaption>
+    </figure>
   );
 }
 
@@ -776,11 +610,6 @@ function ClaimLedger({
   onEvidence: OpenEvidence;
 }) {
   const { locale } = useLocale();
-  const rising = claims.filter((claim) => claim.direction === "up").length;
-  const falling = claims.filter((claim) => claim.direction === "down").length;
-  const neutral = claims.length - rising - falling;
-  const evidenceTotal = claims.reduce((total, claim) => total + claim.evidence_count, 0);
-  const desks = [...new Set(claims.map((claim) => claim.section_id))];
   return (
     <section className="claim-ledger-panel" aria-labelledby="claim-ledger-title">
       <RegionHeader
@@ -788,27 +617,6 @@ function ClaimLedger({
         title={locale === "zh-Hant" ? "已驗證判斷帳本" : "Verified judgment ledger"}
         note={locale === "zh-Hant" ? `${claims.length} 筆有效 Claim 紀錄 · 無重複投影` : `${claims.length} active Claim records · no duplicate projections`}
       />
-      <div className="ledger-summary" aria-label={locale === "zh-Hant" ? "判斷帳本摘要" : "Judgment ledger summary"}>
-        <div className="ledger-direction-summary">
-          <span>{locale === "zh-Hant" ? "方向分布" : "Direction mix"}</span>
-          <strong><b className="trend-up">↗ {rising}</b><b className="trend-down">↘ {falling}</b><b className="trend-neutral">— {neutral}</b></strong>
-          <div aria-hidden="true">
-            <i className="ledger-up" style={{ flexGrow: rising }} />
-            <i className="ledger-neutral" style={{ flexGrow: neutral }} />
-            <i className="ledger-down" style={{ flexGrow: falling }} />
-          </div>
-        </div>
-        <div className="ledger-desk-summary">
-          <span>{locale === "zh-Hant" ? "編輯台涵蓋" : "Desk coverage"}</span>
-          <strong>{desks.length}</strong>
-          <p>{desks.map((desk) => sectionName(desk, locale)).join(" · ")}</p>
-        </div>
-        <div className="ledger-evidence-summary">
-          <span>{locale === "zh-Hant" ? "證據參照" : "Evidence references"}</span>
-          <strong>{evidenceTotal}</strong>
-          <p>{locale === "zh-Hant" ? `平均每筆 ${(evidenceTotal / Math.max(claims.length, 1)).toFixed(1)}` : `${(evidenceTotal / Math.max(claims.length, 1)).toFixed(1)} per Claim`}</p>
-        </div>
-      </div>
       <div
         className="claim-ledger"
         role="table"
@@ -855,25 +663,9 @@ function ClaimLedger({
 
 function RuleWatch({ rules }: { rules: PublicationContext["rules"] }) {
   const { locale } = useLocale();
-  const transitions = new Map<string, { previous: string; current: string; count: number }>();
-  for (const rule of rules) {
-    const previous = rule.previous_state ?? "recorded";
-    const key = `${previous}:${rule.current_state}`;
-    const existing = transitions.get(key);
-    transitions.set(key, { previous, current: rule.current_state, count: (existing?.count ?? 0) + 1 });
-  }
   return (
     <section className="watch-panel rule-watch" aria-labelledby="rule-watch-title">
       <RegionHeader id="rule-watch-title" title={locale === "zh-Hant" ? "⚖ 規則監測" : "⚖ Rule watch"} note={locale === "zh-Hant" ? "已標準化的來源事實" : "Normalized source facts"} />
-      <div className="rule-transition-summary" aria-label={locale === "zh-Hant" ? "規則狀態遷移摘要" : "Rule state transition summary"}>
-        {[...transitions.values()].map((transition) => (
-          <div key={`${transition.previous}:${transition.current}`}>
-            <span>{humanize(transition.previous, locale)}</span>
-            <i aria-hidden="true"><b>{transition.count}</b><span>→</span></i>
-            <strong>{humanize(transition.current, locale)}</strong>
-          </div>
-        ))}
-      </div>
       <div
         className="watch-list"
         data-count={rules.length}
@@ -994,108 +786,6 @@ function ResearchPhaseVisual({
       </div>
       <p><b>{evidenceCount}</b><span>{locale === "zh-Hant" ? "筆公開證據" : "public evidence records"}</span></p>
     </div>
-  );
-}
-
-function SourceCoverageBand({
-  coverage,
-}: {
-  coverage: PublicationContext["coverage"];
-}) {
-  const { locale } = useLocale();
-  if (!coverage.length) return null;
-  return (
-    <section className="source-coverage-band" aria-labelledby="source-coverage-title">
-      <header>
-        <h2 id="source-coverage-title">{locale === "zh-Hant" ? "◌ 來源涵蓋" : "◌ Source coverage"}</h2>
-        <p>{locale === "zh-Hant" ? "原始攝取 · 僅供脈絡，不是已發布 Claims" : "Raw intake · context only, not published Claims"}</p>
-      </header>
-      <div
-        data-count={coverage.length}
-        data-density={collectionDensity(coverage.length, "grid")}
-      >
-        {coverage.map((source) => {
-          const hourly = source.hourly_records ?? [];
-          const maxHourly = Math.max(...hourly.map((bucket) => bucket.count), 1);
-          return (
-            <article key={source.source_slug}>
-              <span>{sourceGlyph(source.source_slug)} {source.source_label}</span>
-              <strong>{source.records_24h}<small> / 24h</small></strong>
-              {hourly.length ? (
-                <div
-                  aria-label={`${source.source_label}: ${source.records_24h} ${locale === "zh-Hant" ? "筆紀錄，按小時分布" : "records distributed by hour"}`}
-                  className="source-activity-chart"
-                  role="img"
-                >
-                  {hourly.map((bucket) => (
-                    <i
-                      aria-hidden="true"
-                      key={bucket.hour}
-                      style={{ blockSize: `${bucket.count ? Math.max(8, bucket.count / maxHourly * 100) : 2}%` }}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div aria-hidden="true" className="source-activity-fallback"><i style={{ inlineSize: source.records_24h ? "100%" : 0 }} /></div>
-              )}
-              <small>{source.records_total} {locale === "zh-Hant" ? "筆已擷取" : "captured"} · {formatRelativeTime(source.latest_ingested_at, locale)}</small>
-            </article>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-function EditionCadence({
-  archive,
-  currentSnapshotId,
-}: {
-  archive: FrontPageData["archive"];
-  currentSnapshotId: string;
-}) {
-  const { locale } = useLocale();
-  if (!archive.length) return null;
-  const chronological = [...archive].reverse();
-  const maxClaims = Math.max(...chronological.map((edition) => edition.claim_count), 1);
-  const latestDiff = archive[0]?.claim_diff;
-  return (
-    <section className="edition-cadence" aria-labelledby="edition-cadence-title">
-      <header>
-        <div>
-          <h2 id="edition-cadence-title">{locale === "zh-Hant" ? "▥ 期次節奏" : "▥ Edition cadence"}</h2>
-          <p>{locale === "zh-Hant" ? "不可變快照 · 最近在右" : "Immutable snapshots · newest at right"}</p>
-        </div>
-        {latestDiff ? (
-          <p className="latest-edition-diff">
-            <b className="trend-up">+{latestDiff.added}</b>
-            <span>{locale === "zh-Hant" ? "新增" : "added"}</span>
-            <b>{latestDiff.retained}</b>
-            <span>{locale === "zh-Hant" ? "保留" : "retained"}</span>
-            <b className="trend-down">−{latestDiff.retired}</b>
-            <span>{locale === "zh-Hant" ? "退出" : "retired"}</span>
-          </p>
-        ) : null}
-      </header>
-      <div
-        className="edition-cadence-track"
-        style={{ gridTemplateColumns: `repeat(${chronological.length}, minmax(42px, 1fr))` }}
-      >
-        {chronological.map((edition) => (
-          <Link
-            aria-label={`${locale === "zh-Hant" ? "開啟期次" : "Open Edition"} ${formatDateTime(edition.composed_at, locale)}; ${edition.claim_count} Claims`}
-            className={edition.id === currentSnapshotId ? "is-current" : ""}
-            data-status={edition.status}
-            href={editionPath(edition.id, locale)}
-            key={edition.id}
-          >
-            <i style={{ blockSize: `${Math.max(12, edition.claim_count / maxClaims * 100)}%` }} />
-            <span>{edition.claim_count}</span>
-            <time>{new Date(edition.composed_at).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })} UTC</time>
-          </Link>
-        ))}
-      </div>
-    </section>
   );
 }
 
@@ -1361,6 +1051,7 @@ function legacyPublicationContext(capturedAt: string): PublicationContext {
     },
     claims: [],
     expectations: [],
+    expectation_events: [],
     rules: [],
     research: [],
     coverage: [],
@@ -1484,14 +1175,6 @@ function directionClass(direction: string): string {
   if (direction === "up") return "trend-up";
   if (direction === "down") return "trend-down";
   return "trend-neutral";
-}
-
-function sourceGlyph(slug: string): string {
-  if (slug === "federal-register") return "⚖";
-  if (slug === "openalex") return "◎";
-  if (slug === "clinicaltrials-gov") return "✚";
-  if (slug === "polymarket-gamma") return "↗";
-  return "•";
 }
 
 function sectionName(sectionId: string, locale: "en" | "zh-Hant" = "en"): string {

@@ -400,6 +400,10 @@ function ProbabilityChart({
   const path = coordinates.map((point, index) => `${index ? "L" : "M"}${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(" ");
   const first = coordinates[0];
   const last = coordinates.at(-1)!;
+  const peak = coordinates.reduce((highest, point) => point.value > highest.value ? point : highest, coordinates[0]);
+  const showPeak = peak.timestamp !== first.timestamp
+    && peak.timestamp !== last.timestamp
+    && Math.abs(peak.x - last.x) > 55;
   const midpoint = firstTimestamp + temporalRange / 2;
   const middle = coordinates.reduce((nearest, point) => (
     Math.abs(point.timestamp - midpoint) < Math.abs(nearest.timestamp - midpoint) ? point : nearest
@@ -422,12 +426,16 @@ function ProbabilityChart({
         })}
         <line className="chart-axis-line" x1={left} x2={left} y1={top} y2={height - bottom} />
         <line className="chart-axis-line" x1={left} x2={width - right} y1={height - bottom} y2={height - bottom} />
+        <path className="chart-area" d={`${path} L${last.x.toFixed(1)} ${height - bottom} L${first.x.toFixed(1)} ${height - bottom} Z`} />
         <path className="chart-line" d={path} />
         {coordinates.map((point, index) => (
           <circle className="chart-sample" cx={point.x} cy={point.y} key={`${point.label}-${index}`} r="1.6" />
         ))}
         {first ? <circle className="chart-point chart-point-start" cx={first.x} cy={first.y} r="4" /> : null}
         {last ? <circle className="chart-point" cx={last.x} cy={last.y} r="5" /> : null}
+        <text className="chart-value chart-value-start" x={first.x + 7} y={Math.max(14, first.y - 9)}>{formatPercent(first.value)}</text>
+        {showPeak ? <text className="chart-value chart-value-peak" textAnchor="middle" x={peak.x} y={Math.max(14, peak.y - 10)}>{locale === "zh-Hant" ? "峰值" : "peak"} {formatPercent(peak.value)}</text> : null}
+        <text className="chart-value chart-value-current" textAnchor="end" x={last.x - 7} y={Math.max(14, last.y - 10)}>{locale === "zh-Hant" ? "目前" : "now"} {formatPercent(last.value)}</text>
         {labels.map((point, index) => (
           <text className="chart-date" key={`${point.label}-${index}`} textAnchor={index === 0 ? "start" : index === labels.length - 1 ? "end" : "middle"} x={point.x} y={height - 10}>
             {point.label}

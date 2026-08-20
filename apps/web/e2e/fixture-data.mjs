@@ -165,8 +165,8 @@ const expectationObservations = [
   };
 });
 
-const leadSeries = seriesFor(0.64, 0.85, 9).slice(-11);
-const leadSeriesQuality = seriesQuality(leadSeries, "insufficient_observations");
+const leadSeries = seriesFor(0.64, 0.85, 9);
+const leadSeriesQuality = seriesQuality(leadSeries, "complete");
 const secondarySeries = seriesFor(0.55, 0.68, 8).slice(-11);
 const secondarySeriesQuality = seriesQuality(secondarySeries, "insufficient_observations");
 
@@ -279,7 +279,7 @@ const researchWatch = [
 ];
 
 const publicationContext = {
-  version: "1.2.0",
+  version: "1.7.0",
   snapshot_bound: true,
   captured_at: composedAt,
   counts: {
@@ -291,6 +291,50 @@ const publicationContext = {
   },
   claims: judgmentStatements,
   expectations: expectationObservations,
+  expectation_events: [{
+    key: "fixture:event:rate-path",
+    title: "September policy-rate scenarios",
+    event_type: "monetary_policy",
+    source_label: "Polymarket",
+    source_member_count: 8,
+    eligible_member_count: 5,
+    suppressed_member_count: 5,
+    selection_reason: "material_repricing",
+    latest_observed_at: dataAsOf,
+    resolution_deadline_at: validUntil,
+    members: [
+      {
+        topic_id: ids.topic,
+        title: "Will the Federal Reserve cut rates by September?",
+        option_label: "Cut by September",
+        current_probability: 0.85,
+        baseline_probability_24h: 0.64,
+        delta_24h_percentage_points: 21,
+        observed_at: dataAsOf,
+        selection_reason: "leader",
+      },
+      {
+        topic_id: "a1111111-1111-4111-8111-111111111111",
+        title: "Will the Federal Reserve hold rates through September?",
+        option_label: "Hold through September",
+        current_probability: 0.12,
+        baseline_probability_24h: 0.29,
+        delta_24h_percentage_points: -17,
+        observed_at: dataAsOf,
+        selection_reason: "largest_material_move",
+      },
+      {
+        topic_id: "a2222222-2222-4222-8222-222222222222",
+        title: "Will the Federal Reserve raise rates by September?",
+        option_label: "Raise by September",
+        current_probability: 0.03,
+        baseline_probability_24h: 0.07,
+        delta_24h_percentage_points: -4,
+        observed_at: dataAsOf,
+        selection_reason: "credible_challenger",
+      },
+    ],
+  }],
   rules: ruleWatch,
   research: researchWatch,
   coverage: [
