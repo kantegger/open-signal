@@ -47,6 +47,22 @@ class FakeClient:
         )
 
 
+class NumericMonthClient:
+    def chat(self, messages, **kwargs):
+        del kwargs
+        request = json.loads(messages[1]["content"])
+        assert request["items"] == [
+            {"id": "0", "text": "Scheduled for August __OS_TOKEN_0000__"}
+        ]
+        return (
+            json.dumps(
+                {"translations": {"0": "排定於 __OS_TOKEN_0000__ 年 8 月。"}},
+                ensure_ascii=False,
+            ),
+            LlmUsage(prompt_tokens=8, completion_tokens=6, total_tokens=14),
+        )
+
+
 def sample_payloads() -> list[dict]:
     return [
         {
@@ -167,6 +183,28 @@ def test_localization_allows_chinese_text_adjacent_to_protected_numbers() -> Non
     )
 
     assert "72%" in result.payloads[0]["slots"][0]["items"][0]["headline"]
+
+
+def test_localization_spells_translated_month_with_chinese_numeral() -> None:
+    result = PublicationLocalizer(NumericMonthClient()).localize_many(
+        [{"title": "Scheduled for August 2026"}],
+        locale="zh-Hant",
+    )
+
+    assert result.payloads[0]["title"] == "排定於 2026 年 八月。"
+
+
+def test_localization_splits_large_translation_sets_into_safe_batches() -> None:
+    client = FakeClient()
+    payloads = [{"title": f"Distinct signal title {index}"} for index in range(21)]
+
+    result = PublicationLocalizer(client).localize_many(
+        payloads,
+        locale="zh-Hant",
+    )
+
+    assert [len(call["request"]["items"]) for call in client.calls] == [20, 1]
+    assert result.translated_string_count == 21
 
 
 def test_localization_rejects_unsupported_target() -> None:
