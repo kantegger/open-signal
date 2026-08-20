@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { localePath, SUPPORTED_LOCALES } from "../lib/i18n";
+import { localePath } from "../lib/i18n";
 import { Icon, type IconName } from "./icons";
 import { useLocale } from "./locale-provider";
 
@@ -17,8 +16,6 @@ export function SiteShell({
   systemState?: string;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { locale, text } = useLocale();
   const navigation: Array<{
     key: string;
@@ -31,8 +28,6 @@ export function SiteShell({
     { key: "archive", label: text.archive, href: localePath("/editions", locale), icon: "archive" },
     { key: "method", label: text.method, href: localePath("/method", locale), icon: "method" },
   ];
-  const query = searchParams.toString();
-  const currentLocation = `${pathname}${query ? `?${query}` : ""}`;
   const stateLabel =
     systemState === "operational"
       ? text.operational
@@ -77,20 +72,6 @@ export function SiteShell({
             <span className={`status-dot status-${systemState}`} />
             <span>{stateLabel}</span>
           </div>
-          <nav className="language-switcher" aria-label={text.language}>
-            {SUPPORTED_LOCALES.map((candidate) => (
-              <a
-                aria-current={candidate === locale ? "page" : undefined}
-                className={candidate === locale ? "is-active" : undefined}
-                href={localePath(currentLocation, candidate)}
-                hrefLang={candidate}
-                key={candidate}
-                lang={candidate}
-              >
-                {candidate === "en" ? "EN" : "繁中"}
-              </a>
-            ))}
-          </nav>
           <button
             aria-controls="mobile-navigation"
             aria-expanded={menuOpen}
@@ -122,20 +103,6 @@ export function SiteShell({
               </Link>
             );
           })}
-          <div className="mobile-language-switcher" aria-label={text.language}>
-            {SUPPORTED_LOCALES.map((candidate) => (
-              <a
-                className={candidate === locale ? "is-active" : undefined}
-                href={localePath(currentLocation, candidate)}
-                hrefLang={candidate}
-                key={candidate}
-                lang={candidate}
-                onClick={() => setMenuOpen(false)}
-              >
-                {candidate === "en" ? text.english : text.traditionalChinese}
-              </a>
-            ))}
-          </div>
           <p><span className={`status-dot status-${systemState}`} /> {stateLabel}</p>
         </nav>
       </header>

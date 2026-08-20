@@ -22,7 +22,7 @@ export function proxy(request: NextRequest) {
   );
   if (alias) {
     const target = request.nextUrl.clone();
-    target.pathname = `/${TRADITIONAL_CHINESE_LOCALE}${pathname.slice(alias.length)}`;
+    target.pathname = pathname.slice(alias.length) || "/";
     return NextResponse.redirect(target, 308);
   }
 
@@ -32,7 +32,7 @@ export function proxy(request: NextRequest) {
   ) {
     const target = request.nextUrl.clone();
     target.pathname = pathname.slice(TRADITIONAL_CHINESE_LOCALE.length + 1) || "/";
-    return rewriteWithLocale(request, target, TRADITIONAL_CHINESE_LOCALE);
+    return NextResponse.redirect(target, 308);
   }
 
   return nextWithLocale(request, DEFAULT_LOCALE);
@@ -42,16 +42,6 @@ function requestHeaders(request: NextRequest, locale: SupportedLocale): Headers 
   const headers = new Headers(request.headers);
   headers.set(LOCALE_HEADER, locale);
   return headers;
-}
-
-function rewriteWithLocale(
-  request: NextRequest,
-  target: URL,
-  locale: SupportedLocale,
-) {
-  return NextResponse.rewrite(target, {
-    request: { headers: requestHeaders(request, locale) },
-  });
 }
 
 function nextWithLocale(request: NextRequest, locale: SupportedLocale) {

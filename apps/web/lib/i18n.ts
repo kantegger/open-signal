@@ -1,5 +1,6 @@
 export const SUPPORTED_LOCALES = ["en", "zh-Hant"] as const;
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
+export const PUBLIC_LOCALES = ["en"] as const satisfies readonly SupportedLocale[];
 
 export const DEFAULT_LOCALE: SupportedLocale = "en";
 export const TRADITIONAL_CHINESE_LOCALE: SupportedLocale = "zh-Hant";
@@ -162,7 +163,9 @@ export function isSupportedLocale(value: unknown): value is SupportedLocale {
 }
 
 export function normalizeLocale(value: unknown): SupportedLocale {
-  return isSupportedLocale(value) ? value : DEFAULT_LOCALE;
+  return typeof value === "string" && PUBLIC_LOCALES.includes(value as "en")
+    ? (value as SupportedLocale)
+    : DEFAULT_LOCALE;
 }
 
 export function localePath(path: string, locale: SupportedLocale): string {
@@ -184,10 +187,9 @@ export function stripLocalePrefix(pathname: string): string {
   return pathname.startsWith("/") ? pathname : `/${pathname}`;
 }
 
-export function languageAlternates(path: string): Record<SupportedLocale, string> {
+export function languageAlternates(path: string): Record<string, string> {
   return {
     en: localePath(path, "en"),
-    "zh-Hant": localePath(path, "zh-Hant"),
   };
 }
 

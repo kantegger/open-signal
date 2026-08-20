@@ -17,7 +17,6 @@ from typing import Any
 
 import httpx
 
-from open_signal.agents.runtime import DeepSeekClient
 from open_signal.api.editions import EditionArchivePresenter, FrontPagePresenter
 from open_signal.api.explore import ExplorePresenter
 from open_signal.api.presenters import ClaimPagePresenter
@@ -455,11 +454,9 @@ def from_environment(engine: Any) -> PublicationDelivery | None:
         store,
         revalidate_url=str(values["revalidate_url"]),
         revalidate_token=str(values["revalidate_token"]),
-        localizer=(
-            PublicationLocalizer(DeepSeekClient())
-            if os.environ.get("DEEPSEEK_API_KEY")
-            else None
-        ),
+        # Public delivery is English-only. Keep the optional localizer injection
+        # for isolated tests, but never construct a paid translation client here.
+        localizer=None,
         explore=ExplorePresenter(engine),
         edition_archive=EditionArchivePresenter(engine),
         seo_index=SeoIndexPresenter(engine),

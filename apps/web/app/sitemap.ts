@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { fetchSeoIndexServer } from "../lib/server-api";
-import { localePath, SUPPORTED_LOCALES } from "../lib/i18n";
+import { localePath, PUBLIC_LOCALES } from "../lib/i18n";
 import { siteUrl } from "../lib/site";
 import { editionPath, signalPath, topicPath } from "../lib/urls";
 
@@ -45,9 +45,9 @@ function localizedEntries(
   fields: Omit<MetadataRoute.Sitemap[number], "url" | "alternates">,
 ): MetadataRoute.Sitemap {
   const languages = Object.fromEntries(
-    SUPPORTED_LOCALES.map((locale) => [locale, `${origin}${localePath(path, locale)}`]),
+    PUBLIC_LOCALES.map((locale) => [locale, `${origin}${localePath(path, locale)}`]),
   );
-  return SUPPORTED_LOCALES.map((locale) => ({
+  return PUBLIC_LOCALES.map((locale) => ({
     ...fields,
     url: `${origin}${localePath(path, locale)}`,
     alternates: { languages },

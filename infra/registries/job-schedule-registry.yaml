@@ -137,17 +137,6 @@ schedules:
       reason: "snapshot_delivery"
       locale: "en"
 
-  - id: "publication-snapshot-delivery-zh-hant"
-    job_type: "publication.deliver_snapshot"
-    queue_name: "publication"
-    cadence_seconds: 3600
-    phase_offset_seconds: 0
-    priority: 81
-    maximum_attempts: 3
-    payload:
-      reason: "snapshot_delivery"
-      locale: "zh-Hant"
-
   # Read-only observability runs before the bounded mutation job.
   - id: "raw-retention-report"
     job_type: "retention.report_raw"
