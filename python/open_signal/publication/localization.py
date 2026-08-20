@@ -18,7 +18,7 @@ from typing import Any
 
 from open_signal.agents.runtime import DeepSeekClient, LlmUsage
 
-LOCALIZATION_VERSION = "os-l10n-002"
+LOCALIZATION_VERSION = "os-l10n-003"
 SUPPORTED_TARGETS = frozenset({"zh-Hant"})
 
 _TRANSLATABLE_FIELDS = frozenset(
@@ -97,6 +97,20 @@ _HAS_ENGLISH = re.compile(r"[A-Za-z]")
 _HAS_CJK = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]")
 _ENGLISH_WORD = re.compile(r"[A-Za-z]{2,}")
 _ENUM_LIKE = re.compile(r"^[A-Za-z0-9_.:/-]+$")
+_MONTH_NUMERALS = {
+    "january": ("1", "一"),
+    "february": ("2", "二"),
+    "march": ("3", "三"),
+    "april": ("4", "四"),
+    "may": ("5", "五"),
+    "june": ("6", "六"),
+    "july": ("7", "七"),
+    "august": ("8", "八"),
+    "september": ("9", "九"),
+    "october": ("10", "十"),
+    "november": ("11", "十一"),
+    "december": ("12", "十二"),
+}
 
 
 class LocalizationError(RuntimeError):
@@ -131,7 +145,7 @@ class PublicationLocalizer:
         client: DeepSeekClient,
         *,
         model: str = "deepseek-chat",
-        batch_size: int = 45,
+        batch_size: int = 20,
     ) -> None:
         self.client = client
         self.model = model
@@ -225,6 +239,8 @@ class PublicationLocalizer:
             "Translate every sentence and descriptive phrase; keep official proper names "
             "recognizable and use established Traditional Chinese names when they exist. "
             "Use natural newsroom Traditional Chinese, not word-for-word English syntax. "
+            "Write translated month names with Chinese numerals (for example, 八月), "
+            "never with a new Arabic number. "
             "Every __OS_TOKEN_0000__ placeholder must appear exactly once and unchanged. "
             "Return only JSON in the form "
             '{"translations":{"0":"..."}} with one entry for every input id.'
@@ -266,6 +282,7 @@ class PublicationLocalizer:
             restored = candidate.strip()
             for placeholder, original in tokens.items():
                 restored = restored.replace(placeholder, original)
+            restored = _normalize_translated_month_numbers(source, restored)
             _validate_restored_translation(source, restored)
             result[source] = restored
             if protected_source == source and not tokens and restored == source:
@@ -354,6 +371,26 @@ def _numeric_tokens(value: str) -> list[str]:
         for match in _PROTECTED_PATTERN.finditer(value)
         if any(ch.isdigit() for ch in match.group(0))
     ]
+
+
+def _normalize_translated_month_numbers(source: str, candidate: str) -> str:
+    """Keep translated month names semantic without introducing new digits.
+
+    English month words commonly become ``8月`` in otherwise valid zh-Hant
+    output.  The truth guard correctly rejects an Arabic ``8`` that was absent
+    from the source, so canonicalize only the month implied by that source word
+    to its Chinese numeral before applying the unchanged strict token check.
+    """
+    value = candidate
+    source_lower = source.lower()
+    for month, (arabic, chinese) in _MONTH_NUMERALS.items():
+        if re.search(rf"\b{month}\b", source_lower):
+            value = re.sub(
+                rf"(?<!\d){re.escape(arabic)}\s*月",
+                f"{chinese}月",
+                value,
+            )
+    return value
 
 
 def _validate_restored_translation(source: str, candidate: str) -> None:
