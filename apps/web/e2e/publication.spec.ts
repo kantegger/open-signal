@@ -164,6 +164,11 @@ test("keeps public information readable and encodes direction semantically", asy
   expect(currentSizes.ledgerStatement).toBeGreaterThanOrEqual(13);
   expect(currentSizes.watchHeadline).toBeGreaterThanOrEqual(12);
   expect(currentSizes.eventOption).toBeGreaterThanOrEqual(13);
+  const ledgerFits = await page.locator(".claim-ledger-row:not(.claim-ledger-head)").first().evaluate((row) => {
+    const cells = Array.from(row.children) as HTMLElement[];
+    return cells.slice(0, 2).every((cell) => cell.scrollWidth <= cell.clientWidth + 1);
+  });
+  expect(ledgerFits).toBe(true);
 
   const [upColor, downColor] = await Promise.all([
     page.locator(".ledger-direction.trend-up").first().evaluate((element) => getComputedStyle(element).color),
@@ -185,6 +190,10 @@ test("keeps public information readable and encodes direction semantically", asy
   await page.goto("/editions");
   await expect(page.getByRole("heading", { name: "All public Editions" })).toBeVisible();
   expect(await fontSize(page.locator(".edition-directory-row:not(.edition-directory-head)").first())).toBeGreaterThanOrEqual(11);
+  const archiveClaimsFit = await page.locator(".edition-claims-cell").first().evaluate(
+    (cell) => cell.scrollWidth <= cell.clientWidth + 1,
+  );
+  expect(archiveClaimsFit).toBe(true);
   const editionHref = await page.locator(".edition-directory-row:not(.edition-directory-head) a").first().getAttribute("href");
 
   expect(editionHref).toBeTruthy();
