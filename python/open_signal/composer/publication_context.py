@@ -28,7 +28,7 @@ from open_signal.derived.series_contract import market_series_snapshot
 from open_signal.research.candidates import CANDIDATE_VERSION
 from open_signal.research.publication import select_public_research_items
 
-CONTEXT_VERSION = "1.6.0"
+CONTEXT_VERSION = "1.7.0"
 CLAIM_LIMIT = 24
 EXPECTATION_LIMIT = 12
 RULE_LIMIT = 8
@@ -52,6 +52,10 @@ class PublicationContextBuilder:
             captured_at=captured_at,
             facts=expectation_facts,
         )
+        expectation_events = self._expectation_events(
+            expectation_facts,
+            captured_at=captured_at,
+        )
         rules = self._rules(conn, captured_at=captured_at)
         research, research_total = self._research(conn, captured_at=captured_at)
         research_fingerprint = _research_fingerprint(research, research_total)
@@ -72,6 +76,7 @@ class PublicationContextBuilder:
             },
             "claims": claims,
             "expectations": expectations,
+            "expectation_events": expectation_events,
             "rules": rules,
             "research": research,
             "coverage": coverage,
@@ -239,6 +244,54 @@ class PublicationContextBuilder:
                 }
             )
         return observations
+
+    @staticmethod
+    def _expectation_events(
+        facts: list[ExpectationFact],
+        *,
+        captured_at: datetime,
+    ) -> list[dict[str, Any]]:
+        """Capture only event families whose selected members support comparison."""
+
+        groups = select_expectation_groups(
+            facts,
+            as_of=captured_at,
+            page_size=EXPECTATION_LIMIT,
+            minimum_surface="live_feed",
+        )
+        return [
+            {
+                "key": group.key,
+                "title": group.title,
+                "event_type": group.event_type,
+                "source_label": _source_name(group.source_slug),
+                "source_member_count": group.source_member_count,
+                "eligible_member_count": group.eligible_member_count,
+                "suppressed_member_count": group.suppressed_member_count,
+                "selection_reason": group.selection_reason,
+                "latest_observed_at": group.latest_observed_at.isoformat(),
+                "resolution_deadline_at": group.nearest_deadline_at.isoformat(),
+                "members": [
+                    {
+                        "topic_id": member.fact.topic_id,
+                        "title": member.fact.title,
+                        "option_label": member.fact.group_item_title,
+                        "current_probability": member.fact.current_probability,
+                        "baseline_probability_24h": (
+                            member.fact.baseline_probability_24h
+                        ),
+                        "delta_24h_percentage_points": (
+                            member.fact.delta_24h_percentage_points
+                        ),
+                        "observed_at": _iso(member.fact.current_observed_at),
+                        "selection_reason": member.selection_reason,
+                    }
+                    for member in group.members
+                ],
+            }
+            for group in groups
+            if len(group.members) >= 2
+        ]
 
     def _market_series(
         self,
@@ -476,6 +529,7 @@ def empty_publication_context(*, captured_at: str | None = None) -> dict[str, An
         },
         "claims": [],
         "expectations": [],
+        "expectation_events": [],
         "rules": [],
         "research": [],
         "coverage": [],

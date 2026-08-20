@@ -40,11 +40,13 @@ test("keeps Current compact and preserves the complete grammar in Editions", asy
   await expect(page).toHaveTitle(/Open Signal/);
   await expect(page.getByText("Current front page", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "September rate cut became 21 points more likely." })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /Expectation movement/ })).toBeVisible();
-  await expect(page.getByText("Material moves first · 24 hours")).toBeVisible();
-  await expect(page.locator(".movement-list li")).toHaveCount(8);
+  await expect(page.getByRole("heading", { name: "The event, not one market" })).toBeVisible();
+  await expect(page.locator(".event-comparison li")).toHaveCount(3);
+  await expect(page.getByRole("heading", { name: "Expectations in motion" })).toBeVisible();
+  await expect(page.getByText("Real 7-day histories · event-diverse")).toBeVisible();
+  await expect(page.locator(".expectation-signal-grid article")).toHaveCount(4);
   await expect(page.getByRole("heading", { name: "Verified judgment ledger" })).toBeVisible();
-  await expect(page.getByLabel("Judgment ledger summary")).toBeVisible();
+  await expect(page.getByLabel("Judgment ledger summary")).toHaveCount(0);
   await expect(page.locator(".claim-ledger-row:not(.claim-ledger-head)")).toHaveCount(12);
   await expect(page.getByRole("heading", { name: /Rule watch/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: /Research screening/ })).toBeVisible();
@@ -58,20 +60,12 @@ test("keeps Current compact and preserves the complete grammar in Editions", asy
   ).toBeVisible();
   await expect(page.getByText("Microsoft Research Asia", { exact: true })).toBeVisible();
   await expect(page.getByText("Trial portfolio · investigated", { exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /Source coverage/ })).toBeVisible();
-  await expect(page.locator(".source-activity-chart")).toHaveCount(4);
-  await expect(page.getByRole("heading", { name: /Edition cadence/ })).toBeVisible();
-  const sourceBottom = await page.locator(".source-coverage-band").evaluate((element) => element.getBoundingClientRect().bottom);
-  const cadenceTop = await page.locator(".edition-cadence").evaluate((element) => element.getBoundingClientRect().top);
-  expect(cadenceTop).toBeGreaterThanOrEqual(sourceBottom - 1);
-  await expect(page.locator(".mini-sparkline")).toHaveCount(3);
-  await expect(page.locator(".sparkline-evidence", { hasText: /7d · 29 obs/ })).toHaveCount(3);
-  await expect(page.locator(".sparkline-fallback")).toHaveCount(5);
-  await expect(page.locator('.sparkline-fallback[data-series-status="insufficient_observations"]')).toHaveCount(2);
-  await expect(page.locator('.sparkline-fallback[data-series-status="stale_endpoint"]')).toHaveCount(1);
-  await expect(page.locator(".movement-list .sparkline-fallback")).toHaveCount(5);
-  await expect(page.locator('.lead-region .probability-direction[data-series-status="insufficient_observations"]')).toBeVisible();
-  await expect(page.locator(".lead-region .probability-chart")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: /Source coverage/ })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: /Edition cadence/ })).toHaveCount(0);
+  await expect(page.locator(".expectation-signal-grid .signal-history-chart")).toHaveCount(2);
+  await expect(page.locator(".expectation-signal-grid .signal-history-fallback")).toHaveCount(2);
+  await expect(page.locator(".lead-region .probability-chart")).toBeVisible();
+  await expect(page.locator(".lead-region .chart-value-current")).toContainText("now 85%");
   await expect(page.locator('[data-component-family="document-change"]')).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Archive" })).toHaveCount(0);
 
@@ -83,7 +77,7 @@ test("keeps Current compact and preserves the complete grammar in Editions", asy
     await expect(page.locator(`[data-component-family="${family}"]`).first()).toBeVisible();
   }
   await expect(page.getByRole("heading", { name: "Live signal feed" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /Expectation movement/ })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Expectations in motion" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Archive" })).toBeVisible();
   await expect(page.getByText("No signals today.")).toHaveCount(0);
 });
@@ -158,16 +152,16 @@ test("keeps public information readable and encodes direction semantically", asy
   const topicHref = await page.getByRole("link", { name: "Track topic" }).getAttribute("href");
   const currentSizes = await page.evaluate(() => ({
     navigation: parseFloat(getComputedStyle(document.querySelector(".primary-link")!).fontSize),
-    movementHeadline: parseFloat(getComputedStyle(document.querySelector(".movement-list li > a > strong")!).fontSize),
+    movementHeadline: parseFloat(getComputedStyle(document.querySelector(".expectation-signal-grid h3")!).fontSize),
     ledgerStatement: parseFloat(getComputedStyle(document.querySelector(".claim-ledger-row:not(.claim-ledger-head) strong")!).fontSize),
     watchHeadline: parseFloat(getComputedStyle(document.querySelector(".watch-list article > strong")!).fontSize),
-    sourceLabel: parseFloat(getComputedStyle(document.querySelector(".source-coverage-band article > span")!).fontSize),
+    eventOption: parseFloat(getComputedStyle(document.querySelector(".event-comparison li strong")!).fontSize),
   }));
   expect(currentSizes.navigation).toBeGreaterThanOrEqual(11);
   expect(currentSizes.movementHeadline).toBeGreaterThanOrEqual(13);
   expect(currentSizes.ledgerStatement).toBeGreaterThanOrEqual(13);
   expect(currentSizes.watchHeadline).toBeGreaterThanOrEqual(12);
-  expect(currentSizes.sourceLabel).toBeGreaterThanOrEqual(11);
+  expect(currentSizes.eventOption).toBeGreaterThanOrEqual(13);
 
   const [upColor, downColor] = await Promise.all([
     page.locator(".ledger-direction.trend-up").first().evaluate((element) => getComputedStyle(element).color),
@@ -256,31 +250,29 @@ test("adapts typography and disclosure to collection size", async ({ page, reque
   await expect(page.locator(".topic-signal-table")).toHaveAttribute("data-density", "sparse");
 });
 
-test("fills an empty lead column with derived signal context", async ({ page, request }) => {
+test("keeps event content ahead of site telemetry when research is absent", async ({ page, request }) => {
   await request.post("http://127.0.0.1:8001/__control/front-mode?value=no-research");
   await revalidate(request, "e2e-no-research");
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: /Signal pulse/ })).toBeVisible();
-  await expect(page.getByText("Derived context · not a new Claim")).toBeVisible();
-  await expect(page.getByText("24h breadth")).toBeVisible();
-  await expect(page.getByText("Largest observed move")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "The event, not one market" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Signal pulse/ })).toHaveCount(0);
+  await expect(page.getByText("24h breadth")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Live signal feed" })).toHaveCount(0);
 
-  const pulse = await page.locator(".signal-pulse").boundingBox();
+  const comparison = await page.locator(".event-comparison").boundingBox();
   const side = await page.locator(".dashboard-side").boundingBox();
-  expect(pulse).not.toBeNull();
+  expect(comparison).not.toBeNull();
   expect(side).not.toBeNull();
-  expect(Math.abs((pulse!.y + pulse!.height) - (side!.y + side!.height))).toBeLessThanOrEqual(1);
 
   await page.setViewportSize({ width: 375, height: 812 });
   await page.reload();
-  await expect(page.locator(".signal-pulse")).toBeVisible();
+  await expect(page.locator(".event-comparison")).toBeVisible();
   await expect(page.locator(".secondary-region")).toBeVisible();
   const mobileOrder = await Promise.all([
     page.locator(".coverage-strip").boundingBox(),
     page.locator(".lead-region").boundingBox(),
-    page.locator(".signal-pulse").boundingBox(),
+    page.locator(".event-comparison").boundingBox(),
     page.locator(".secondary-region").boundingBox(),
   ]);
   for (const box of mobileOrder) expect(box).not.toBeNull();
@@ -389,7 +381,7 @@ test("mobile order prioritizes research and navigation remains usable", async ({
   expect(researchBox).not.toBeNull();
   expect(secondaryBox).not.toBeNull();
   expect(researchBox!.y).toBeLessThan(secondaryBox!.y);
-  const topicMonitor = page.getByRole("heading", { name: /Expectation movement/ });
+  const topicMonitor = page.getByRole("heading", { name: "Expectations in motion" });
   const topicBox = await topicMonitor.boundingBox();
   expect(topicBox).not.toBeNull();
   expect(secondaryBox!.y).toBeLessThan(topicBox!.y);
