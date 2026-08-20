@@ -281,7 +281,7 @@ function Publication({
         )}
       </dl>
 
-      <div className={`dashboard-top${compact ? " current-dashboard-top" : ""}${secondary.items.length || hasLiveTape ? " has-side" : ""}`}>
+      <div className={`dashboard-top${compact ? " current-dashboard-top" : ""}${secondary.items.length ? " has-side" : ""}`}>
         <div className="dashboard-lead-column">
           <section className="slot-region lead-region" aria-label={locale === "zh-Hant" ? "主訊號" : "Lead signal"}>
             {lead.items.length ? (
@@ -469,16 +469,16 @@ function EventComparison({ event }: { event: PublicationExpectationEvent }) {
     const section = sectionRef.current;
     if (!section || availableMembers.length < 2) return;
     const dashboard = section.closest(".current-dashboard-top");
-    const side = dashboard?.querySelector<HTMLElement>(".dashboard-side");
+    const companion = dashboard?.querySelector<HTMLElement>(".secondary-region");
     const measure = () => {
       const width = dashboard?.getBoundingClientRect().width ?? window.innerWidth;
       const responsiveMaximum = width <= 760 ? 3 : width < 1180 ? 4 : 5;
-      if (!side || width <= 900) {
+      if (!companion || width <= 900) {
         setVisibleCount(Math.min(availableMembers.length, responsiveMaximum));
         return;
       }
       const sectionTop = section.getBoundingClientRect().top;
-      const availableHeight = Math.max(0, side.getBoundingClientRect().bottom - sectionTop);
+      const availableHeight = Math.max(0, companion.getBoundingClientRect().bottom - sectionTop);
       const heading = section.querySelector<HTMLElement>(":scope > .region-heading")?.offsetHeight ?? 40;
       const header = section.querySelector<HTMLElement>(":scope > header")?.offsetHeight ?? 100;
       const footer = section.querySelector<HTMLElement>(":scope > footer")?.offsetHeight ?? 32;
@@ -488,7 +488,7 @@ function EventComparison({ event }: { event: PublicationExpectationEvent }) {
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(section);
-    if (side) observer.observe(side);
+    if (companion) observer.observe(companion);
     return () => observer.disconnect();
   }, [availableMembers.length]);
 

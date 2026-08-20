@@ -181,6 +181,7 @@ const server = http.createServer(async (request, response) => {
     const requestedMode = url.searchParams.get("value");
     frontPageMode = requestedMode === "empty"
       || requestedMode === "no-live-feed"
+      || requestedMode === "no-featured-event"
       || requestedMode === "no-research"
       || requestedMode === "sparse-research"
       ? requestedMode
@@ -226,6 +227,14 @@ const server = http.createServer(async (request, response) => {
                 research: [],
               },
             }
+          : frontPageMode === "no-featured-event"
+            ? {
+                ...frontPageFixture,
+                publication_context: {
+                  ...frontPageFixture.publication_context,
+                  expectation_events: [],
+                },
+              }
           : frontPageMode === "sparse-research"
             ? {
                 ...frontPageFixture,
