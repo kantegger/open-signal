@@ -295,6 +295,7 @@ function EventGroupCard({ group, locale }: { group: ExploreEventGroup; locale: S
       <ol className="event-member-list">
         {group.members.map((member) => {
           const delta = member.delta_24h_percentage_points;
+          const probability = normalizeProbability(member.current_probability);
           return (
             <li key={member.topic_id}>
               <div>
@@ -304,7 +305,13 @@ function EventGroupCard({ group, locale }: { group: ExploreEventGroup; locale: S
                 </Link>
                 {member.option_label ? <p>{member.title}</p> : null}
               </div>
-              <strong>{formatTopicProbability(member.current_probability)}</strong>
+              <div
+                aria-label={`${member.option_label || member.title}: ${formatTopicProbability(member.current_probability)}`}
+                className="event-probability-bar"
+              >
+                <i aria-hidden="true" style={{ inlineSize: `${Math.max(1.5, probability)}%` }} />
+                <strong>{formatTopicProbability(member.current_probability)}</strong>
+              </div>
               <b className={topicTrendClass(delta)}>
                 {delta == null
                   ? "—"
@@ -391,6 +398,11 @@ function formatTopicProbability(value: number | null | undefined): string {
   if (value == null) return "—";
   const percentage = Math.abs(value) <= 1 ? value * 100 : value;
   return `${Math.round(percentage * 10) / 10}%`;
+}
+
+function normalizeProbability(value: number | null | undefined): number {
+  if (value == null || !Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, Math.abs(value) <= 1 ? value * 100 : value));
 }
 
 function formatTopicDelta(value: number): string {

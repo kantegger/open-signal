@@ -285,6 +285,16 @@ export interface PublicationSourceCoverage {
   records_total: number;
   records_24h: number;
   latest_ingested_at?: string | null;
+  hourly_records?: Array<{
+    hour: string;
+    count: number;
+  }>;
+}
+
+export interface EditionClaimDiff {
+  added: number;
+  retained: number;
+  retired: number;
 }
 
 export interface PublicationContext {
@@ -341,6 +351,7 @@ export interface FrontPageData {
     claim_count: number;
     correction_count: number;
     trigger_type: string;
+    claim_diff?: EditionClaimDiff | null;
   }>;
   method: {
     summary: string;
@@ -467,6 +478,7 @@ export interface EditionArchiveItem {
   event_count: number;
   latest_event_type?: string | null;
   latest_event_at?: string | null;
+  claim_diff?: EditionClaimDiff | null;
 }
 
 export interface EditionArchiveData {

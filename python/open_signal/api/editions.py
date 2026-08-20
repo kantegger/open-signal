@@ -74,7 +74,9 @@ class EditionArchivePresenter:
                            e.first_published_at, e.record_class, e.payload_hash,
                            lifecycle.event_count,
                            lifecycle.latest_event_type,
-                           lifecycle.latest_event_at
+                           lifecycle.latest_event_at,
+                           e.included_claim_ids,
+                           prior_edition.included_claim_ids
                     FROM daily_editions e
                     LEFT JOIN LATERAL (
                       SELECT count(*) AS event_count,
@@ -87,6 +89,17 @@ class EditionArchivePresenter:
                       FROM edition_events ev
                       WHERE ev.edition_id = e.id
                     ) lifecycle ON true
+                    LEFT JOIN LATERAL (
+                      SELECT prior.included_claim_ids
+                      FROM daily_editions prior
+                      WHERE prior.first_published_at IS NOT NULL
+                        AND (
+                          prior.generated_at < e.generated_at OR
+                          (prior.generated_at = e.generated_at AND prior.id < e.id)
+                        )
+                      ORDER BY prior.generated_at DESC, prior.id DESC
+                      LIMIT 1
+                    ) prior_edition ON true
                     WHERE {filter_clause}{page_clause}
                     ORDER BY e.generated_at DESC, e.id DESC
                     LIMIT :row_limit
@@ -153,6 +166,7 @@ class EditionArchivePresenter:
                     "event_count": int(row[11] or 0),
                     "latest_event_type": row[12],
                     "latest_event_at": _iso(row[13]),
+                    "claim_diff": _claim_diff(row[14], row[15]),
                 }
                 for row in visible_rows
             ],
@@ -202,6 +216,23 @@ def _decode_archive_cursor(cursor: str) -> tuple[datetime, UUID]:
         json.JSONDecodeError,
     ) as exc:
         raise ValueError("invalid archive cursor") from exc
+
+
+def _claim_diff(
+    current_claim_ids: Any,
+    previous_claim_ids: Any,
+) -> dict[str, int] | None:
+    """Compare immutable Claim membership without reinterpreting either Edition."""
+
+    if previous_claim_ids is None:
+        return None
+    current = {str(claim_id) for claim_id in (current_claim_ids or [])}
+    previous = {str(claim_id) for claim_id in (previous_claim_ids or [])}
+    return {
+        "added": len(current - previous),
+        "retained": len(current & previous),
+        "retired": len(previous - current),
+    }
 
 
 class FrontPagePresenter:
@@ -334,7 +365,7 @@ class FrontPagePresenter:
                     FROM daily_editions
                     WHERE first_published_at IS NOT NULL
                     ORDER BY generated_at DESC
-                    LIMIT 12
+                    LIMIT 13
                     """
                 )
             ).fetchall()
@@ -402,8 +433,14 @@ class FrontPagePresenter:
                     "claim_count": len(row[5] or []),
                     "correction_count": row[6],
                     "trigger_type": row[7],
+                    "claim_diff": _claim_diff(
+                        row[5],
+                        archive[index + 1][5]
+                        if index + 1 < len(archive)
+                        else None,
+                    ),
                 }
-                for row in archive
+                for index, row in enumerate(archive[:12])
             ],
             "method": {
                 "summary": (

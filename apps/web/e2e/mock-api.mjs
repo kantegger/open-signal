@@ -297,6 +297,7 @@ const server = http.createServer(async (request, response) => {
       status: edition.status,
       sections: edition.sections,
       claim_count: edition.claim_count,
+      claim_diff: edition.claim_diff ?? null,
       correction_count: edition.correction_count,
       trigger_type: edition.trigger_type,
       first_published_at: edition.composed_at,

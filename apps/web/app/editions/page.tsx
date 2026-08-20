@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { JsonLd } from "../../components/json-ld";
 import { SiteShell } from "../../components/site-shell";
-import type { EditionArchiveData } from "../../lib/api";
+import type { EditionArchiveData, EditionArchiveItem } from "../../lib/api";
 import { collectionDensity } from "../../lib/collection-density";
 import { formatDateTime, humanize, languageAlternates, localePath, type SupportedLocale } from "../../lib/i18n";
 import { getRequestLocale } from "../../lib/request-locale";
@@ -139,6 +139,8 @@ export default async function EditionsPage({ searchParams }: Props) {
             ) : null}
           </form>
 
+          <ArchiveCadence editions={editions} locale={locale} />
+
           <section className="directory-section" aria-labelledby="edition-list-title">
             <header className="directory-section-heading">
               <div><p className="eyebrow">{traditional ? "時間序列" : "Chronology"}</p><h2 id="edition-list-title">{traditional ? "所有公開期次" : "All public Editions"}</h2></div>
@@ -167,7 +169,16 @@ export default async function EditionsPage({ searchParams }: Props) {
                         {edition.sections.map((section) => humanize(section, locale)).join(" · ") || (traditional ? "沒有有效區段" : "No active Sections")}
                       </small>
                     </span>
-                    <span role="cell">{edition.claim_count}</span>
+                    <span className="edition-claims-cell" role="cell">
+                      <b>{edition.claim_count}</b>
+                      {edition.claim_diff ? (
+                        <small className="edition-diff-inline">
+                          <i className="trend-up">+{edition.claim_diff.added}</i>
+                          <i>={edition.claim_diff.retained}</i>
+                          <i className="trend-down">−{edition.claim_diff.retired}</i>
+                        </small>
+                      ) : null}
+                    </span>
                     <span role="cell">{humanize(edition.trigger_type, locale)}</span>
                     <span role="cell">{edition.correction_count}</span>
                     <span role="cell">
@@ -194,6 +205,58 @@ export default async function EditionsPage({ searchParams }: Props) {
         </article>
       </SiteShell>
     </>
+  );
+}
+
+function ArchiveCadence({
+  editions,
+  locale,
+}: {
+  editions: EditionArchiveItem[];
+  locale: SupportedLocale;
+}) {
+  if (!editions.length) return null;
+  const visible = editions.slice(0, 30).reverse();
+  const maxClaims = Math.max(...visible.map((edition) => edition.claim_count), 1);
+  const traditional = locale === "zh-Hant";
+  return (
+    <section className="archive-cadence" aria-labelledby="archive-cadence-title">
+      <header>
+        <div>
+          <p className="eyebrow">{traditional ? "出版節奏" : "Publication rhythm"}</p>
+          <h2 id="archive-cadence-title">{traditional ? "期次時間帶" : "Edition timeline"}</h2>
+        </div>
+        <p>{traditional ? `最近 ${visible.length} 個篩選結果 · 柱高代表 Claim 數` : `${visible.length} latest filtered results · height represents Claim count`}</p>
+      </header>
+      <div
+        className="archive-cadence-track"
+        style={{ gridTemplateColumns: `repeat(${visible.length}, minmax(13px, 1fr))` }}
+      >
+        {visible.map((edition, index) => (
+          <Link
+            aria-label={`${formatDateTime(edition.generated_at, locale)}; ${edition.claim_count} Claims; ${humanize(edition.status, locale)}`}
+            data-status={edition.status}
+            href={editionPath(edition.id, locale)}
+            key={edition.id}
+          >
+            <i style={{ blockSize: `${Math.max(8, edition.claim_count / maxClaims * 100)}%` }} />
+            {edition.claim_diff ? (
+              <span>
+                <b className="trend-up">+{edition.claim_diff.added}</b>
+                <b className="trend-down">−{edition.claim_diff.retired}</b>
+              </span>
+            ) : null}
+            <time>{index === visible.length - 1 || index % 5 === 0 ? edition.edition_date.slice(5) : ""}</time>
+          </Link>
+        ))}
+      </div>
+      <footer>
+        <span><i className="legend-normal" /> {traditional ? "正常／已發布" : "Published"}</span>
+        <span><i className="legend-sparse" /> {traditional ? "稀疏" : "Sparse"}</span>
+        <span><b className="trend-up">+</b> {traditional ? "新增" : "added"}</span>
+        <span><b className="trend-down">−</b> {traditional ? "退出" : "retired"}</span>
+      </footer>
+    </section>
   );
 }
 

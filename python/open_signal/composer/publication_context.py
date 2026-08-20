@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 
@@ -28,7 +28,7 @@ from open_signal.derived.series_contract import market_series_snapshot
 from open_signal.research.candidates import CANDIDATE_VERSION
 from open_signal.research.publication import select_public_research_items
 
-CONTEXT_VERSION = "1.5.0"
+CONTEXT_VERSION = "1.6.0"
 CLAIM_LIMIT = 24
 EXPECTATION_LIMIT = 12
 RULE_LIMIT = 8
@@ -388,7 +388,7 @@ class PublicationContextBuilder:
                 """
                 SELECT s.slug, count(r.id),
                        count(r.id) FILTER (
-                         WHERE r.ingested_at >= :captured_at - interval '24 hours'
+                         WHERE r.ingested_at > :captured_at - interval '24 hours'
                            AND r.ingested_at <= :captured_at
                        ),
                        max(r.ingested_at)
@@ -403,6 +403,37 @@ class PublicationContextBuilder:
             ),
             {"captured_at": captured_at},
         ).fetchall()
+        # Anchor buckets to the immutable capture time so the 24 bars describe
+        # exactly the same trailing window as records_24h, not clock-hour samples.
+        start_hour = captured_at - timedelta(hours=24)
+        activity_rows = conn.execute(
+            text(
+                """
+                WITH buckets AS (
+                  SELECT generate_series(
+                    :start_hour,
+                    :captured_at - interval '1 hour',
+                    interval '1 hour'
+                  ) AS hour
+                )
+                SELECT s.slug, buckets.hour,
+                       count(r.id)
+                FROM sources s
+                CROSS JOIN buckets
+                LEFT JOIN raw_source_records r
+                  ON r.source_id = s.id
+                 AND r.ingested_at > buckets.hour
+                 AND r.ingested_at <= buckets.hour + interval '1 hour'
+                GROUP BY s.slug, buckets.hour
+                ORDER BY s.slug, buckets.hour
+                """
+            ),
+            {"start_hour": start_hour, "captured_at": captured_at},
+        ).fetchall()
+        activity = {
+            (str(row[0]), _utc(row[1])): int(row[2])
+            for row in activity_rows
+        }
         return [
             {
                 "source_slug": row[0],
@@ -410,6 +441,19 @@ class PublicationContextBuilder:
                 "records_total": int(row[1]),
                 "records_24h": int(row[2]),
                 "latest_ingested_at": _iso(row[3]),
+                "hourly_records": [
+                    {
+                        "hour": (start_hour + timedelta(hours=index)).isoformat(),
+                        "count": activity.get(
+                            (
+                                str(row[0]),
+                                start_hour + timedelta(hours=index),
+                            ),
+                            0,
+                        ),
+                    }
+                    for index in range(24)
+                ],
             }
             for row in rows
         ]
