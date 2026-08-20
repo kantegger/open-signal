@@ -23,7 +23,7 @@ from typing import Any
 
 from sqlalchemy import text
 
-CANDIDATE_VERSION = "os-021.2"
+CANDIDATE_VERSION = "os-021.3"
 INSTITUTION_ENTRY_MULTIPLIER = 3.0
 INSTITUTION_ENTRY_MIN_WORKS = 3
 REPRESENTATIVE_EVIDENCE_LIMIT = 3
@@ -313,9 +313,8 @@ class ResearchCandidateDetector:
                             "type": c["candidate_type"],
                             "subjects": subject_ids,
                             "start": c["observation_window_start"],
-                            "end": c["observation_window_end"],
                             "baseline": c["baseline_definition"],
-                            "metrics": c["derived_metrics"],
+                            "metrics": _material_metrics(c["derived_metrics"]),
                             "version": CANDIDATE_VERSION,
                         },
                         ensure_ascii=False,
@@ -397,7 +396,9 @@ class ResearchCandidateDetector:
                            candidate_generator_version
                     FROM research_signal_candidates
                     WHERE candidate_generator_version = :version
-                      AND status IN ('generated', 'shadow_investigation')
+                      AND status IN (
+                        'generated', 'shadow_investigation', 'abstained', 'rejected'
+                      )
                       AND created_at >= now() - interval '30 days'
                     ORDER BY (status = 'shadow_investigation') DESC,
                              created_at DESC, id
@@ -429,6 +430,16 @@ def _pair_combinations(items: list[str]) -> list[tuple[str, str]]:
         for i in range(len(items))
         for j in range(i + 1, len(items))
     ]
+
+
+def _material_metrics(metrics: dict[str, Any]) -> dict[str, Any]:
+    """Exclude observation-clock labels from semantic candidate identity."""
+
+    return {
+        key: value
+        for key, value in metrics.items()
+        if key not in {"window_label", "baseline_label"}
+    }
 
 
 def _stage_portfolio_candidate(

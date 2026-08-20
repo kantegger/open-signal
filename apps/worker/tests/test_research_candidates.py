@@ -217,6 +217,12 @@ def test_persist_and_no_claims(detector, engine) -> None:
     stored = detector.persist(candidates)
     assert stored == 1
     assert detector.persist(candidates) == 0
+    next_day = [{**candidates[0], "observation_window_end": "2025-01-02"}]
+    next_day[0]["derived_metrics"] = {
+        **candidates[0]["derived_metrics"],
+        "window_label": "2024–2025 YTD · refreshed",
+    }
+    assert detector.persist(next_day) == 0
 
     # candidates only: this stage must not create any claims
     with engine.connect() as conn:

@@ -651,9 +651,8 @@ def test_freshness_reconcile_publishes_when_research_screening_changes(
     assert initial_context["research"] == []
 
     metrics = {
-        "entity": "Sponsor A + Sponsor B",
-        "portfolio_scope": "topic",
-        "sponsors": ["Sponsor A", "Sponsor B"],
+        "sponsor": "Sponsor A",
+        "portfolio_scope": "sponsor",
         "topic_id": "oncology-immunotherapy",
         "topic_label": "Oncology immunotherapy",
         "phases": ["PHASE1", "PHASE2"],
@@ -679,7 +678,7 @@ def test_freshness_reconcile_publishes_when_research_screening_changes(
                 VALUES
                   ('stage_transition', CAST('{}' AS uuid[]), :window_start,
                    :window_end, :baseline, CAST(:metrics AS jsonb),
-                   CAST('{}' AS uuid[]), 'os-021.2', 'generated', :key,
+                   CAST('{}' AS uuid[]), 'os-021.3', 'shadow_investigation', :key,
                    :created_at)
                 """
             ),

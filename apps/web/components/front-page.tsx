@@ -461,10 +461,47 @@ function LiveFeed({
 
 function EventComparison({ event }: { event: PublicationExpectationEvent }) {
   const { locale } = useLocale();
-  const members = event.members.filter((member) => member.current_probability != null).slice(0, 5);
-  if (members.length < 2) return null;
+  const sectionRef = useRef<HTMLElement>(null);
+  const availableMembers = event.members.filter((member) => member.current_probability != null).slice(0, 5);
+  const [visibleCount, setVisibleCount] = useState(Math.min(3, availableMembers.length));
+
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section || availableMembers.length < 2) return;
+    const dashboard = section.closest(".current-dashboard-top");
+    const side = dashboard?.querySelector<HTMLElement>(".dashboard-side");
+    const measure = () => {
+      const width = dashboard?.getBoundingClientRect().width ?? window.innerWidth;
+      const responsiveMaximum = width <= 760 ? 3 : width < 1180 ? 4 : 5;
+      if (!side || width <= 900) {
+        setVisibleCount(Math.min(availableMembers.length, responsiveMaximum));
+        return;
+      }
+      const sectionTop = section.getBoundingClientRect().top;
+      const availableHeight = Math.max(0, side.getBoundingClientRect().bottom - sectionTop);
+      const heading = section.querySelector<HTMLElement>(":scope > .region-heading")?.offsetHeight ?? 40;
+      const header = section.querySelector<HTMLElement>(":scope > header")?.offsetHeight ?? 100;
+      const footer = section.querySelector<HTMLElement>(":scope > footer")?.offsetHeight ?? 32;
+      const rowBudget = Math.floor((availableHeight - heading - header - footer - 24) / 68);
+      setVisibleCount(Math.min(availableMembers.length, responsiveMaximum, Math.max(2, rowBudget)));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(section);
+    if (side) observer.observe(side);
+    return () => observer.disconnect();
+  }, [availableMembers.length]);
+
+  const members = availableMembers.slice(0, visibleCount);
+  if (availableMembers.length < 2) return null;
   return (
-    <section className="event-comparison" aria-labelledby="event-comparison-title">
+    <section
+      className="event-comparison"
+      aria-labelledby="event-comparison-title"
+      data-count={members.length}
+      data-density={collectionDensity(members.length, "list")}
+      ref={sectionRef}
+    >
       <RegionHeader id="event-comparison-title" title={locale === "zh-Hant" ? "同一事件的主要情境" : "The event, not one market"} note={humanize(event.event_type, locale)} />
       <header>
         <h2>{event.title}</h2>
@@ -483,13 +520,19 @@ function EventComparison({ event }: { event: PublicationExpectationEvent }) {
               <span className={deltaClass(member.delta_24h_percentage_points)}>
                 {trendGlyph(member.delta_24h_percentage_points)} {member.delta_24h_percentage_points == null ? "—" : formatDelta(member.delta_24h_percentage_points)}
               </span>
+              <small className="event-member-baseline">
+                {member.baseline_probability_24h == null
+                  ? "24h baseline unavailable"
+                  : `${formatProbability(member.baseline_probability_24h)} → ${formatProbability(member.current_probability)}`}
+              </small>
             </li>
           );
         })}
       </ol>
       <footer>
         <span>{event.source_label}</span>
-        {event.suppressed_member_count ? <span>+ {event.suppressed_member_count} {locale === "zh-Hant" ? "個低訊號選項未顯示" : "lower-signal options suppressed"}</span> : null}
+        <span>{event.eligible_member_count} of {event.source_member_count} source options monitored</span>
+        {event.folded_eligible_member_count ? <span>+ {event.folded_eligible_member_count} monitored options folded</span> : null}
         <time>{formatRelativeTime(event.latest_observed_at, locale)}</time>
       </footer>
     </section>

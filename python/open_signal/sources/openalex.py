@@ -187,7 +187,7 @@ class OpenAlexChain:
         self, topic_id: str, page: int, query: str, from_date: str
     ) -> dict[str, Any]:
         fixture = self.fixture_dir / f"{topic_id}_page_{page}.json"
-        if fixture.exists():
+        if self.offline and fixture.exists():
             with fixture.open(encoding="utf-8") as f:
                 return json.load(f)
         if self.offline:

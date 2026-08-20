@@ -77,7 +77,6 @@ def qualify_public_research_item(
     if candidate_type == "stage_transition":
         entity = _text(metrics.get("sponsor")) or _text(metrics.get("entity"))
         portfolio_scope = _text(metrics.get("portfolio_scope")) or "sponsor"
-        sponsors = _texts(metrics.get("sponsors"))
         topic_id = _text(metrics.get("topic_id"))
         topic_label = _text(metrics.get("topic_label"))
         phases = _texts(metrics.get("phase_labels")) or [
@@ -85,10 +84,10 @@ def qualify_public_research_item(
         ]
         phases = list(dict.fromkeys(phases))
         evidence = _records(metrics.get("representative_studies"))
+        if portfolio_scope == "topic":
+            return None, "cross_sponsor_snapshot_is_not_transition"
         if not entity:
             return None, "missing_entity"
-        if portfolio_scope == "topic" and len(sponsors) < 2:
-            return None, "missing_entity_attribution"
         if not topic_id or not topic_label:
             return None, "missing_topic_attribution"
         if len(phases) < 2:
@@ -173,18 +172,30 @@ def select_public_research_items(
 ) -> tuple[list[dict[str, Any]], int]:
     """Select a ranked, de-duplicated and topic-diverse public watch list."""
 
-    unique: dict[tuple[str, ...], tuple[float, dict[str, Any]]] = {}
+    unique: dict[
+        tuple[str, ...],
+        tuple[str, float, dict[str, Any], str],
+    ] = {}
     for candidate in candidates:
         item = build_public_research_item(candidate)
         if item is None:
             continue
         identity = _identity(item)
-        scored = (_selection_score(candidate, item), item)
-        if identity not in unique or scored[0] > unique[identity][0]:
-            unique[identity] = scored
+        ranked_candidate = (
+            str(item.get("detected_at") or ""),
+            _selection_score(candidate, item),
+            item,
+            str(candidate.get("status") or ""),
+        )
+        if identity not in unique or ranked_candidate[:2] > unique[identity][:2]:
+            unique[identity] = ranked_candidate
 
     ranked = sorted(
-        unique.values(),
+        (
+            (score, item)
+            for _, score, item, status in unique.values()
+            if status == "shadow_investigation"
+        ),
         key=lambda value: (
             value[0],
             str(value[1].get("detected_at") or ""),
@@ -218,7 +229,10 @@ def select_public_research_items(
         _append(selected, item, type_counts, topic_counts)
         if len(selected) >= limit:
             break
-    return selected, len(unique)
+    return selected, sum(
+        status == "shadow_investigation"
+        for _, _, _, status in unique.values()
+    )
 
 
 def _common_fields(

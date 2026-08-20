@@ -60,6 +60,17 @@ def test_multi_outcome_event_selects_signal_roles_instead_of_every_option() -> N
         "mover",
     }
     assert group.suppressed_member_count == 17
+    assert group.unmonitored_member_count == 0
+    assert group.folded_eligible_member_count == 17
+
+    expanded = select_expectation_groups(
+        facts,
+        as_of=as_of,
+        page_size=12,
+        member_limit=5,
+    )[0]
+    assert len(expanded.members) == 5
+    assert expanded.folded_eligible_member_count == 15
 
 
 def test_qualified_tail_anomaly_can_survive_event_compression() -> None:

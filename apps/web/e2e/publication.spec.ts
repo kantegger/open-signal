@@ -40,6 +40,9 @@ test("keeps Current compact and preserves the complete grammar in Editions", asy
   await expect(page.getByText("Current front page", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "September rate cut became 21 points more likely." })).toBeVisible();
   await expect(page.getByRole("heading", { name: "The event, not one market" })).toBeVisible();
+  await expect(page.getByText("5 of 8 source options monitored")).toBeVisible();
+  await expect(page.getByText("+ 2 monitored options folded")).toBeVisible();
+  await expect(page.getByText(/lower-signal options suppressed/)).toHaveCount(0);
   await expect(page.locator(".event-comparison li")).toHaveCount(3);
   await expect(page.getByRole("heading", { name: "Expectations in motion" })).toBeVisible();
   await expect(page.getByText("Real 7-day histories · event-diverse")).toBeVisible();

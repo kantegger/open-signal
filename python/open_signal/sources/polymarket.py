@@ -443,18 +443,37 @@ def select_monitored_markets(
         if selected:
             cohorts.append((max((_market_rank_key(item) for item in selected)), selected))
 
-    # Round-robin the retained event cohorts.  Every event's leading
-    # representative is considered before a second member from any event.
+    # Preserve breadth first, then spend the remaining global budget where it
+    # can add the most information.  The previous full round-robin made every
+    # event equally deep; with a 500-market ceiling that left even prominent
+    # multi-option events with only two monitored members.
     cohorts.sort(key=lambda item: item[0], reverse=True)
-    monitored: list[dict[str, Any]] = []
-    maximum_depth = max((len(items) for _, items in cohorts), default=0)
-    for position in range(maximum_depth):
-        for _, items in cohorts:
-            if position < len(items):
-                monitored.append(items[position])
-                if len(monitored) >= max_markets:
-                    return monitored
+    monitored = [items[0] for _, items in cohorts[:max_markets]]
+    if len(monitored) >= max_markets:
+        return monitored
+
+    expansion = [
+        market
+        for _, items in cohorts
+        for market in items[1:]
+    ]
+    expansion.sort(key=_monitoring_expansion_key, reverse=True)
+    monitored.extend(expansion[: max_markets - len(monitored)])
     return monitored
+
+
+def _monitoring_expansion_key(
+    market: dict[str, Any],
+) -> tuple[float, float, float, float, float]:
+    """Rank added event depth by current, material source facts."""
+
+    return (
+        _one_day_move(market),
+        _market_activity(market),
+        _market_probability(market),
+        _number_field(market, "liquidity"),
+        _number_field(market, "volume"),
+    )
 
 
 def _market_activity(market: dict[str, Any]) -> float:

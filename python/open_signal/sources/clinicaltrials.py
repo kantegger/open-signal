@@ -148,7 +148,7 @@ class ClinicalTrialsChain:
 
     def _load(self, query: str) -> dict[str, Any]:
         fixture = self.fixture_dir / f"{_slug(query)}.json"
-        if fixture.exists():
+        if self.offline and fixture.exists():
             with fixture.open(encoding="utf-8") as f:
                 return json.load(f)
         if self.offline:

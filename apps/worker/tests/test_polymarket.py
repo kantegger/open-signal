@@ -374,3 +374,34 @@ def test_negative_mover_is_retained_and_empty_event_fields_are_enriched() -> Non
     assert mover["eventId"] == "event-move"
     assert mover["eventTitle"] == "Material move test"
     assert mover["eventSlug"] == "material-move-test"
+
+
+def test_remaining_monitoring_budget_follows_material_event_depth() -> None:
+    events = [
+        {
+            "id": "largest-leading-market",
+            "markets": [
+                {"id": "a-1", "volume24hr": 100_000},
+                {"id": "a-2", "volume24hr": 1},
+            ],
+        },
+        {
+            "id": "material-second-option",
+            "markets": [
+                {"id": "b-1", "volume24hr": 100},
+                {
+                    "id": "b-2",
+                    "volume24hr": 50,
+                    "oneDayPriceChange": 0.12,
+                },
+            ],
+        },
+        {
+            "id": "third-event",
+            "markets": [{"id": "c-1", "volume24hr": 90}],
+        },
+    ]
+
+    selected = select_monitored_markets(events, max_markets=4, markets_per_event=2)
+
+    assert {market["id"] for market in selected} == {"a-1", "b-1", "b-2", "c-1"}

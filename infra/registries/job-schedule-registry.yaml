@@ -96,14 +96,14 @@ schedules:
   - id: "research-candidate-refresh"
     job_type: "derived.generate_research_candidates"
     queue_name: "analysis"
-    revision: "os-021.2"
+    revision: "os-021.3"
     cadence_seconds: 86400
     phase_offset_seconds: 0
     priority: 50
     maximum_attempts: 3
     payload:
       section_id: "research-frontier"
-      candidate_version: "os-021.2"
+      candidate_version: "os-021.3"
 
   - id: "research-shadow-investigation"
     job_type: "agent.investigate"
