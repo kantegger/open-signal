@@ -169,6 +169,13 @@ test("keeps public information readable and encodes direction semantically", asy
     return cells.slice(0, 2).every((cell) => cell.scrollWidth <= cell.clientWidth + 1);
   });
   expect(ledgerFits).toBe(true);
+  const ledgerColumnBudget = await page.locator(".claim-ledger-row:not(.claim-ledger-head)").first().evaluate((row) => {
+    const desk = row.children.item(0)?.getBoundingClientRect().width ?? 0;
+    const claim = row.children.item(1)?.getBoundingClientRect().width ?? 0;
+    return { desk, claim };
+  });
+  expect(ledgerColumnBudget.desk).toBeLessThanOrEqual(130);
+  expect(ledgerColumnBudget.claim).toBeGreaterThan(ledgerColumnBudget.desk * 2);
 
   const [upColor, downColor] = await Promise.all([
     page.locator(".ledger-direction.trend-up").first().evaluate((element) => getComputedStyle(element).color),
@@ -194,6 +201,18 @@ test("keeps public information readable and encodes direction semantically", asy
     (cell) => cell.scrollWidth <= cell.clientWidth + 1,
   );
   expect(archiveClaimsFit).toBe(true);
+  const archiveColumnBudget = await page.locator(".edition-directory-row:not(.edition-directory-head)").first().evaluate((row) => {
+    const cells = Array.from(row.children) as HTMLElement[];
+    return {
+      composed: cells[0]?.getBoundingClientRect().width ?? 0,
+      coverage: cells[1]?.getBoundingClientRect().width ?? 0,
+      claims: cells[2]?.getBoundingClientRect().width ?? 0,
+      trigger: cells[3]?.getBoundingClientRect().width ?? 0,
+    };
+  });
+  expect(archiveColumnBudget.composed).toBeLessThanOrEqual(240);
+  expect(archiveColumnBudget.coverage).toBeGreaterThan(archiveColumnBudget.claims);
+  expect(archiveColumnBudget.trigger).toBeGreaterThan(archiveColumnBudget.claims);
   const editionHref = await page.locator(".edition-directory-row:not(.edition-directory-head) a").first().getAttribute("href");
 
   expect(editionHref).toBeTruthy();

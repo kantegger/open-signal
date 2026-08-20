@@ -3553,15 +3553,15 @@ dd,
 .signal-directory-row { grid-template-columns: 110px minmax(300px, 1fr) 115px 175px 90px; }
 .edition-directory-table { overflow-x: auto; }
 .edition-directory-row {
-  min-width: 900px;
+  min-width: 940px;
   grid-template-columns:
-    minmax(170px, 1.25fr)
-    minmax(104px, 0.7fr)
-    minmax(112px, 0.65fr)
-    minmax(120px, 0.9fr)
-    76px
-    minmax(100px, 0.7fr)
-    96px;
+    220px
+    minmax(180px, 1fr)
+    104px
+    minmax(130px, 0.75fr)
+    82px
+    minmax(120px, 0.7fr)
+    104px;
 }
 .signal-directory-row > *,
 .edition-directory-row > * {
@@ -3960,7 +3960,7 @@ dd,
 .digest-head { font-size: var(--text-micro); }
 
 .claim-ledger-row {
-  grid-template-columns: minmax(118px, 0.72fr) minmax(0, 1fr) 76px 84px 56px 84px;
+  grid-template-columns: 116px minmax(0, 1fr) 76px 84px 56px 84px;
   min-height: 42px;
   font-size: var(--text-label);
   line-height: 1.3;
