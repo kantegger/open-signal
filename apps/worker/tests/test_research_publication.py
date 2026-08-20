@@ -152,7 +152,7 @@ def test_trial_portfolio_does_not_claim_advancement() -> None:
     assert "transition" not in item["headline"].lower()
 
 
-def test_cross_sponsor_topic_portfolio_is_public_without_becoming_a_claim() -> None:
+def test_cross_sponsor_topic_snapshot_is_not_published_as_a_transition() -> None:
     candidate = _portfolio(
         "topic-portfolio",
         "oncology-immunotherapy",
@@ -167,10 +167,7 @@ def test_cross_sponsor_topic_portfolio_is_public_without_becoming_a_claim() -> N
 
     item = build_public_research_item(candidate)
 
-    assert item is not None
-    assert item["entity"] == "Sponsor A + Sponsor B"
-    assert item["screening_stage"] == "detected"
-    assert "span Phase 1 and Phase 2" in item["headline"]
+    assert item is None
 
 
 def test_qualification_report_exposes_stable_rejection_reasons() -> None:
@@ -217,6 +214,8 @@ def test_selection_deduplicates_and_preserves_type_and_topic_diversity() -> None
             ),
         ),
     ]
+    for candidate in candidates:
+        candidate["status"] = "shadow_investigation"
 
     selected, eligible_total = select_public_research_items(candidates)
 
@@ -231,3 +230,23 @@ def test_selection_deduplicates_and_preserves_type_and_topic_diversity() -> None
     }
     assert max(type_counts.values()) <= 2
     assert max(topic_counts.values()) <= 2
+
+
+def test_latest_abstention_supersedes_older_investigation() -> None:
+    older = _institution(
+        "older",
+        "generative-ai",
+        "Generative AI",
+        "Lab A",
+        status="shadow_investigation",
+    )
+    newer = _institution(
+        "newer",
+        "generative-ai",
+        "Generative AI",
+        "Lab A",
+        status="abstained",
+    )
+    newer["created_at"] = datetime(2026, 8, 10, 8, tzinfo=UTC)
+
+    assert select_public_research_items([older, newer]) == ([], 0)

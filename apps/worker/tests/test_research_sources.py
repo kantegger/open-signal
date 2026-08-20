@@ -80,6 +80,58 @@ def test_baseline_queries_present_for_all_topics() -> None:
     assert ct.baseline_query("generative-ai") is None
 
 
+def test_live_source_mode_never_reads_repository_fixtures(tmp_path) -> None:
+    class ClinicalClient:
+        def search_studies(self, **_kwargs):
+            return {"studies": [{"live": "clinical"}]}
+
+        def close(self):
+            return None
+
+    class WorksClient:
+        def search_works(self, **_kwargs):
+            return {"results": [{"live": "openalex"}]}
+
+        def close(self):
+            return None
+
+    clinical_fixture = tmp_path / "clinical"
+    clinical_fixture.mkdir()
+    (clinical_fixture / "immunotherapy-and-cancer.json").write_text(
+        '{"studies":[{"fixture":true}]}',
+        encoding="utf-8",
+    )
+    works_fixture = tmp_path / "works"
+    works_fixture.mkdir()
+    (works_fixture / "oncology-immunotherapy_page_1.json").write_text(
+        '{"results":[{"fixture":true}]}',
+        encoding="utf-8",
+    )
+
+    clinical = ClinicalTrialsChain(
+        None,
+        client=ClinicalClient(),
+        fixture_dir=clinical_fixture,
+        offline=False,
+    )
+    works = OpenAlexChain(
+        None,
+        client=WorksClient(),
+        fixture_dir=works_fixture,
+        offline=False,
+    )
+    try:
+        assert clinical._load("immunotherapy AND cancer") == {
+            "studies": [{"live": "clinical"}]
+        }
+        assert works._load_page("oncology-immunotherapy", 1, "q", "2025-01-01") == {
+            "results": [{"live": "openalex"}]
+        }
+    finally:
+        clinical.close()
+        works.close()
+
+
 # --------------------------------------------------------- OpenAlex discovery
 
 

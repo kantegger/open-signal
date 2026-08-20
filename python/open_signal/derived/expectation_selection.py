@@ -130,6 +130,14 @@ class ExpectationEventGroup:
         return max(0, self.source_member_count - len(self.members))
 
     @property
+    def unmonitored_member_count(self) -> int:
+        return max(0, self.source_member_count - self.eligible_member_count)
+
+    @property
+    def folded_eligible_member_count(self) -> int:
+        return max(0, self.eligible_member_count - len(self.members))
+
+    @property
     def sort_key(self) -> tuple[Any, ...]:
         return (
             -surface_rank(self.editorial_scope.maximum_surface),
@@ -261,6 +269,7 @@ def select_expectation_groups(
     as_of: datetime,
     page_size: int = 12,
     minimum_surface: str = "explore",
+    member_limit: int = 3,
 ) -> list[ExpectationEventGroup]:
     """Return a stable, event-diverse ordering of public event groups."""
 
@@ -271,7 +280,12 @@ def select_expectation_groups(
 
     groups: list[ExpectationEventGroup] = []
     for key, members in grouped.items():
-        group = _build_group(key, members, as_of=as_of)
+        group = _build_group(
+            key,
+            members,
+            as_of=as_of,
+            member_limit=member_limit,
+        )
         if group is not None and group.editorial_scope.allows(minimum_surface):
             groups.append(group)
     groups.sort(key=lambda item: item.sort_key)
@@ -310,6 +324,7 @@ def _build_group(
     facts: list[ExpectationFact],
     *,
     as_of: datetime,
+    member_limit: int,
 ) -> ExpectationEventGroup | None:
     ordered = sorted(facts, key=_member_rank)
     latest_observed_at = max(
@@ -334,7 +349,7 @@ def _build_group(
     ):
         return None
 
-    members = _select_members(ordered)
+    members = _select_members(ordered, limit=member_limit)
     representative = _representative(ordered)
     if has_recent_claim:
         priority_class = 0
@@ -395,6 +410,8 @@ def _build_group(
 
 def _select_members(
     ordered: list[ExpectationFact],
+    *,
+    limit: int = 3,
 ) -> tuple[SelectedExpectationMember, ...]:
     exclusive = any(fact.is_exclusive_slate for fact in ordered)
     leader = max(
@@ -476,7 +493,7 @@ def _select_members(
             continue
         selected.append(SelectedExpectationMember(fact=fact, selection_reason=reason))
         seen.add(fact.market_id)
-        if len(selected) == 3:
+        if len(selected) >= max(1, limit):
             break
     return tuple(selected)
 

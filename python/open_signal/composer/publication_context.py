@@ -258,6 +258,7 @@ class PublicationContextBuilder:
             as_of=captured_at,
             page_size=EXPECTATION_LIMIT,
             minimum_surface="live_feed",
+            member_limit=5,
         )
         return [
             {
@@ -268,6 +269,8 @@ class PublicationContextBuilder:
                 "source_member_count": group.source_member_count,
                 "eligible_member_count": group.eligible_member_count,
                 "suppressed_member_count": group.suppressed_member_count,
+                "unmonitored_member_count": group.unmonitored_member_count,
+                "folded_eligible_member_count": group.folded_eligible_member_count,
                 "selection_reason": group.selection_reason,
                 "latest_observed_at": group.latest_observed_at.isoformat(),
                 "resolution_deadline_at": group.nearest_deadline_at.isoformat(),
@@ -391,7 +394,9 @@ class PublicationContextBuilder:
                        baseline_definition, evidence_relation_ids
                 FROM research_signal_candidates
                 WHERE candidate_generator_version = :candidate_version
-                  AND status IN ('generated', 'shadow_investigation')
+                  AND status IN (
+                    'generated', 'shadow_investigation', 'abstained', 'rejected'
+                  )
                   AND created_at <= :captured_at
                   AND created_at >= :captured_at - interval '30 days'
                 ORDER BY (status = 'shadow_investigation') DESC,

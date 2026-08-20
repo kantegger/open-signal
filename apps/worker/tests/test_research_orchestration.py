@@ -50,8 +50,8 @@ def test_legacy_openalex_record_is_inferred_only_from_frozen_concepts() -> None:
     ]
 
 
-def test_real_clinical_fixtures_reach_the_public_research_contract() -> None:
-    """Guard the source-fixture → detector → public-gate path that regressed."""
+def test_static_cross_sponsor_fixtures_remain_internal_screening() -> None:
+    """Static registry breadth is context, not a newly observed transition."""
 
     chain = ClinicalTrialsChain(None, offline=True)
     studies_by_id: dict[str, dict] = {}
@@ -93,10 +93,5 @@ def test_real_clinical_fixtures_reach_the_public_research_contract() -> None:
     selected, eligible_total = select_public_research_items(candidate_rows)
 
     assert len(studies_by_id) == 6
-    assert eligible_total >= 2
-    assert len(selected) >= 2
-    assert {item["topic_ids"][0] for item in selected} >= {
-        "oncology-immunotherapy",
-        "synthetic-biology",
-    }
-    assert all(item["screening_stage"] == "detected" for item in selected)
+    assert eligible_total == 0
+    assert selected == []

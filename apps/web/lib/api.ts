@@ -252,6 +252,8 @@ export interface PublicationExpectationEvent {
   source_member_count: number;
   eligible_member_count: number;
   suppressed_member_count: number;
+  unmonitored_member_count: number;
+  folded_eligible_member_count: number;
   selection_reason: string;
   latest_observed_at: string;
   resolution_deadline_at: string;
@@ -581,6 +583,8 @@ export interface ExploreEventGroup {
   source_member_count: number;
   eligible_member_count: number;
   suppressed_member_count: number;
+  unmonitored_member_count?: number;
+  folded_eligible_member_count?: number;
   is_exclusive_slate: boolean;
   selection_reason: string;
   volume_24h: number;

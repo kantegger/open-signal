@@ -299,6 +299,8 @@ const publicationContext = {
     source_member_count: 8,
     eligible_member_count: 5,
     suppressed_member_count: 5,
+    unmonitored_member_count: 3,
+    folded_eligible_member_count: 2,
     selection_reason: "material_repricing",
     latest_observed_at: dataAsOf,
     resolution_deadline_at: validUntil,

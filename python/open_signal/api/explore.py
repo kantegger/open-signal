@@ -220,6 +220,8 @@ def _serialize_group(group: ExpectationEventGroup) -> dict[str, Any]:
         "source_member_count": group.source_member_count,
         "eligible_member_count": group.eligible_member_count,
         "suppressed_member_count": group.suppressed_member_count,
+        "unmonitored_member_count": group.unmonitored_member_count,
+        "folded_eligible_member_count": group.folded_eligible_member_count,
         "is_exclusive_slate": group.is_exclusive_slate,
         "selection_reason": group.selection_reason,
         "editorial_scope": group.editorial_scope.as_dict(),

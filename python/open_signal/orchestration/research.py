@@ -112,7 +112,10 @@ class ResearchSectionService:
             "public_rejection_reasons": qualification["rejection_reasons"],
             "public_claims_created": 0,
         }
-        if (works or studies) and eligible_total == 0:
+        # Newly generated rows are intentionally not public until the shadow
+        # agent has reviewed them.  Alert only when no row even satisfies the
+        # deterministic evidence contract, not merely because review is pending.
+        if (works or studies) and qualification["eligible"] == 0:
             logger.warning(
                 "research candidate refresh produced zero public-eligible items: %s",
                 result,

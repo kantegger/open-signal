@@ -74,7 +74,7 @@ def test_research_context_uses_public_gate_and_event_first_headline() -> None:
                 "candidate-complete",
                 "institution_entry",
                 complete_metrics,
-                "generated",
+                    "shadow_investigation",
                 captured_at,
                 captured_at - timedelta(days=365),
                 captured_at,
