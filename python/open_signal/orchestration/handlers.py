@@ -94,7 +94,7 @@ class ProductionHandlers:
         if self.delivery is None:
             return {"status": "disabled"}
         locale = str(job.payload.get("locale") or "en")
-        if locale not in {"en", "zh-Hant"}:
+        if locale != "en":
             raise ValueError(f"unsupported publication locale {locale!r}")
         return self.delivery.deliver(locale=locale)
 
