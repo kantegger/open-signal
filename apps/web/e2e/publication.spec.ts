@@ -338,6 +338,38 @@ test("keeps signal visuals directly below the hero when no event comparison is a
   await expect(page.locator(".expectation-signal-grid article")).toHaveCount(4);
 });
 
+test("places a featured event on its own full-width row", async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto("/");
+  await expect(page.locator(".event-comparison")).toBeVisible();
+
+  const [coverage, lead, secondary, comparison, movement] = await Promise.all([
+    page.locator(".coverage-strip").boundingBox(),
+    page.locator(".dashboard-lead-column").boundingBox(),
+    page.locator(".secondary-region").boundingBox(),
+    page.locator(".event-comparison").boundingBox(),
+    page.locator(".expectation-board").boundingBox(),
+  ]);
+  for (const box of [coverage, lead, secondary, comparison, movement]) expect(box).not.toBeNull();
+
+  const firstRowBottom = Math.max(lead!.y + lead!.height, secondary!.y + secondary!.height);
+  expect(Math.abs(comparison!.y - firstRowBottom)).toBeLessThanOrEqual(2);
+  expect(Math.abs(comparison!.x - coverage!.x)).toBeLessThanOrEqual(2);
+  expect(Math.abs(comparison!.width - coverage!.width)).toBeLessThanOrEqual(2);
+  expect(Math.abs(movement!.y - (comparison!.y + comparison!.height))).toBeLessThanOrEqual(2);
+});
+
+test("labels an unchanged research item as a continuing watch", async ({ page, request }) => {
+  await request.post("http://127.0.0.1:8001/__control/front-mode?value=continuing-research");
+  await revalidate(request, "e2e-continuing-research");
+  await page.goto("/");
+
+  const research = page.locator(".research-watch-featured");
+  await expect(research).toHaveAttribute("data-tenure", "continuing");
+  await expect(research.getByText("1 continuing public watch · not Claims")).toBeVisible();
+  await expect(research.getByText(/continuing watch/)).toBeVisible();
+});
+
 test("opens an accessible evidence sheet and restores focus", async ({ page }) => {
   await page.goto("/");
   const trigger = page.getByRole("button", { name: "View full evidence" });
@@ -429,19 +461,22 @@ test("Explore compresses multi-outcome events and paginates each collection inde
   await expect(page).toHaveURL(/topic_page=2/);
 });
 
-test("mobile order prioritizes research and navigation remains usable", async ({ page }) => {
+test("mobile order keeps the lead ahead of supporting research and navigation remains usable", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/");
-  const research = page.getByRole("heading", { name: /Research screening/ });
-  const secondary = page.getByRole("heading", { name: "Secondary signals" });
-  const [researchBox, secondaryBox] = await Promise.all([research.boundingBox(), secondary.boundingBox()]);
-  expect(researchBox).not.toBeNull();
-  expect(secondaryBox).not.toBeNull();
-  expect(researchBox!.y).toBeLessThan(secondaryBox!.y);
-  const topicMonitor = page.getByRole("heading", { name: "Expectations in motion" });
-  const topicBox = await topicMonitor.boundingBox();
-  expect(topicBox).not.toBeNull();
-  expect(secondaryBox!.y).toBeLessThan(topicBox!.y);
+  await expect(page.getByRole("heading", { name: /Research screening/ })).toBeVisible();
+  const mobileOrder = await Promise.all([
+    page.locator(".coverage-strip").boundingBox(),
+    page.locator(".lead-region").boundingBox(),
+    page.locator(".event-comparison").boundingBox(),
+    page.locator(".secondary-region").boundingBox(),
+    page.locator(".expectation-board").boundingBox(),
+    page.locator(".research-watch-featured").boundingBox(),
+  ]);
+  for (const box of mobileOrder) expect(box).not.toBeNull();
+  for (let index = 1; index < mobileOrder.length; index += 1) {
+    expect(mobileOrder[index - 1]!.y).toBeLessThan(mobileOrder[index]!.y);
+  }
   const mobileWidth = await page.evaluate(() => ({
     client: document.documentElement.clientWidth,
     scroll: document.documentElement.scrollWidth,

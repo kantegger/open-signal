@@ -664,7 +664,9 @@ def test_freshness_reconcile_publishes_when_research_screening_changes(
         "study_count": 2,
         "evidence_count": 2,
         "window_label": "Registry portfolio as of Aug 2026",
-        "baseline_label": "Cross-sectional phase coverage",
+        "baseline_label": "Prior registry portfolio snapshot",
+        "previous_phase_labels": ["Phase 1"],
+        "material_change_at": "2026-08-07T13:25:00Z",
     }
     with engine.begin() as conn:
         conn.execute(
