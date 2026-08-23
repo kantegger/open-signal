@@ -1,0 +1,29 @@
+title = "Open Signal secret scanning"
+minVersion = "v8.25.0"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "ClinicalTrials public pagination tokens in recorded API fixtures"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = [
+  '''^fixtures/clinicaltrials/(gene-therapy|immunotherapy-and-cancer)\.json$''',
+]
+regexTarget = "line"
+regexes = [
+  '''"nextPageToken"\s*:''',
+]
+
+[[allowlists]]
+description = "Public reCAPTCHA site key in a recorded Federal Register page"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = [
+  '''^fixtures/federal_register/document_sample\.html$''',
+]
+regexTarget = "line"
+regexes = [
+  '''data-sitekey=''',
+]

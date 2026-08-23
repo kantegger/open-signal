@@ -6,6 +6,7 @@ build-backend = "hatchling.build"
 name = "open-signal-api"
 version = "0.1.0"
 description = "Open Signal read-only public API (OS-030)"
+license = "Apache-2.0"
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.115,<1",

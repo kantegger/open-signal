@@ -2,6 +2,7 @@
 name = "open-signal-core"
 version = "0.1.0"
 description = "Open Signal core library: sources, canonical, derived, agents, claims, composer"
+license = "Apache-2.0"
 requires-python = ">=3.11"
 dependencies = [
   "pydantic>=2.9,<3",
