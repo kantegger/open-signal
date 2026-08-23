@@ -235,9 +235,13 @@ function Publication({
   const currentIndexItems = uniquePlans([...digest.items, ...main.items, ...utility.items]).slice(0, 8);
   const observationCount = context.counts.expectation_observations + context.counts.rules_tracked;
   const leadTopicId = lead.items[0]?.topic?.id;
-  const featuredEvent = context.expectation_events?.find((event) => (
+  const featuredEventCandidate = context.expectation_events?.find((event) => (
     event.members.some((member) => member.topic_id === leadTopicId)
   ));
+  const featuredEvent = featuredEventCandidate
+    && featuredEventCandidate.members.filter((member) => member.current_probability != null).length >= 2
+    ? featuredEventCandidate
+    : undefined;
   const featuredEventTopicIds = new Set(featuredEvent?.members.map((member) => member.topic_id) ?? []);
 
   return (
@@ -290,35 +294,34 @@ function Publication({
               <SparseLead data={data} />
             )}
           </section>
-          {compact && featuredEvent ? <EventComparison event={featuredEvent} /> : null}
         </div>
 
-        {secondary.items.length || hasLiveTape ? (
-          <div className="dashboard-side">
-            {secondary.items.length ? (
-              <section className="slot-region secondary-region" aria-labelledby="secondary-title">
-                <RegionHeader id="secondary-title" title={text.secondarySignals} note={`${secondary.items.length} ${text.verified}`} />
-                <div
-                  className="secondary-grid"
-                  data-count={secondary.items.length}
-                  data-density={collectionDensity(secondary.items.length, "grid")}
-                >
-                  {secondary.items.map((item) => <PlanRenderer item={item} key={item.id} onEvidence={onEvidence} />)}
-                </div>
-              </section>
-            ) : null}
-            {hasLiveTape ? (
-              <ExpectationMovementBoard
-                items={liveFeed.items}
-                observations={monitoredTopics.filter((observation) => !featuredEventTopicIds.has(observation.id))}
-                onEvidence={onEvidence}
-              />
-            ) : null}
-          </div>
+        {compact && featuredEvent ? <EventComparison event={featuredEvent} /> : null}
+
+        {secondary.items.length ? (
+          <section className="slot-region secondary-region" aria-labelledby="secondary-title">
+            <RegionHeader id="secondary-title" title={text.secondarySignals} note={`${secondary.items.length} ${text.verified}`} />
+            <div
+              className="secondary-grid"
+              data-count={secondary.items.length}
+              data-density={collectionDensity(secondary.items.length, "grid")}
+            >
+              {secondary.items.map((item) => <PlanRenderer item={item} key={item.id} onEvidence={onEvidence} />)}
+            </div>
+          </section>
+        ) : null}
+
+        {hasLiveTape ? (
+          <ExpectationMovementBoard
+            items={liveFeed.items}
+            observations={monitoredTopics.filter((observation) => !featuredEventTopicIds.has(observation.id))}
+            onEvidence={onEvidence}
+          />
         ) : null}
 
         {compact && research.length ? (
           <ResearchWatch
+            capturedAt={context.captured_at ?? data.snapshot.composed_at}
             featured
             items={research}
             total={context.counts.research_screening}
@@ -468,27 +471,14 @@ function EventComparison({ event }: { event: PublicationExpectationEvent }) {
   useEffect(() => {
     const section = sectionRef.current;
     if (!section || availableMembers.length < 2) return;
-    const dashboard = section.closest(".current-dashboard-top");
-    const companion = dashboard?.querySelector<HTMLElement>(".secondary-region");
     const measure = () => {
-      const width = dashboard?.getBoundingClientRect().width ?? window.innerWidth;
+      const width = section.getBoundingClientRect().width || window.innerWidth;
       const responsiveMaximum = width <= 760 ? 3 : width < 1180 ? 4 : 5;
-      if (!companion || width <= 900) {
-        setVisibleCount(Math.min(availableMembers.length, responsiveMaximum));
-        return;
-      }
-      const sectionTop = section.getBoundingClientRect().top;
-      const availableHeight = Math.max(0, companion.getBoundingClientRect().bottom - sectionTop);
-      const heading = section.querySelector<HTMLElement>(":scope > .region-heading")?.offsetHeight ?? 40;
-      const header = section.querySelector<HTMLElement>(":scope > header")?.offsetHeight ?? 100;
-      const footer = section.querySelector<HTMLElement>(":scope > footer")?.offsetHeight ?? 32;
-      const rowBudget = Math.floor((availableHeight - heading - header - footer - 24) / 68);
-      setVisibleCount(Math.min(availableMembers.length, responsiveMaximum, Math.max(2, rowBudget)));
+      setVisibleCount(Math.min(availableMembers.length, responsiveMaximum));
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(section);
-    if (companion) observer.observe(companion);
     return () => observer.disconnect();
   }, [availableMembers.length]);
 
@@ -730,59 +720,75 @@ function RuleWatch({ rules }: { rules: PublicationContext["rules"] }) {
 }
 
 function ResearchWatch({
+  capturedAt,
   featured = false,
   items,
   total,
 }: {
+  capturedAt: string;
   featured?: boolean;
   items: PublicationContext["research"];
   total: number;
 }) {
   const { locale } = useLocale();
   const maxEvidence = Math.max(...items.map((item) => item.evidence_count), 1);
+  const capturedTimestamp = Date.parse(capturedAt);
+  const continuingIds = new Set(items.flatMap((item) => {
+    const detectedTimestamp = Date.parse(item.detected_at);
+    const ageHours = (capturedTimestamp - detectedTimestamp) / 3_600_000;
+    return Number.isFinite(ageHours) && ageHours >= 24 ? [item.id] : [];
+  }));
+  const recentCount = items.length - continuingIds.size;
+  const statusNote = recentCount
+    ? `${total} eligible public watches · not Claims`
+    : `${items.length} continuing public ${items.length === 1 ? "watch" : "watches"} · not Claims`;
   return (
     <section
       className={`watch-panel research-watch${featured ? " research-watch-featured" : ""}`}
       aria-labelledby="research-watch-title"
+      data-tenure={recentCount ? "recent" : "continuing"}
     >
-      <RegionHeader id="research-watch-title" title={locale === "zh-Hant" ? "🔬 研究篩選" : "🔬 Research screening"} note={locale === "zh-Hant" ? `${total} 個符合資格的公開監測 · 並非 Claims` : `${total} eligible public watches · not Claims`} />
+      <RegionHeader id="research-watch-title" title={locale === "zh-Hant" ? "🔬 研究篩選" : "🔬 Research screening"} note={locale === "zh-Hant" ? `${total} 個公開監測 · 並非 Claims` : statusNote} />
       <div
         className="watch-list research-watch-list"
         data-count={items.length}
         data-density={collectionDensity(items.length, "grid")}
       >
-        {items.map((item) => (
-          <article key={item.id}>
-            <div>
-              <span>{researchCandidateLabel(item.candidate_type, locale)} · {humanize(item.screening_stage, locale)}</span>
-              <time>{formatRelativeTime(item.detected_at, locale)}</time>
-            </div>
-            <strong>{item.headline}</strong>
-            {item.candidate_type === "stage_transition" ? (
-              <ResearchPhaseVisual
-                baseline={`${item.headline} ${item.metric} ${item.baseline_label}`}
-                evidenceCount={item.evidence_count}
-                locale={locale}
-              />
-            ) : (
-              <ResearchEvidenceVisual
-                evidenceCount={item.evidence_count}
-                maxEvidence={maxEvidence}
-                locale={locale}
-              />
-            )}
-            <p className="collection-detail collection-detail-sparse research-context">
-              <span>{locale === "zh-Hant" ? "篩選脈絡" : "Screening context"}</span>
-              <b>{item.topic_label}</b>
-              <span>{locale === "zh-Hant" ? `${item.evidence_count} 筆來自 ${item.source_label} 的公開紀錄；尚非 Claim。` : `${item.evidence_count} public records from ${item.source_label}; not yet a Claim.`}</span>
-            </p>
-            <p className="research-entity"><b>{item.entity}</b><span>{item.baseline_label}</span></p>
-            <p className={`research-evidence ${directionClass(item.direction)}`}>
-              <b>{directionGlyph(item.direction)} {item.metric}</b>
-              <span>{item.window_label} · {item.evidence_count} {locale === "zh-Hant" ? "筆紀錄" : "records"} · {item.source_label}</span>
-            </p>
-          </article>
-        ))}
+        {items.map((item) => {
+          const continuing = continuingIds.has(item.id);
+          return (
+            <article className={continuing ? "is-continuing" : undefined} key={item.id}>
+              <div>
+                <span>{researchCandidateLabel(item.candidate_type, locale)} · {continuing ? "continuing watch" : humanize(item.screening_stage, locale)}</span>
+                <time>{formatRelativeTime(item.detected_at, locale)}</time>
+              </div>
+              <strong>{item.headline}</strong>
+              {item.candidate_type === "stage_transition" ? (
+                <ResearchPhaseVisual
+                  baseline={`${item.headline} ${item.metric} ${item.baseline_label}`}
+                  evidenceCount={item.evidence_count}
+                  locale={locale}
+                />
+              ) : (
+                <ResearchEvidenceVisual
+                  evidenceCount={item.evidence_count}
+                  maxEvidence={maxEvidence}
+                  locale={locale}
+                />
+              )}
+              <p className="collection-detail collection-detail-sparse research-context">
+                <span>{locale === "zh-Hant" ? "篩選脈絡" : "Screening context"}</span>
+                <b>{item.topic_label}</b>
+                <span>{locale === "zh-Hant" ? `${item.evidence_count} 筆來自 ${item.source_label} 的公開紀錄；尚非 Claim。` : `${item.evidence_count} public records from ${item.source_label}; not yet a Claim.`}</span>
+              </p>
+              <p className="research-entity"><b>{item.entity}</b><span>{item.baseline_label}</span></p>
+              <p className={`research-evidence ${directionClass(item.direction)}`}>
+                <b>{directionGlyph(item.direction)} {item.metric}</b>
+                <span>{item.window_label} · {item.evidence_count} {locale === "zh-Hant" ? "筆紀錄" : "records"} · {item.source_label}</span>
+              </p>
+            </article>
+          );
+        })}
       </div>
     </section>
   );

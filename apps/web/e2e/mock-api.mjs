@@ -183,6 +183,7 @@ const server = http.createServer(async (request, response) => {
       || requestedMode === "no-live-feed"
       || requestedMode === "no-featured-event"
       || requestedMode === "no-research"
+      || requestedMode === "continuing-research"
       || requestedMode === "sparse-research"
       ? requestedMode
       : "full";
@@ -233,6 +234,21 @@ const server = http.createServer(async (request, response) => {
                 publication_context: {
                   ...frontPageFixture.publication_context,
                   expectation_events: [],
+                },
+              }
+          : frontPageMode === "continuing-research"
+            ? {
+                ...frontPageFixture,
+                publication_context: {
+                  ...frontPageFixture.publication_context,
+                  counts: {
+                    ...frontPageFixture.publication_context.counts,
+                    research_screening: 1,
+                  },
+                  research: frontPageFixture.publication_context.research.slice(0, 1).map((item) => ({
+                    ...item,
+                    detected_at: "2026-08-18T09:00:00Z",
+                  })),
                 },
               }
           : frontPageMode === "sparse-research"

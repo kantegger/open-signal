@@ -79,10 +79,12 @@ def qualify_public_research_item(
         portfolio_scope = _text(metrics.get("portfolio_scope")) or "sponsor"
         topic_id = _text(metrics.get("topic_id"))
         topic_label = _text(metrics.get("topic_label"))
+        previous_phases = _texts(metrics.get("previous_phase_labels"))
         phases = _texts(metrics.get("phase_labels")) or [
             _phase_label(value) for value in _texts(metrics.get("phases"))
         ]
         phases = list(dict.fromkeys(phases))
+        material_change_at = _iso(metrics.get("material_change_at"))
         evidence = _records(metrics.get("representative_studies"))
         if portfolio_scope == "topic":
             return None, "cross_sponsor_snapshot_is_not_transition"
@@ -94,6 +96,11 @@ def qualify_public_research_item(
             return None, "insufficient_phase_coverage"
         if len(evidence) < 2:
             return None, "insufficient_source_evidence"
+        if not previous_phases or not material_change_at:
+            return None, "missing_longitudinal_change"
+        added_phases = [phase for phase in phases if phase not in previous_phases]
+        if not added_phases:
+            return None, "no_material_phase_change"
         study_count = max(
             len(evidence),
             int(_number(metrics.get("study_count")) or 0),
@@ -101,14 +108,17 @@ def qualify_public_research_item(
         return {
             **common,
             "candidate_type": candidate_type,
-            "headline": f"{topic_label} trials span {_joined(phases)}",
+            "headline": (
+                f"{topic_label} trial portfolio added {_joined(added_phases)} coverage"
+            ),
             "entity": entity,
             "topic_label": topic_label,
             "topic_ids": [topic_id],
-            "metric": f"{len(phases)} phases · {study_count} studies",
+            "metric": f"{_joined(previous_phases)} → {_joined(phases)}",
             "evidence_count": study_count,
-            "direction": "neutral",
+            "direction": "up",
             "source_label": "ClinicalTrials.gov",
+            "material_change_at": material_change_at,
         }, None
 
     if candidate_type == "cross_topic_relation":
@@ -368,6 +378,10 @@ def _count(value: float) -> str:
 
 
 def _joined(values: list[str]) -> str:
+    if not values:
+        return ""
+    if len(values) == 1:
+        return values[0]
     if len(values) == 2:
         return f"{values[0]} and {values[1]}"
     return f"{', '.join(values[:-1])}, and {values[-1]}"

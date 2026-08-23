@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from open_signal.research.publication import (
     build_public_research_item,
     public_research_qualification_report,
+    qualify_public_research_item,
     select_public_research_items,
 )
 
@@ -75,7 +76,9 @@ def _portfolio(
             ],
             "study_count": 2,
             "window_label": "Registry portfolio as of Aug 2026",
-            "baseline_label": "Cross-sectional phase coverage",
+            "baseline_label": "Prior registry portfolio snapshot",
+            "previous_phase_labels": ["Phase 1"],
+            "material_change_at": "2026-08-08T12:00:00Z",
         },
     )
 
@@ -135,7 +138,7 @@ def test_incomplete_internal_candidate_is_not_public() -> None:
     assert select_public_research_items([candidate]) == ([], 0)
 
 
-def test_trial_portfolio_does_not_claim_advancement() -> None:
+def test_trial_portfolio_reports_a_longitudinal_portfolio_change() -> None:
     item = build_public_research_item(
         _portfolio(
             "portfolio",
@@ -146,10 +149,28 @@ def test_trial_portfolio_does_not_claim_advancement() -> None:
     )
 
     assert item is not None
-    assert item["direction"] == "neutral"
-    assert "span Phase 1 and Phase 2" in item["headline"]
+    assert item["direction"] == "up"
+    assert "added Phase 2 coverage" in item["headline"]
     assert "advanced" not in item["headline"].lower()
     assert "transition" not in item["headline"].lower()
+
+
+def test_cross_sectional_phase_portfolio_is_not_a_public_change() -> None:
+    candidate = _portfolio(
+        "static-portfolio",
+        "oncology-immunotherapy",
+        "Oncology immunotherapy",
+        "National Cancer Institute",
+    )
+    metrics = candidate["derived_metrics"]
+    del metrics["previous_phase_labels"]
+    del metrics["material_change_at"]
+    metrics["baseline_label"] = "Cross-sectional phase coverage"
+
+    item, reason = qualify_public_research_item(candidate)
+
+    assert item is None
+    assert reason == "missing_longitudinal_change"
 
 
 def test_cross_sponsor_topic_snapshot_is_not_published_as_a_transition() -> None:
