@@ -1,13 +1,13 @@
-version: "2.3.0"
+version: "2.4.0"
 
-# Production is launched by one hourly platform Cron. Every occurrence is
+# The production demo is launched by a four-hour platform Cron. Every occurrence is
 # still bucketed independently so slower desks run only on their own cadence.
 # The one-shot worker exits after the batch, leaving Neon idle between runs.
 schedules:
   - id: "expectations-source-refresh"
     job_type: "source.discover"
     queue_name: "source"
-    cadence_seconds: 3600
+    cadence_seconds: 14400
     phase_offset_seconds: 0
     priority: 10
     maximum_attempts: 3
@@ -36,7 +36,7 @@ schedules:
   - id: "expectations-observation-refresh"
     job_type: "canonical.normalize"
     queue_name: "analysis"
-    cadence_seconds: 3600
+    cadence_seconds: 14400
     phase_offset_seconds: 0
     priority: 15
     maximum_attempts: 3
@@ -73,7 +73,7 @@ schedules:
   - id: "expectations-editorial-refresh"
     job_type: "derived.calculate_expectation"
     queue_name: "analysis"
-    cadence_seconds: 3600
+    cadence_seconds: 14400
     phase_offset_seconds: 0
     priority: 40
     maximum_attempts: 3
@@ -119,7 +119,7 @@ schedules:
   - id: "publication-freshness-reconcile"
     job_type: "composer.generate_edition"
     queue_name: "publication"
-    cadence_seconds: 3600
+    cadence_seconds: 14400
     phase_offset_seconds: 0
     priority: 70
     maximum_attempts: 3
@@ -129,7 +129,7 @@ schedules:
   - id: "publication-snapshot-delivery"
     job_type: "publication.deliver_snapshot"
     queue_name: "publication"
-    cadence_seconds: 3600
+    cadence_seconds: 14400
     phase_offset_seconds: 0
     priority: 80
     maximum_attempts: 3
@@ -155,7 +155,7 @@ schedules:
   - id: "raw-retention-purge"
     job_type: "retention.purge_raw"
     queue_name: "analysis"
-    cadence_seconds: 3600
+    cadence_seconds: 14400
     phase_offset_seconds: 2400
     priority: 96
     maximum_attempts: 3

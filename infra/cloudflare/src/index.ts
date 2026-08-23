@@ -1,10 +1,11 @@
 import { Container, getContainer } from "@cloudflare/containers";
 
+// Stable Durable Object identity retained across cadence changes.
 const INSTANCE_NAME = "hourly-production";
 
 export class OpenSignalBatch extends Container<Env> {
   // A healthy one-shot exits as soon as the Python batch completes. This is a
-  // safety ceiling for a hung batch, kept below the next hourly occurrence.
+  // safety ceiling for a hung batch, not an always-on idle duration.
   sleepAfter = "55m";
 
   async launch(scheduledAt: string): Promise<LaunchResult> {
@@ -34,7 +35,7 @@ export class OpenSignalBatch extends Container<Env> {
 
 export default {
   async fetch(): Promise<Response> {
-    return Response.json({ service: "open-signal-scheduler", cadence: "hourly" });
+    return Response.json({ service: "open-signal-scheduler", cadence: "every_4_hours" });
   },
 
   async scheduled(controller, env): Promise<void> {

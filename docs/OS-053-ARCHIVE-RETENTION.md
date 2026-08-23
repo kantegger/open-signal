@@ -97,7 +97,7 @@ The machine-readable report policy starts with:
 `retention.report_raw` is scheduled daily and its handler accepts only
 `mode=report_only`. Its PostgreSQL transaction is explicitly read-only. The
 standalone `python scripts/report_raw_retention.py` command has the same
-boundary. `retention.purge_raw` reuses the existing hourly scheduler with a
+boundary. `retention.purge_raw` reuses the existing four-hour scheduler with a
 phase offset and processes at most 1,000 rows per run; it does not increase the
 Cloudflare Cron frequency or add a separate Neon wake-up.
 
@@ -124,7 +124,7 @@ growth while PostgreSQL vacuum and page reuse catch up.
    `sealed-v1` the database default. Downgrade to `0014` before rolling the
    application back to a pre-sealing release.
 7. Confirm Archive cursor traversal reaches the oldest public Edition.
-8. Inspect the first daily report and hourly purge audit before raising the
+8. Inspect the first daily report and four-hour purge audit before raising the
    1,000-row batch ceiling.
 
 Production Neon and R2 are not modified merely by merging OS-053; migrations and
