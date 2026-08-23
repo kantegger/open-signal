@@ -21,7 +21,7 @@ Database migrations (Alembic, OS-003).
 
 ## cloudflare
 
-The hourly production scheduler Worker and one-shot Python Container. It owns
+The production demo's four-hour scheduler Worker and one-shot Python Container. It owns
 only invocation and overlap prevention; schedule meaning remains in the
 registries and editorial work remains in PostgreSQL Jobs. See
 [`docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md).

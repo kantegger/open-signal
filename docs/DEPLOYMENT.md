@@ -7,7 +7,7 @@ Neon for the system of record.
 
 ```mermaid
 flowchart LR
-  cron["Cloudflare Cron\nhourly"] --> scheduler["Scheduler Worker"]
+  cron["Cloudflare Cron\nevery 4 hours"] --> scheduler["Scheduler Worker"]
   scheduler --> batch["One-shot Python Container"]
   batch --> neon[("Neon production")]
   batch --> r2[("R2 publication snapshots")]
@@ -34,7 +34,7 @@ first; the FastAPI service is the long-tail and operations fallback.
 | Read-only API | `https://open-signal-api.vercel.app` |
 | R2 bucket | `open-signal-publications` (APAC) |
 | R2 beta read origin | `https://pub-663344cb96044648a00527ba459d1a03.r2.dev` |
-| Batch | Cloudflare Worker `open-signal-scheduler`, hourly Cron |
+| Batch | Cloudflare Worker `open-signal-scheduler`, four-hour Cron |
 | Database | Neon project `open-signal`, `production` branch |
 | Destructive tests | Neon `test` branch only; see `docs/TESTING.md` |
 
@@ -99,9 +99,10 @@ runtime R2 credentials above.
 
 ## Scheduling and inactivity
 
-Cloudflare invokes the scheduler at `0 * * * *`. The platform occurrence time
-is passed into the Python command, which gives every registry schedule a stable
-idempotency bucket even after a delayed or duplicate invocation.
+The reference deployment invokes the scheduler at `0 */4 * * *` (UTC). The
+platform occurrence time is passed into the Python command, which gives every
+registry schedule a stable idempotency bucket even after a delayed or duplicate
+invocation.
 
 The one-shot process drains queues in dependency order and exits. The Container
 has a 55-minute inactivity ceiling only as protection against a hung batch; a
@@ -110,12 +111,36 @@ different editorial cadences:
 
 | Work | Cadence |
 |---|---:|
-| Expectations / Polymarket | hourly |
+| Expectations / Polymarket | every 4 hours |
 | Rules / Federal Register | every 4 hours |
 | ClinicalTrials | every 12 hours |
 | Research / OpenAlex | daily |
-| Freshness retirement check | hourly |
-| English + Traditional Chinese snapshot delivery | hourly |
+| Freshness retirement check | every 4 hours |
+| English snapshot delivery | every 4 hours |
+| Raw-payload TTL purge | every 4 hours, at most 1,000 rows |
+
+There are two independent scheduling layers. The Wrangler Cron is the outer
+wake-up ceiling; `infra/registries/job-schedule-registry.yaml` is the
+authoritative per-job cadence. The scheduler evaluates only the current bucket
+and does not replay every platform occurrence that was skipped. Consequently,
+a 12-hour outer Cron also makes nominal four-hour jobs run at most every 12
+hours.
+
+For a self-hosted installation, edit both layers when changing the intended
+cadence:
+
+| Profile | `triggers.crons` | Matching shortest `cadence_seconds` |
+|---|---|---:|
+| Hourly | `0 * * * *` | `3600` |
+| Every 4 hours (reference default) | `0 */4 * * *` | `14400` |
+| Every 12 hours | `0 */12 * * *` | `43200` |
+| Daily | `0 0 * * *` | `86400` |
+
+Keep slower source-specific jobs at their existing cadence unless you
+intentionally want to change them. Lower frequency reduces Container starts,
+Neon wake-ups, source requests and agent opportunities, at the cost of an equal
+increase in worst-case discovery and publication delay. Evidence thresholds,
+freshness timestamps and immutable Edition semantics do not change.
 
 No schedule manufactures content. A Section keeps its last verified output
 until new verified meaning arrives or the freshness policy ages/demotes/retires
@@ -152,8 +177,6 @@ Invoke-RestMethod https://open-signal-api.vercel.app/health
 
 Invoke-RestMethod https://open-signal-web.vercel.app/api/publication/current
 
-Invoke-RestMethod 'https://os.yhleo.com/api/publication/current?locale=zh-Hant'
-
 $token = [Environment]::GetEnvironmentVariable(
   "OPEN_SIGNAL_OPS_TOKEN",
   "User"
@@ -166,17 +189,12 @@ Invoke-RestMethod `
 After the first scheduled delivery, verify that both R2 current pointers exist:
 
 - `public/publications/channels/front-page/en.json`
-- `public/publications/channels/front-page/zh-Hant.json`
 - `public/publications/channels/explore/en.json`
-- `public/publications/channels/explore/zh-Hant.json`
 - `public/publications/channels/editions/en.json`
 - `public/publications/channels/seo-index.json`
 
-The two pointers must reference the same Edition ID. The Traditional Chinese
-manifest additionally references the immutable localization bundle and records
-its translator/version provenance and token usage. Confirm the English web
-snapshot ID matches the operations endpoint, then open `/zh-Hant` and confirm
-that its locale reports `published=zh-Hant` and `fallback_used=false`.
+The front-page pointer and English web snapshot must reference the same Edition
+ID as the operations endpoint.
 
 ## Rollback
 
@@ -188,8 +206,4 @@ that its locale reports `published=zh-Hant` and `fallback_used=false`.
   public pointer retain an auditable transition.
 - If snapshot delivery fails, the last complete R2 pointer remains public and
   the failed Job is retried. The API fallback remains available.
-- Locale delivery jobs fail independently. A localization failure cannot block
-  English publication or advance a partial Traditional Chinese pointer; readers
-  keep seeing the last complete localized snapshot (or an explicitly labelled
-  English fallback before the first localized delivery succeeds).
 

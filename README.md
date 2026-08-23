@@ -53,6 +53,43 @@ Production topology, configuration, deployment and rollback are documented in
 [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md). Destructive database-test isolation
 is documented separately in [`docs/TESTING.md`](./docs/TESTING.md).
 
+## Reference deployment and update cadence
+
+This repository contains the complete runtime. [`os.yhleo.com`](https://os.yhleo.com)
+is the maintainer's reference deployment and product showcase; it is not a
+required service or a hosted backend for other installations.
+
+The reference deployment runs one Cloudflare batch every four hours. A batch
+may ingest new source data, update derived observations, reconcile freshness,
+and deliver a new immutable Edition, but it does **not** manufacture an Edition
+when verified meaning has not changed. Existing signals keep their original
+timestamps until their freshness policy demotes or retires them.
+
+Self-hosters control frequency at two layers:
+
+1. `infra/cloudflare/wrangler.jsonc` sets the outer UTC Cron that starts the
+   one-shot Container.
+2. `infra/registries/job-schedule-registry.yaml` sets each job's cadence in
+   seconds. Rules, research, publication and retention can therefore run at
+   different rates.
+
+Common outer Cron choices are:
+
+| Profile | Wrangler Cron | Typical use |
+|---|---|---|
+| Hourly | `0 * * * *` | Higher-freshness public monitor |
+| Every 4 hours (default) | `0 */4 * * *` | Low-cost reference deployment |
+| Every 12 hours | `0 */12 * * *` | Small personal installation |
+| Daily | `0 0 * * *` | Demonstration or archival use |
+
+If the outer Cron is slower than a registry cadence, it becomes the effective
+global limit; missed hourly buckets are not replayed. To make the declared job
+cadences match reality, update the corresponding `cadence_seconds` values as
+well (`3600`, `14400`, `43200`, or `86400`). The outer Cron should run at least
+as often as the shortest cadence you expect to preserve. See
+[`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md#scheduling-and-inactivity) for the
+full schedule and cost trade-offs.
+
 ## Registries
 
 The YAML registries are the runtime baseline — production code must not infer

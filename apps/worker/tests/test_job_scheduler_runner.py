@@ -96,11 +96,11 @@ def test_schedule_revision_replays_only_the_changed_contract() -> None:
     assert queue.enqueued[0]["payload"]["candidate_version"] == "os-021.2"
 
 
-def test_hourly_boundary_leaves_neon_quiet_window() -> None:
+def test_four_hour_boundary_leaves_neon_quiet_window() -> None:
     registry = Registry.load()
     schedules = registry.job_schedules()
-    # One-shot execution just after the top of the hour leaves almost a full
-    # hour for both the Worker and Neon compute to remain inactive.
+    # One-shot execution just after a production boundary leaves almost four
+    # hours for both the Worker and Neon compute to remain inactive.
     now = datetime(2026, 8, 8, 12, 0, 1, tzinfo=UTC)
     next_due = min(next_schedule_boundary(schedule, now) for schedule in schedules)
     assert (next_due - now).total_seconds() > 5 * 60
@@ -136,7 +136,7 @@ def test_retention_schedules_report_then_run_bounded_purge() -> None:
         "policy_version": "2.0.0",
     }
     assert purge.job_type == "retention.purge_raw"
-    assert purge.cadence_seconds == 3600
+    assert purge.cadence_seconds == 14400
     assert purge.phase_offset_seconds > report.phase_offset_seconds
     assert purge.payload == {
         "mode": "active",

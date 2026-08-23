@@ -44,8 +44,8 @@ atomic rolling-page compile when meaning changed
   receive placement priority; carried items remain subject to normal freshness
   and capacity rules.
 - Freshness reconciliation publishes only when an item ages, is demoted, is
-  retired, or the qualified public Research screening set changes. An hourly
-  check must not manufacture hourly Edition snapshots.
+  retired, or the qualified public Research screening set changes. A scheduled
+  check must not manufacture Edition snapshots without a meaningful transition.
 - If any handler or compiler fails, the current Edition pointer does not move.
 
 ## Scale-to-zero runtime mode
@@ -55,9 +55,9 @@ The production process is schedule-driven, not empty-queue polling:
 1. enqueue every schedule due in the current deterministic bucket;
 2. drain `source`, `analysis`, `agent`, and `publication` queues;
 3. exit after the batch;
-4. let the platform invoke the next hourly occurrence.
+4. let the platform invoke the next four-hour occurrence.
 
-The shortest cadence is one hour. After a normal batch finishes this leaves a
+The reference deployment's shortest cadence is four hours. After a normal batch finishes this leaves a
 large quiet window for the Worker to scale to zero and for the configured Neon
 computes to suspend after five minutes. The platform occurrence timestamp is
 passed into the Worker so delayed and duplicate Cron delivery retains stable
@@ -71,17 +71,17 @@ The authoritative values live in
 
 | Work | Cadence | Public effect |
 |---|---:|---|
-| Polymarket source + observations | hourly | none until editorial batch |
-| Expectations editorial batch | hourly | verified Section refresh |
+| Polymarket source + observations | 4 hours | none until editorial batch |
+| Expectations editorial batch | 4 hours | verified Section refresh |
 | Federal Register source discovery | 4 hours | none until editorial batch |
 | Rules editorial batch | 4 hours | verified Section refresh |
 | ClinicalTrials discovery | 12 hours | shadow inputs only |
 | OpenAlex discovery | daily | shadow inputs only |
 | Research candidate + investigation | daily | shadow ledger only |
-| Freshness reconciliation | hourly | only on age/retirement transition |
-| R2 publication snapshot delivery | hourly | only advances after a complete snapshot |
+| Freshness reconciliation | 4 hours | only on age/retirement transition |
+| R2 publication snapshot delivery | 4 hours | only advances after a complete snapshot |
 
-The hourly Polymarket batch discovers active event envelopes rather than a
+The four-hour Polymarket batch discovers active event envelopes rather than a
 fixture or a single global market page. It monitors up to 500 activity-ranked
 markets with a per-event cap, backfills up to seven days of hourly CLOB price
 history for newly monitored markets, and evaluates two publication tiers:
@@ -110,7 +110,7 @@ mappings, while unattributed records remain internal-only.
 ## Deployment modes
 
 - `once` (production): enqueue the platform occurrence buckets, drain in
-  dependency order, and exit; suitable for an hourly platform Cron invocation.
+  dependency order, and exit; suitable for a platform Cron invocation.
 - `scheduled` (local/alternative): one database-silent long-running process.
 - `poll`: dedicated always-on queue consumer; deliberately opt-in and not the
   Public Beta default because it prevents database inactivity.
