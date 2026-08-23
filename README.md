@@ -272,3 +272,13 @@ On Windows, run the guarded test entry point from any directory:
 
 The local configuration targets the isolated Neon `test` branch. CI uses its
 own ephemeral PostgreSQL service. See [`docs/TESTING.md`](./docs/TESTING.md).
+
+## Contributing and license
+
+Contributions are welcome; see [`CONTRIBUTING.md`](./CONTRIBUTING.md). Report
+security issues privately according to [`SECURITY.md`](./SECURITY.md).
+
+Open Signal is licensed under the
+[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0). See
+[`LICENSE`](./LICENSE). The pre-publication security review and open-source
+operating model are recorded in [`docs/OPEN_SOURCE.md`](./docs/OPEN_SOURCE.md).
