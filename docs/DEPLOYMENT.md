@@ -7,7 +7,7 @@ Neon for the system of record.
 
 ```mermaid
 flowchart LR
-  cron["Cloudflare Cron\nevery 4 hours"] --> scheduler["Scheduler Worker"]
+  cron["Cloudflare Cron\nevery 12 hours"] --> scheduler["Scheduler Worker"]
   scheduler --> batch["One-shot Python Container"]
   batch --> neon[("Neon production")]
   batch --> r2[("R2 publication snapshots")]
@@ -34,7 +34,7 @@ first; the FastAPI service is the long-tail and operations fallback.
 | Read-only API | `https://open-signal-api.vercel.app` |
 | R2 bucket | `open-signal-publications` (APAC) |
 | R2 beta read origin | `https://pub-663344cb96044648a00527ba459d1a03.r2.dev` |
-| Batch | Cloudflare Worker `open-signal-scheduler`, four-hour Cron |
+| Batch | Cloudflare Worker `open-signal-scheduler`, twelve-hour Cron |
 | Database | Neon project `open-signal`, `production` branch |
 | Destructive tests | Neon `test` branch only; see `docs/TESTING.md` |
 
@@ -99,7 +99,15 @@ runtime R2 credentials above.
 
 ## Scheduling and inactivity
 
-The reference deployment invokes the scheduler at `0 */4 * * *` (UTC). The
+The reference deployment uses two batches per day (00:00 and 12:00 UTC;
+08:00 and 20:00 in Singapore). This reduces main-pipeline starts by two thirds
+compared with the previous four-hour cadence. It is intended to lower database
+compute consumption; it is not a guarantee of 2–3 CU-hours per day. Batch
+duration, autoscaling, other database clients, and daily research work also
+affect usage. Compare several complete days of actual consumption after a
+cadence change. Do not add health-check polling that wakes the database.
+
+The reference deployment invokes the scheduler at `0 */12 * * *` (UTC). The
 platform occurrence time is passed into the Python command, which gives every
 registry schedule a stable idempotency bucket even after a delayed or duplicate
 invocation.
@@ -111,13 +119,13 @@ different editorial cadences:
 
 | Work | Cadence |
 |---|---:|
-| Expectations / Polymarket | every 4 hours |
-| Rules / Federal Register | every 4 hours |
-| ClinicalTrials | every 12 hours |
+| Expectations / Polymarket | every 12 hours |
+| Rules / Federal Register | every 12 hours |
+| ClinicalTrials | daily |
 | Research / OpenAlex | daily |
-| Freshness retirement check | every 4 hours |
-| English snapshot delivery | every 4 hours |
-| Raw-payload TTL purge | every 4 hours, at most 1,000 rows |
+| Freshness retirement check | every 12 hours |
+| English snapshot delivery | every 12 hours |
+| Raw-payload TTL purge | every 12 hours, at most 1,000 rows |
 
 There are two independent scheduling layers. The Wrangler Cron is the outer
 wake-up ceiling; `infra/registries/job-schedule-registry.yaml` is the
@@ -132,8 +140,8 @@ cadence:
 | Profile | `triggers.crons` | Matching shortest `cadence_seconds` |
 |---|---|---:|
 | Hourly | `0 * * * *` | `3600` |
-| Every 4 hours (reference default) | `0 */4 * * *` | `14400` |
-| Every 12 hours | `0 */12 * * *` | `43200` |
+| Every 4 hours | `0 */4 * * *` | `14400` |
+| Every 12 hours (reference default) | `0 */12 * * *` | `43200` |
 | Daily | `0 0 * * *` | `86400` |
 
 Keep slower source-specific jobs at their existing cadence unless you

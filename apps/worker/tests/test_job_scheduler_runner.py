@@ -96,14 +96,28 @@ def test_schedule_revision_replays_only_the_changed_contract() -> None:
     assert queue.enqueued[0]["payload"]["candidate_version"] == "os-021.2"
 
 
-def test_four_hour_boundary_leaves_neon_quiet_window() -> None:
+def test_twelve_hour_boundary_leaves_neon_quiet_window() -> None:
     registry = Registry.load()
     schedules = registry.job_schedules()
-    # One-shot execution just after a production boundary leaves almost four
-    # hours for both the Worker and Neon compute to remain inactive.
+    # Internal offsets must not cause immediate retry polling. Actual one-shot
+    # launches are limited to twice daily by the outer Cloudflare Cron.
     now = datetime(2026, 8, 8, 12, 0, 1, tzinfo=UTC)
     next_due = min(next_schedule_boundary(schedule, now) for schedule in schedules)
     assert (next_due - now).total_seconds() > 5 * 60
+
+
+def test_reference_cadence_has_two_fast_buckets_and_one_research_bucket_daily() -> None:
+    scheduler = JobScheduler(FakeQueue())
+    occurrences = defaultdict(set)
+    for hour in (0, 12):
+        for job in scheduler.enqueue_due(datetime(2026, 9, 4, hour, tzinfo=UTC)):
+            occurrences[job.schedule_id].add(job.idempotency_key)
+    assert len(occurrences["expectations-source-refresh"]) == 2
+    assert len(occurrences["research-clinicaltrials-refresh"]) == 1
+    assert len(occurrences["research-openalex-refresh"]) == 1
+    # A delayed launch schedules one current occurrence, not missed batches.
+    delayed = scheduler.enqueue_due(datetime(2026, 9, 6, 12, tzinfo=UTC))
+    assert len(delayed) == len(scheduler.schedules)
 
 
 def test_research_schedule_revision_matches_candidate_contract() -> None:
@@ -136,7 +150,7 @@ def test_retention_schedules_report_then_run_bounded_purge() -> None:
         "policy_version": "2.0.0",
     }
     assert purge.job_type == "retention.purge_raw"
-    assert purge.cadence_seconds == 14400
+    assert purge.cadence_seconds == 43200
     assert purge.phase_offset_seconds > report.phase_offset_seconds
     assert purge.payload == {
         "mode": "active",
