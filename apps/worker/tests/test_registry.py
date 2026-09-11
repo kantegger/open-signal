@@ -28,7 +28,7 @@ def test_load_counts(registry: Registry) -> None:
     assert len(registry.freshness_policies()) == 7
     assert registry.freshness_policy_version == "1.0.0"
     assert len(registry.job_schedules()) == 13
-    assert registry.job_schedule_version == "2.5.0"
+    assert registry.job_schedule_version == "2.6.0"
 
 
 def test_validation_passes(registry: Registry) -> None:
@@ -102,11 +102,11 @@ def test_job_schedules_preserve_section_boundaries(registry: Registry) -> None:
         "publication-freshness-reconcile"
     ).priority
     assert registry.job_schedule("publication-snapshot-delivery-zh-hant") is None
-    assert min(schedule.cadence_seconds for schedule in schedules) == 43200
+    assert min(schedule.cadence_seconds for schedule in schedules) == 86400
 
 
-def test_reference_deployment_uses_twelve_hour_fast_path(registry: Registry) -> None:
-    twelve_hour_ids = {
+def test_reference_deployment_uses_daily_fast_path(registry: Registry) -> None:
+    daily_ids = {
         "expectations-source-refresh",
         "expectations-observation-refresh",
         "expectations-editorial-refresh",
@@ -114,15 +114,16 @@ def test_reference_deployment_uses_twelve_hour_fast_path(registry: Registry) -> 
         "rules-editorial-refresh",
         "publication-freshness-reconcile",
         "publication-snapshot-delivery",
-        "raw-retention-purge",
     }
     by_id = {schedule.id: schedule for schedule in registry.job_schedules()}
 
-    assert all(by_id[schedule_id].cadence_seconds == 43200 for schedule_id in twelve_hour_ids)
-    assert by_id["research-clinicaltrials-refresh"].cadence_seconds == 86400
-    assert by_id["research-openalex-refresh"].cadence_seconds == 86400
-    assert by_id["research-candidate-refresh"].cadence_seconds == 86400
-    assert by_id["research-shadow-investigation"].cadence_seconds == 86400
+    assert all(by_id[schedule_id].cadence_seconds == 86400 for schedule_id in daily_ids)
+    assert by_id["research-clinicaltrials-refresh"].cadence_seconds == 259200
+    assert by_id["research-openalex-refresh"].cadence_seconds == 259200
+    assert by_id["research-candidate-refresh"].cadence_seconds == 259200
+    assert by_id["research-shadow-investigation"].cadence_seconds == 259200
+    assert by_id["raw-retention-report"].cadence_seconds == 604800
+    assert by_id["raw-retention-purge"].cadence_seconds == 604800
 
 
 # ---------------------------------------------------------------- rights

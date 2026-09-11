@@ -23,15 +23,15 @@ Runtime modes:
 Use `--role source|analysis|agent|publication` only when splitting the initial
 single process into role-specific workers.
 
-The hosted demo invokes `once` every four hours. The platform passes the
+The hosted demo invokes `once` once per day. The platform passes the
 scheduled occurrence through `OPEN_SIGNAL_SCHEDULED_AT` so a delayed or
 duplicate invocation still uses the intended deterministic Job buckets.
 Longer desk cadences remain in the machine-readable schedule registry and are
 idempotently skipped between due boundaries. Self-hosters can choose a different
 outer Cron and matching registry cadences; see the root README.
 
-The retention report runs once per day and remains read-only. A separate
-four-hour schedule clears at most 1,000 expired, superseded raw payload bodies per
+The retention report runs once per week and remains read-only. A separate
+weekly schedule clears at most 1,000 expired, superseded raw payload bodies per
 run. It always preserves the newest representation for every external object,
 the raw row identity and content hash, normalized observations, and sealed
 public evidence. Run the read-only report on demand with:

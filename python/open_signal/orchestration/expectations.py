@@ -17,6 +17,7 @@ from open_signal.composer.edition_writer import EditionWriter
 from open_signal.db.models import source_markets
 from open_signal.derived.candidates import CandidateDetector
 from open_signal.derived.expectation_selection import (
+    EDITORIAL_FACT_LIMIT,
     ExpectationFact,
     eligible_expectation_facts,
     load_expectation_facts,
@@ -223,9 +224,13 @@ class ExpectationsSectionService:
         now = datetime.now(timezone.utc)
         with self.engine.connect() as conn:
             facts = eligible_expectation_facts(
-                load_expectation_facts(conn, as_of=now),
+                load_expectation_facts(
+                    conn,
+                    as_of=now,
+                    limit=EDITORIAL_FACT_LIMIT,
+                ),
                 as_of=now,
-            )[:500]
+            )
 
         detector = CandidateDetector(self.engine, version="production-1.0.0")
         detected: list[dict[str, Any]] = []

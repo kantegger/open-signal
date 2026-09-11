@@ -96,25 +96,30 @@ def test_schedule_revision_replays_only_the_changed_contract() -> None:
     assert queue.enqueued[0]["payload"]["candidate_version"] == "os-021.2"
 
 
-def test_twelve_hour_boundary_leaves_neon_quiet_window() -> None:
+def test_daily_boundary_leaves_neon_quiet_window() -> None:
     registry = Registry.load()
     schedules = registry.job_schedules()
     # Internal offsets must not cause immediate retry polling. Actual one-shot
-    # launches are limited to twice daily by the outer Cloudflare Cron.
-    now = datetime(2026, 8, 8, 12, 0, 1, tzinfo=UTC)
+    # launches are limited to once daily by the outer Cloudflare Cron.
+    now = datetime(2026, 8, 8, 0, 0, 1, tzinfo=UTC)
     next_due = min(next_schedule_boundary(schedule, now) for schedule in schedules)
     assert (next_due - now).total_seconds() > 5 * 60
 
 
-def test_reference_cadence_has_two_fast_buckets_and_one_research_bucket_daily() -> None:
+def test_reference_cadence_has_one_fast_bucket_and_three_day_research_bucket() -> None:
     scheduler = JobScheduler(FakeQueue())
     occurrences = defaultdict(set)
-    for hour in (0, 12):
-        for job in scheduler.enqueue_due(datetime(2026, 9, 4, hour, tzinfo=UTC)):
+    for timestamp in (
+        datetime(2026, 9, 4, 0, tzinfo=UTC),
+        datetime(2026, 9, 4, 12, tzinfo=UTC),
+        datetime(2026, 9, 6, 0, tzinfo=UTC),
+        datetime(2026, 9, 7, 0, tzinfo=UTC),
+    ):
+        for job in scheduler.enqueue_due(timestamp):
             occurrences[job.schedule_id].add(job.idempotency_key)
-    assert len(occurrences["expectations-source-refresh"]) == 2
-    assert len(occurrences["research-clinicaltrials-refresh"]) == 1
-    assert len(occurrences["research-openalex-refresh"]) == 1
+    assert len(occurrences["expectations-source-refresh"]) == 3
+    assert len(occurrences["research-clinicaltrials-refresh"]) == 2
+    assert len(occurrences["research-openalex-refresh"]) == 2
     # A delayed launch schedules one current occurrence, not missed batches.
     delayed = scheduler.enqueue_due(datetime(2026, 9, 6, 12, tzinfo=UTC))
     assert len(delayed) == len(scheduler.schedules)
@@ -144,13 +149,13 @@ def test_retention_schedules_report_then_run_bounded_purge() -> None:
     )
 
     assert report.job_type == "retention.report_raw"
-    assert report.cadence_seconds == 86400
+    assert report.cadence_seconds == 604800
     assert report.payload == {
         "mode": "report_only",
         "policy_version": "2.0.0",
     }
     assert purge.job_type == "retention.purge_raw"
-    assert purge.cadence_seconds == 43200
+    assert purge.cadence_seconds == 604800
     assert purge.phase_offset_seconds > report.phase_offset_seconds
     assert purge.payload == {
         "mode": "active",

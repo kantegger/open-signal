@@ -7,7 +7,7 @@ Neon for the system of record.
 
 ```mermaid
 flowchart LR
-  cron["Cloudflare Cron\nevery 12 hours"] --> scheduler["Scheduler Worker"]
+  cron["Cloudflare Cron\ndaily"] --> scheduler["Scheduler Worker"]
   scheduler --> batch["One-shot Python Container"]
   batch --> neon[("Neon production")]
   batch --> r2[("R2 publication snapshots")]
@@ -34,7 +34,7 @@ first; the FastAPI service is the long-tail and operations fallback.
 | Read-only API | `https://open-signal-api.vercel.app` |
 | R2 bucket | `open-signal-publications` (APAC) |
 | R2 beta read origin | `https://pub-663344cb96044648a00527ba459d1a03.r2.dev` |
-| Batch | Cloudflare Worker `open-signal-scheduler`, twelve-hour Cron |
+| Batch | Cloudflare Worker `open-signal-scheduler`, daily Cron |
 | Database | Neon project `open-signal`, `production` branch |
 | Destructive tests | Neon `test` branch only; see `docs/TESTING.md` |
 
@@ -99,15 +99,15 @@ runtime R2 credentials above.
 
 ## Scheduling and inactivity
 
-The reference deployment uses two batches per day (00:00 and 12:00 UTC;
-08:00 and 20:00 in Singapore). This reduces main-pipeline starts by two thirds
-compared with the previous four-hour cadence. It is intended to lower database
-compute consumption; it is not a guarantee of 2–3 CU-hours per day. Batch
-duration, autoscaling, other database clients, and daily research work also
-affect usage. Compare several complete days of actual consumption after a
-cadence change. Do not add health-check polling that wakes the database.
+The reference deployment uses one batch per day (00:00 UTC; 08:00 in
+Singapore). This halves main-pipeline starts compared with the previous
+twice-daily cadence. It is intended to lower database compute consumption; it
+is not a guarantee of 2–3 CU-hours per day. Batch duration, autoscaling, other
+database clients, and public API traffic also affect usage. Compare several
+complete days of actual consumption after a cadence change. Do not add
+health-check polling that wakes the database.
 
-The reference deployment invokes the scheduler at `0 */12 * * *` (UTC). The
+The reference deployment invokes the scheduler at `0 0 * * *` (UTC). The
 platform occurrence time is passed into the Python command, which gives every
 registry schedule a stable idempotency bucket even after a delayed or duplicate
 invocation.
@@ -119,20 +119,19 @@ different editorial cadences:
 
 | Work | Cadence |
 |---|---:|
-| Expectations / Polymarket | every 12 hours |
-| Rules / Federal Register | every 12 hours |
-| ClinicalTrials | daily |
-| Research / OpenAlex | daily |
-| Freshness retirement check | every 12 hours |
-| English snapshot delivery | every 12 hours |
-| Raw-payload TTL purge | every 12 hours, at most 1,000 rows |
+| Expectations / Polymarket | daily; 300 markets, 3-day history sample |
+| Rules / Federal Register | daily |
+| ClinicalTrials | every 3 days |
+| Research / OpenAlex | every 3 days, one page per topic |
+| Freshness retirement check | daily |
+| English snapshot delivery | daily |
+| Raw-payload TTL report + purge | weekly, at most 1,000 rows per purge |
 
 There are two independent scheduling layers. The Wrangler Cron is the outer
 wake-up ceiling; `infra/registries/job-schedule-registry.yaml` is the
 authoritative per-job cadence. The scheduler evaluates only the current bucket
 and does not replay every platform occurrence that was skipped. Consequently,
-a 12-hour outer Cron also makes nominal four-hour jobs run at most every 12
-hours.
+a daily outer Cron also makes faster nominal cadences run at most once per day.
 
 For a self-hosted installation, edit both layers when changing the intended
 cadence:
@@ -141,14 +140,18 @@ cadence:
 |---|---|---:|
 | Hourly | `0 * * * *` | `3600` |
 | Every 4 hours | `0 */4 * * *` | `14400` |
-| Every 12 hours (reference default) | `0 */12 * * *` | `43200` |
-| Daily | `0 0 * * *` | `86400` |
+| Daily (reference default) | `0 0 * * *` | `86400` |
+| Every 3 days | `0 0 */3 * *` | `259200` |
+| Weekly | `0 0 * * 0` | `604800` |
 
 Keep slower source-specific jobs at their existing cadence unless you
-intentionally want to change them. Lower frequency reduces Container starts,
-Neon wake-ups, source requests and agent opportunities, at the cost of an equal
-increase in worst-case discovery and publication delay. Evidence thresholds,
-freshness timestamps and immutable Edition semantics do not change.
+intentionally want to change them. The low-cost registry also gives expensive
+jobs one attempt per bucket: a transient failure is recorded and retried by
+the next bucket instead of immediately replaying a large database query. Lower
+frequency reduces Container starts, Neon wake-ups, source requests and agent
+opportunities, at the cost of an equal increase in worst-case discovery and
+publication delay. Evidence thresholds, freshness timestamps and immutable
+Edition semantics do not change.
 
 No schedule manufactures content. A Section keeps its last verified output
 until new verified meaning arrives or the freshness policy ages/demotes/retires

@@ -26,6 +26,10 @@ SELECTION_VERSION = "expectation-selection-1.1.0"
 BAD_QUALITY_FLAGS = {"stale", "sparse", "unavailable"}
 HARD_OBSERVATION_AGE = timedelta(hours=72)
 CURRENT_COHORT_TOLERANCE = timedelta(minutes=10)
+# The public/API explorer may request a larger inventory, but scheduled
+# editorial work should never materialize thousands of markets merely to pick
+# a few signal-worthy representatives.
+EDITORIAL_FACT_LIMIT = 500
 MIN_SCANNER_MOVE_PP = 0.5
 MIN_FEATURED_MOVE_PP = 3.0
 MIN_PUBLIC_VOLUME_24H = 5_000.0

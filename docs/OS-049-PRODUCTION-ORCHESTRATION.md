@@ -55,9 +55,9 @@ The production process is schedule-driven, not empty-queue polling:
 1. enqueue every schedule due in the current deterministic bucket;
 2. drain `source`, `analysis`, `agent`, and `publication` queues;
 3. exit after the batch;
-4. let the platform invoke the next four-hour occurrence.
+4. let the platform invoke the next daily occurrence.
 
-The reference deployment's shortest cadence is four hours. After a normal batch finishes this leaves a
+The reference deployment's shortest cadence is one day. After a normal batch finishes this leaves a
 large quiet window for the Worker to scale to zero and for the configured Neon
 computes to suspend after five minutes. The platform occurrence timestamp is
 passed into the Worker so delayed and duplicate Cron delivery retains stable
@@ -71,19 +71,19 @@ The authoritative values live in
 
 | Work | Cadence | Public effect |
 |---|---:|---|
-| Polymarket source + observations | 4 hours | none until editorial batch |
-| Expectations editorial batch | 4 hours | verified Section refresh |
-| Federal Register source discovery | 4 hours | none until editorial batch |
-| Rules editorial batch | 4 hours | verified Section refresh |
-| ClinicalTrials discovery | 12 hours | shadow inputs only |
-| OpenAlex discovery | daily | shadow inputs only |
-| Research candidate + investigation | daily | shadow ledger only |
-| Freshness reconciliation | 4 hours | only on age/retirement transition |
-| R2 publication snapshot delivery | 4 hours | only advances after a complete snapshot |
+| Polymarket source + observations | daily | none until editorial batch |
+| Expectations editorial batch | daily | verified Section refresh |
+| Federal Register source discovery | daily | none until editorial batch |
+| Rules editorial batch | daily | verified Section refresh |
+| ClinicalTrials discovery | every 3 days | shadow inputs only |
+| OpenAlex discovery | every 3 days | shadow inputs only |
+| Research candidate + investigation | every 3 days | shadow ledger only |
+| Freshness reconciliation | daily | only on age/retirement transition |
+| R2 publication snapshot delivery | daily | only advances after a complete snapshot |
 
-The four-hour Polymarket batch discovers active event envelopes rather than a
+The daily Polymarket batch discovers active event envelopes rather than a
 fixture or a single global market page. It monitors up to 500 activity-ranked
-markets with a per-event cap, backfills up to seven days of hourly CLOB price
+markets with a per-event cap, backfills up to three days of hourly CLOB price
 history for newly monitored markets, and evaluates two publication tiers:
 three Featured candidates and up to twelve compact Scanner candidates. These
 are bounded monitoring and layout budgets, not topic allowlists.

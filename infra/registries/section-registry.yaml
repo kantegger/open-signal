@@ -61,7 +61,7 @@ sections:
 
     minimum_evidence_level: "derived_verified"
     minimum_agent_maturity: "beta"
-    refresh_cadence: "twelve-hour-source / twelve-hour-observation / twelve-hour-editorial"
+    refresh_cadence: "daily-source / daily-observation / daily-editorial"
     daily_cost_budget_usd: 3.0
 
     repetition_policy:
@@ -143,7 +143,7 @@ sections:
 
     minimum_evidence_level: "authoritative_primary"
     minimum_agent_maturity: "beta"
-    refresh_cadence: "12h-source / 12h-editorial"
+    refresh_cadence: "daily-source / daily-editorial"
     daily_cost_budget_usd: 3.0
 
     repetition_policy:
@@ -222,7 +222,7 @@ sections:
 
     minimum_evidence_level: "multi_source_with_counterevidence"
     minimum_agent_maturity: "shadow"
-    refresh_cadence: "daily"
+    refresh_cadence: "three-day-source / three-day-screening"
     daily_cost_budget_usd: 8.0
 
     repetition_policy:

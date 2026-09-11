@@ -18,6 +18,7 @@ from typing import Any
 from sqlalchemy import text
 
 from open_signal.derived.expectation_selection import (
+    EDITORIAL_FACT_LIMIT,
     ExpectationFact,
     eligible_expectation_facts,
     load_expectation_facts,
@@ -41,7 +42,11 @@ class PublicationContextBuilder:
 
     def capture(self, conn: Any, *, captured_at: datetime) -> dict[str, Any]:
         captured_at = _utc(captured_at)
-        expectation_facts = load_expectation_facts(conn, as_of=captured_at)
+        expectation_facts = load_expectation_facts(
+            conn,
+            as_of=captured_at,
+            limit=EDITORIAL_FACT_LIMIT,
+        )
         claims, claim_total = self._claims(
             conn,
             captured_at=captured_at,
@@ -134,7 +139,7 @@ class PublicationContextBuilder:
                 LIMIT :limit
                 """
             ),
-            {"captured_at": captured_at, "limit": 5000},
+            {"captured_at": captured_at, "limit": 500},
         ).fetchall()
         visible_rows = rows
         if expectation_facts is not None:
@@ -203,7 +208,11 @@ class PublicationContextBuilder:
         facts: list[ExpectationFact] | None = None,
     ) -> list[dict[str, Any]]:
         if facts is None:
-            facts = load_expectation_facts(conn, as_of=captured_at)
+            facts = load_expectation_facts(
+                conn,
+                as_of=captured_at,
+                limit=EDITORIAL_FACT_LIMIT,
+            )
         selected = representative_facts(
             facts,
             as_of=captured_at,

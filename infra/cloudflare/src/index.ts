@@ -35,7 +35,7 @@ export class OpenSignalBatch extends Container<Env> {
 
 export default {
   async fetch(): Promise<Response> {
-    return Response.json({ service: "open-signal-scheduler", cadence: "every_12_hours" });
+    return Response.json({ service: "open-signal-scheduler", cadence: "daily" });
   },
 
   async scheduled(controller, env): Promise<void> {

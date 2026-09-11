@@ -1,34 +1,36 @@
-version: "2.5.0"
+version: "2.6.0"
 
-# The production demo is launched by a twelve-hour platform Cron. Every occurrence is
-# still bucketed independently so slower desks run only on their own cadence.
-# The one-shot worker exits after the batch, leaving Neon idle between runs.
+# The reference deployment is launched by a daily platform Cron. Every occurrence
+# is still bucketed independently so slower desks run only on their own cadence.
+# The one-shot worker exits after the batch, leaving Neon idle between runs. A
+# failed expensive job is dead-lettered after one attempt; the next scheduled
+# bucket is the retry boundary and avoids replaying a costly query immediately.
 schedules:
   - id: "expectations-source-refresh"
     job_type: "source.discover"
     queue_name: "source"
-    cadence_seconds: 43200
+    cadence_seconds: 86400
     phase_offset_seconds: 0
     priority: 10
-    maximum_attempts: 3
+    maximum_attempts: 1
     payload:
       source_slug: "polymarket-gamma"
       section_id: "expectations-moved"
-      max_pages: 3
-      max_markets: 500
-      markets_per_event: 12
+      max_pages: 2
+      max_markets: 300
+      markets_per_event: 8
 
   - id: "rules-source-refresh"
     job_type: "source.discover"
     queue_name: "source"
-    cadence_seconds: 43200
+    cadence_seconds: 86400
     phase_offset_seconds: 0
     priority: 20
-    maximum_attempts: 3
+    maximum_attempts: 1
     payload:
       source_slug: "federal-register"
       section_id: "rules-moved"
-      max_pages: 3
+      max_pages: 2
       queries:
         - "artificial intelligence"
         - "cryptocurrency"
@@ -36,36 +38,36 @@ schedules:
   - id: "expectations-observation-refresh"
     job_type: "canonical.normalize"
     queue_name: "analysis"
-    cadence_seconds: 43200
+    cadence_seconds: 86400
     phase_offset_seconds: 0
     priority: 15
-    maximum_attempts: 3
+    maximum_attempts: 1
     payload:
       section_id: "expectations-moved"
       monitor_window_hours: 2
       history_backfill: true
-      history_market_limit: 200
-      history_days: 7
+      history_market_limit: 75
+      history_days: 3
 
   - id: "research-openalex-refresh"
     job_type: "source.discover"
     queue_name: "source"
-    cadence_seconds: 86400
+    cadence_seconds: 259200
     phase_offset_seconds: 0
     priority: 30
-    maximum_attempts: 3
+    maximum_attempts: 1
     payload:
       source_slug: "openalex"
       section_id: "research-frontier"
-      max_pages: 3
+      max_pages: 1
 
   - id: "research-clinicaltrials-refresh"
     job_type: "source.discover"
     queue_name: "source"
-    cadence_seconds: 86400
+    cadence_seconds: 259200
     phase_offset_seconds: 0
     priority: 30
-    maximum_attempts: 3
+    maximum_attempts: 1
     payload:
       source_slug: "clinicaltrials-gov"
       section_id: "research-frontier"
@@ -73,10 +75,10 @@ schedules:
   - id: "expectations-editorial-refresh"
     job_type: "derived.calculate_expectation"
     queue_name: "analysis"
-    cadence_seconds: 43200
+    cadence_seconds: 86400
     phase_offset_seconds: 0
     priority: 40
-    maximum_attempts: 3
+    maximum_attempts: 1
     payload:
       section_id: "expectations-moved"
       maximum_featured_claims: 3
@@ -85,10 +87,10 @@ schedules:
   - id: "rules-editorial-refresh"
     job_type: "derived.detect_rule_transition"
     queue_name: "analysis"
-    cadence_seconds: 43200
+    cadence_seconds: 86400
     phase_offset_seconds: 0
     priority: 40
-    maximum_attempts: 3
+    maximum_attempts: 1
     payload:
       section_id: "rules-moved"
       maximum_claims: 3
@@ -97,10 +99,10 @@ schedules:
     job_type: "derived.generate_research_candidates"
     queue_name: "analysis"
     revision: "os-021.3"
-    cadence_seconds: 86400
+    cadence_seconds: 259200
     phase_offset_seconds: 0
     priority: 50
-    maximum_attempts: 3
+    maximum_attempts: 1
     payload:
       section_id: "research-frontier"
       candidate_version: "os-021.3"
@@ -108,10 +110,10 @@ schedules:
   - id: "research-shadow-investigation"
     job_type: "agent.investigate"
     queue_name: "agent"
-    cadence_seconds: 86400
+    cadence_seconds: 259200
     phase_offset_seconds: 0
     priority: 60
-    maximum_attempts: 2
+    maximum_attempts: 1
     payload:
       section_id: "research-frontier"
       maximum_candidates: 5
@@ -119,20 +121,20 @@ schedules:
   - id: "publication-freshness-reconcile"
     job_type: "composer.generate_edition"
     queue_name: "publication"
-    cadence_seconds: 43200
+    cadence_seconds: 86400
     phase_offset_seconds: 0
     priority: 70
-    maximum_attempts: 3
+    maximum_attempts: 1
     payload:
       reason: "freshness_reconcile"
 
   - id: "publication-snapshot-delivery"
     job_type: "publication.deliver_snapshot"
     queue_name: "publication"
-    cadence_seconds: 43200
+    cadence_seconds: 86400
     phase_offset_seconds: 0
     priority: 80
-    maximum_attempts: 3
+    maximum_attempts: 1
     payload:
       reason: "snapshot_delivery"
       locale: "en"
@@ -141,7 +143,7 @@ schedules:
   - id: "raw-retention-report"
     job_type: "retention.report_raw"
     queue_name: "analysis"
-    cadence_seconds: 86400
+    cadence_seconds: 604800
     phase_offset_seconds: 1800
     priority: 95
     maximum_attempts: 1
@@ -155,10 +157,10 @@ schedules:
   - id: "raw-retention-purge"
     job_type: "retention.purge_raw"
     queue_name: "analysis"
-    cadence_seconds: 43200
+    cadence_seconds: 604800
     phase_offset_seconds: 2400
     priority: 96
-    maximum_attempts: 3
+    maximum_attempts: 1
     payload:
       mode: "active"
       policy_version: "2.0.0"

@@ -35,7 +35,10 @@ SLOT_ORDER = ("lead", "secondary", "live_feed", "digest", "main", "utility", "ar
 EDITORIAL_SLOTS = frozenset({"lead", "secondary", "main"})
 CONTINUITY_LOOKBACK_HOURS = 720
 CONTINUITY_SECONDARY_TARGET = 3
-CONTINUITY_QUERY_LIMIT = 5000
+# Continuity only needs enough recent render rows to fill a handful of slots;
+# reading the entire 10-day editorial history makes every publication compile
+# touch far more rows than it can display.
+CONTINUITY_QUERY_LIMIT = 500
 CONTINUITY_PRIORITY_BASE = 2000
 
 
