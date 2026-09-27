@@ -55,9 +55,9 @@ The production process is schedule-driven, not empty-queue polling:
 1. enqueue every schedule due in the current deterministic bucket;
 2. drain `source`, `analysis`, `agent`, and `publication` queues;
 3. exit after the batch;
-4. let the platform invoke the next daily occurrence.
+4. let the platform invoke the next three-day occurrence.
 
-The reference deployment's shortest cadence is one day. After a normal batch finishes this leaves a
+The reference deployment's shortest cadence is three days. After a normal batch finishes this leaves a
 large quiet window for the Worker to scale to zero and for the configured Neon
 computes to suspend after five minutes. The platform occurrence timestamp is
 passed into the Worker so delayed and duplicate Cron delivery retains stable
@@ -71,18 +71,18 @@ The authoritative values live in
 
 | Work | Cadence | Public effect |
 |---|---:|---|
-| Polymarket source + observations | daily | none until editorial batch |
-| Expectations editorial batch | daily | verified Section refresh |
-| Federal Register source discovery | daily | none until editorial batch |
-| Rules editorial batch | daily | verified Section refresh |
+| Polymarket source + observations | every 3 days | none until editorial batch |
+| Expectations editorial batch | every 3 days | verified Section refresh |
+| Federal Register source discovery | every 3 days | none until editorial batch |
+| Rules editorial batch | every 3 days | verified Section refresh |
 | ClinicalTrials discovery | every 3 days | shadow inputs only |
 | OpenAlex discovery | every 3 days | shadow inputs only |
 | Research candidate + investigation | every 3 days | shadow ledger only |
-| Freshness reconciliation | daily | only on age/retirement transition |
-| R2 publication snapshot delivery | daily | only advances after a complete snapshot |
+| Freshness reconciliation | every 3 days | only on age/retirement transition |
+| R2 publication snapshot delivery | every 3 days | only advances after a complete snapshot |
 
-The daily Polymarket batch discovers active event envelopes rather than a
-fixture or a single global market page. It monitors up to 500 activity-ranked
+The three-day Polymarket batch discovers active event envelopes rather than a
+fixture or a single global market page. It monitors up to 300 activity-ranked
 markets with a per-event cap, backfills up to three days of hourly CLOB price
 history for newly monitored markets, and evaluates two publication tiers:
 three Featured candidates and up to twelve compact Scanner candidates. These

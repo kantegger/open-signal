@@ -59,7 +59,7 @@ This repository contains the complete runtime. [`os.yhleo.com`](https://os.yhleo
 is the maintainer's reference deployment and product showcase; it is not a
 required service or a hosted backend for other installations.
 
-The reference deployment runs one Cloudflare batch per day. A batch
+The reference deployment runs one Cloudflare batch every three days. A batch
 may ingest new source data, update derived observations, reconcile freshness,
 and deliver a new immutable Edition, but it does **not** manufacture an Edition
 when verified meaning has not changed. Existing signals keep their original
@@ -79,8 +79,8 @@ Common outer Cron choices are:
 |---|---|---|
 | Hourly | `0 * * * *` | Higher-freshness public monitor |
 | Every 4 hours | `0 */4 * * *` | More frequent monitoring |
-| Daily (default) | `0 0 * * *` | Low-cost reference deployment |
-| Every 3 days | `0 0 */3 * *` | Demonstration or archival use |
+| Every 3 days (default) | `0 0 */3 * *` | Low-cost reference deployment |
+| Weekly | `0 0 * * 0` | Demonstration or archival use |
 
 If the outer Cron is slower than a registry cadence, it becomes the effective
 global limit; missed hourly buckets are not replayed. To make the declared job

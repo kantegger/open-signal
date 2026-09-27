@@ -1,6 +1,6 @@
-version: "2.6.0"
+version: "2.7.0"
 
-# The reference deployment is launched by a daily platform Cron. Every occurrence
+# The reference deployment is launched by a three-day platform Cron. Every occurrence
 # is still bucketed independently so slower desks run only on their own cadence.
 # The one-shot worker exits after the batch, leaving Neon idle between runs. A
 # failed expensive job is dead-lettered after one attempt; the next scheduled
@@ -9,7 +9,7 @@ schedules:
   - id: "expectations-source-refresh"
     job_type: "source.discover"
     queue_name: "source"
-    cadence_seconds: 86400
+    cadence_seconds: 259200
     phase_offset_seconds: 0
     priority: 10
     maximum_attempts: 1
@@ -23,7 +23,7 @@ schedules:
   - id: "rules-source-refresh"
     job_type: "source.discover"
     queue_name: "source"
-    cadence_seconds: 86400
+    cadence_seconds: 259200
     phase_offset_seconds: 0
     priority: 20
     maximum_attempts: 1
@@ -38,7 +38,7 @@ schedules:
   - id: "expectations-observation-refresh"
     job_type: "canonical.normalize"
     queue_name: "analysis"
-    cadence_seconds: 86400
+    cadence_seconds: 259200
     phase_offset_seconds: 0
     priority: 15
     maximum_attempts: 1
@@ -75,7 +75,7 @@ schedules:
   - id: "expectations-editorial-refresh"
     job_type: "derived.calculate_expectation"
     queue_name: "analysis"
-    cadence_seconds: 86400
+    cadence_seconds: 259200
     phase_offset_seconds: 0
     priority: 40
     maximum_attempts: 1
@@ -87,7 +87,7 @@ schedules:
   - id: "rules-editorial-refresh"
     job_type: "derived.detect_rule_transition"
     queue_name: "analysis"
-    cadence_seconds: 86400
+    cadence_seconds: 259200
     phase_offset_seconds: 0
     priority: 40
     maximum_attempts: 1
@@ -121,7 +121,7 @@ schedules:
   - id: "publication-freshness-reconcile"
     job_type: "composer.generate_edition"
     queue_name: "publication"
-    cadence_seconds: 86400
+    cadence_seconds: 259200
     phase_offset_seconds: 0
     priority: 70
     maximum_attempts: 1
@@ -131,7 +131,7 @@ schedules:
   - id: "publication-snapshot-delivery"
     job_type: "publication.deliver_snapshot"
     queue_name: "publication"
-    cadence_seconds: 86400
+    cadence_seconds: 259200
     phase_offset_seconds: 0
     priority: 80
     maximum_attempts: 1

@@ -97,7 +97,7 @@ The machine-readable report policy starts with:
 `retention.report_raw` is scheduled weekly and its handler accepts only
 `mode=report_only`. Its PostgreSQL transaction is explicitly read-only. The
 standalone `python scripts/report_raw_retention.py` command has the same
-boundary. `retention.purge_raw` reuses the existing daily scheduler with a
+boundary. `retention.purge_raw` reuses the existing three-day scheduler with a
 phase offset and processes at most 1,000 rows per run; it does not increase the
 Cloudflare Cron frequency or add a separate Neon wake-up.
 

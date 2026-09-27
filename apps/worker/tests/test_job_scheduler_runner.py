@@ -96,28 +96,27 @@ def test_schedule_revision_replays_only_the_changed_contract() -> None:
     assert queue.enqueued[0]["payload"]["candidate_version"] == "os-021.2"
 
 
-def test_daily_boundary_leaves_neon_quiet_window() -> None:
+def test_three_day_boundary_leaves_neon_quiet_window() -> None:
     registry = Registry.load()
     schedules = registry.job_schedules()
     # Internal offsets must not cause immediate retry polling. Actual one-shot
-    # launches are limited to once daily by the outer Cloudflare Cron.
+    # launches are limited to once every three days by the outer Cloudflare Cron.
     now = datetime(2026, 8, 8, 0, 0, 1, tzinfo=UTC)
     next_due = min(next_schedule_boundary(schedule, now) for schedule in schedules)
     assert (next_due - now).total_seconds() > 5 * 60
 
 
-def test_reference_cadence_has_one_fast_bucket_and_three_day_research_bucket() -> None:
+def test_reference_cadence_has_one_three_day_bucket_and_weekly_retention() -> None:
     scheduler = JobScheduler(FakeQueue())
     occurrences = defaultdict(set)
     for timestamp in (
         datetime(2026, 9, 4, 0, tzinfo=UTC),
-        datetime(2026, 9, 4, 12, tzinfo=UTC),
         datetime(2026, 9, 6, 0, tzinfo=UTC),
         datetime(2026, 9, 7, 0, tzinfo=UTC),
     ):
         for job in scheduler.enqueue_due(timestamp):
             occurrences[job.schedule_id].add(job.idempotency_key)
-    assert len(occurrences["expectations-source-refresh"]) == 3
+    assert len(occurrences["expectations-source-refresh"]) == 2
     assert len(occurrences["research-clinicaltrials-refresh"]) == 2
     assert len(occurrences["research-openalex-refresh"]) == 2
     # A delayed launch schedules one current occurrence, not missed batches.
