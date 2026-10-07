@@ -36,3 +36,6 @@ Thumbs.db
 reasonix.toml
 .vercel/
 .open-signal-artifacts/
+# Project-local agent connections and Neon workspace linkage
+.codex/config.toml
+.neon

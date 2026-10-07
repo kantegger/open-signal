@@ -1,5 +1,11 @@
 # Open Signal
 
+> **Self-hosted only.** The maintainer-operated public demo was discontinued on
+> October 7, 2026. We no longer host a live website, API, or scheduled data
+> pipeline. The source code remains available under Apache-2.0 so you can deploy
+> and operate your own installation. See [Quick start](#quick-start) and the
+> [self-hosting deployment guide](./docs/DEPLOYMENT.md).
+
 A live front page of public signals — an AI-native, zero-editor runtime that
 ingests public data, investigates changes with agents, verifies claims and
 recomposes a rolling front page when verified meaning changes. Long-term
@@ -53,13 +59,15 @@ Production topology, configuration, deployment and rollback are documented in
 [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md). Destructive database-test isolation
 is documented separately in [`docs/TESTING.md`](./docs/TESTING.md).
 
-## Reference deployment and update cadence
+## Self-hosting and update cadence
 
-This repository contains the complete runtime. [`os.yhleo.com`](https://os.yhleo.com)
-is the maintainer's reference deployment and product showcase; it is not a
-required service or a hosted backend for other installations.
+This repository contains the complete runtime. The former `os.yhleo.com` demo
+and its API are offline. There is no maintainer-hosted backend or shared data
+service for other installations. Provision your own PostgreSQL database,
+publication storage, API, website, and scheduler as described in the deployment
+guide. Existing demo data and credentials are not supplied to self-hosters.
 
-The reference deployment runs one Cloudflare batch every three days. A batch
+The included example configuration runs one Cloudflare batch every three days. A batch
 may ingest new source data, update derived observations, reconcile freshness,
 and deliver a new immutable Edition, but it does **not** manufacture an Edition
 when verified meaning has not changed. Existing signals keep their original
@@ -79,7 +87,7 @@ Common outer Cron choices are:
 |---|---|---|
 | Hourly | `0 * * * *` | Higher-freshness public monitor |
 | Every 4 hours | `0 */4 * * *` | More frequent monitoring |
-| Every 3 days (default) | `0 0 */3 * *` | Low-cost reference deployment |
+| Every 3 days (example default) | `0 0 */3 * *` | Low-cost self-hosted installation |
 | Weekly | `0 0 * * 0` | Demonstration or archival use |
 
 If the outer Cron is slower than a registry cadence, it becomes the effective
@@ -89,6 +97,11 @@ well (`3600`, `14400`, `43200`, `86400`, `259200`, or `604800`). The outer Cron
 should run at least as often as the shortest cadence you expect to preserve. See
 [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md#scheduling-and-inactivity) for the
 full schedule and cost trade-offs.
+
+Cloudflare deployment through GitHub Actions is opt-in: configure your own
+`CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` secrets, set the repository
+variable `OPEN_SIGNAL_DEPLOY_ENABLED=true`, and enable the deployment workflow
+in your fork. The maintainer repository's deployment workflow is disabled.
 
 ## Registries
 

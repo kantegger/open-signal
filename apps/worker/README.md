@@ -23,7 +23,8 @@ Runtime modes:
 Use `--role source|analysis|agent|publication` only when splitting the initial
 single process into role-specific workers.
 
-The hosted demo invokes `once` once every three days. The platform passes the
+The hosted demo was discontinued on October 7, 2026. The example self-hosted
+configuration invokes `once` once every three days. The platform passes the
 scheduled occurrence through `OPEN_SIGNAL_SCHEDULED_AT` so a delayed or
 duplicate invocation still uses the intended deterministic Job buckets.
 Longer desk cadences remain in the machine-readable schedule registry and are

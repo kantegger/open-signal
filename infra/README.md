@@ -21,7 +21,8 @@ Database migrations (Alembic, OS-003).
 
 ## cloudflare
 
-The production demo's three-day scheduler Worker and one-shot Python Container. It owns
+An optional self-hosted three-day scheduler Worker and one-shot Python Container.
+The maintainer's hosted demo has been discontinued. This implementation owns
 only invocation and overlap prevention; schedule meaning remains in the
 registries and editorial work remains in PostgreSQL Jobs. See
 [`docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md).

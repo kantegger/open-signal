@@ -1,7 +1,10 @@
-# Production deployment
+# Self-hosted production deployment
 
-Open Signal's beta runtime uses services already covered by the project's paid
-plans: Vercel for the public web and read-only API, Cloudflare Workers +
+The maintainer-operated demo was discontinued on October 7, 2026. No official
+website, API, or scheduled data pipeline is provided. This guide explains how
+to run your own installation using your own accounts, domains, and secrets.
+
+The example runtime uses Vercel for the public web and read-only API, Cloudflare Workers +
 Containers for scheduled batch work, R2 for public publication snapshots, and
 Neon for the system of record.
 
@@ -26,19 +29,18 @@ archive, and SEO-index projections are refreshed, and the front-page pointer
 moves last. Vercel is notified only after that move. Public pages read R2
 first; the FastAPI service is the long-tail and operations fallback.
 
-## Provisioned beta resources
+## Resources to provision
 
 | Surface | Resource |
 |---|---|
-| Web | `https://os.yhleo.com` (`open-signal-web.vercel.app` fallback) |
-| Read-only API | `https://open-signal-api.vercel.app` |
-| R2 bucket | `open-signal-publications` (APAC) |
-| R2 beta read origin | `https://pub-663344cb96044648a00527ba459d1a03.r2.dev` |
-| Batch | Cloudflare Worker `open-signal-scheduler`, every-3-days Cron |
-| Database | Neon project `open-signal`, `production` branch |
-| Destructive tests | Neon `test` branch only; see `docs/TESTING.md` |
+| Web | Your own Vercel project for `apps/web` and optional custom domain |
+| Read-only API | Your own Vercel project for the repository-root FastAPI app |
+| R2 bucket | Your own publication bucket and public read origin |
+| Batch | Your own Cloudflare Worker + Container with your chosen Cron |
+| Database | Your own Neon project or compatible PostgreSQL database |
+| Destructive tests | A separate test database; see `docs/TESTING.md` |
 
-The `r2.dev` address is suitable for the beta bring-up. Before a wider public
+An `r2.dev` address is suitable for initial bring-up. Before a wider public
 launch, attach a custom domain to the R2 bucket so the read origin has normal
 production controls and rate limits.
 
@@ -95,11 +97,14 @@ permission.
 | `CLOUDFLARE_API_TOKEN` | Account-scoped Worker/Container deployment token |
 
 These two values authorize CI deployment only. They are separate from the
-runtime R2 credentials above.
+runtime R2 credentials above. In your fork, set the repository variable
+`OPEN_SIGNAL_DEPLOY_ENABLED=true` and enable the deployment workflow after
+provisioning your own resources. The maintainer repository's workflow is
+disabled and will not deploy the discontinued demo.
 
 ## Scheduling and inactivity
 
-The reference deployment uses one batch every three days (00:00 UTC; 08:00 in
+The example configuration uses one batch every three days (00:00 UTC; 08:00 in
 Singapore). This reduces main-pipeline starts by two thirds compared with the
 previous daily cadence. It is intended to lower database compute consumption; it
 is not a guarantee of 2–3 CU-hours per day or per three-day window. Batch duration, autoscaling, other
@@ -107,7 +112,7 @@ database clients, and public API traffic also affect usage. Compare several
 complete days of actual consumption after a cadence change. Do not add
 health-check polling that wakes the database.
 
-The reference deployment invokes the scheduler at `0 0 */3 * *` (UTC). The
+The example configuration invokes the scheduler at `0 0 */3 * *` (UTC). The
 platform occurrence time is passed into the Python command, which gives every
 registry schedule a stable idempotency bucket even after a delayed or duplicate
 invocation.
@@ -141,7 +146,7 @@ cadence:
 |---|---|---:|
 | Hourly | `0 * * * *` | `3600` |
 | Every 4 hours | `0 */4 * * *` | `14400` |
-| Every 3 days (reference default) | `0 0 */3 * *` | `259200` |
+| Every 3 days (example default) | `0 0 */3 * *` | `259200` |
 | Daily | `0 0 * * *` | `86400` |
 | Weekly | `0 0 * * 0` | `604800` |
 
@@ -159,17 +164,21 @@ until new verified meaning arrives or the freshness policy ages/demotes/retires
 it. A retirement triggers a full-page compile, so the reader still sees a
 complete, intentionally composed page.
 
-Both Neon branches are configured to suspend compute after five minutes without
-database activity. The `test` branch is never used by an application runtime;
+Configure Neon to suspend compute after five minutes without database activity.
+Your `test` branch must never be used by an application runtime;
 the guarded test launcher is the only supported destructive-test entry point.
 
 ## Deploy
 
-1. Apply Alembic migrations to Neon production before code that depends on
+1. Provision your own PostgreSQL database and separate test database, R2 bucket,
+   Vercel API/web projects, and Cloudflare Worker/Container. Configure the
+   variables and secrets above. Apply Alembic migrations before code that depends on
    them.
-2. Merge a green change to `main`. Vercel's Git integrations deploy the API and
+2. Connect your fork to your Vercel projects. Merge a green change to `main`.
+   Your Vercel Git integrations deploy the API and
    web projects.
-3. `.github/workflows/deploy-cloudflare.yml` builds the Linux container on the
+3. Enable the opt-in Cloudflare workflow in your fork.
+   `.github/workflows/deploy-cloudflare.yml` builds the Linux container on the
    GitHub runner and deploys the Worker through Wrangler.
 4. Wait for the Container image to become ready on first deployment.
 5. Run the checks below.
@@ -185,16 +194,18 @@ npm --prefix infra/cloudflare run deploy
 ## Production checks
 
 ```powershell
-Invoke-RestMethod https://open-signal-api.vercel.app/health
+$apiBase = "https://your-api.example.com"
+$webBase = "https://your-web.example.com"
+Invoke-RestMethod "$apiBase/health"
 
-Invoke-RestMethod https://open-signal-web.vercel.app/api/publication/current
+Invoke-RestMethod "$webBase/api/publication/current"
 
 $token = [Environment]::GetEnvironmentVariable(
   "OPEN_SIGNAL_OPS_TOKEN",
   "User"
 )
 Invoke-RestMethod `
-  -Uri https://open-signal-api.vercel.app/api/ops/current-edition `
+  -Uri "$apiBase/api/ops/current-edition" `
   -Headers @{ Authorization = ("Bearer " + $token) }
 ```
 
